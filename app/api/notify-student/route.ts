@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatDateShort } from '@/lib/utils'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Strip BOM character that PowerShell sometimes injects into env vars
+const resend = new Resend((process.env.RESEND_API_KEY ?? '').replace(/^﻿/, ''))
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
