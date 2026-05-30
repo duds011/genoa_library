@@ -9,7 +9,7 @@ export async function POST() {
     return NextResponse.json({ message: 'Not authenticated' }, { status: 401 })
   }
 
-  const webhookUrl = process.env.N8N_DRIVE_WEBHOOK_URL
+  const webhookUrl = (process.env.N8N_DRIVE_WEBHOOK_URL ?? '').replace(/^﻿/, '').trim()
   if (!webhookUrl) {
     return NextResponse.json(
       { message: 'Drive scanner not configured (N8N_DRIVE_WEBHOOK_URL missing)' },
