@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import {
   ComposedChart, Bar, Line, BarChart,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -32,6 +34,8 @@ function CustomTooltip({ active, payload, label, suffix = '', label2 = '' }: any
 }
 
 export default function ProgressCharts({ lessons }: Props) {
+  const [open, setOpen] = useState(false)
+
   if (lessons.length < 2) return null
 
   // Chronological order for charts
@@ -48,9 +52,17 @@ export default function ProgressCharts({ lessons }: Props) {
   const hasTalk   = data.some(l => l.talkPct !== null)
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-sm font-bold text-ink uppercase tracking-wide">Progress Charts</h2>
+    <div className="card overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+      >
+        <span className="text-sm font-bold text-ink uppercase tracking-wide">Progress Charts</span>
+        <ChevronDown className={`w-4 h-4 text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
 
+      {open && (
+      <div className="px-5 pb-5 space-y-4">
       <div className="grid sm:grid-cols-2 gap-4">
         {/* ── Score over time ─────────────────────────────────── */}
         {hasScores && (
@@ -184,6 +196,8 @@ export default function ProgressCharts({ lessons }: Props) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      </div>
+      )}
     </div>
   )
 }
