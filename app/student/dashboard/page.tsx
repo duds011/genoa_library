@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { formatDateShort, getLevelLabel, ordinal } from '@/lib/utils'
 import ProgressCharts from '@/components/student/ProgressCharts'
-import { JLPT_COLORS } from '@/components/student/VocabLevelBreakdown'
+import VocabLevelBreakdown, { JLPT_COLORS } from '@/components/student/VocabLevelBreakdown'
 
 const MILESTONES = [1, 5, 10, 25, 50]
 const MILESTONE_EMOJIS = ['🌱', '🌸', '🌿', '⭐', '🏆']
@@ -172,6 +172,9 @@ export default async function StudentDashboard() {
           </div>
         </div>
       )}
+
+      {/* Vocab level bar */}
+      {totalVocab > 0 && <VocabLevelBreakdown vocab={allVocab} />}
 
       {/* Collapsible progress charts */}
       {lessonCount >= 2 && (
