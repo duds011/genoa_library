@@ -5,6 +5,7 @@ import { formatDateShort, getLevelLabel, ordinal } from '@/lib/utils'
 import StudentProgressChart from '@/components/teacher/StudentProgressChart'
 import VocabLevelBreakdown from '@/components/student/VocabLevelBreakdown'
 import ResetPasswordButton from '@/components/teacher/ResetPasswordButton'
+import UpdateEmailButton from '@/components/teacher/UpdateEmailButton'
 import { PenLine, BookOpen, ArrowLeft } from 'lucide-react'
 import DeleteLessonButton from '@/components/teacher/DeleteLessonButton'
 
@@ -90,6 +91,7 @@ export default async function StudentDetailPage({
             {drafts.length > 0 && (
               <span className="badge-draft">{drafts.length} draft{drafts.length > 1 ? 's' : ''} pending</span>
             )}
+            <UpdateEmailButton studentId={student.id} currentEmail={student.email} />
             {student.profile_id && <ResetPasswordButton studentId={student.id} />}
           </div>
         </div>

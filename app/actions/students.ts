@@ -198,6 +198,52 @@ export async function deleteStudent(studentId: string): Promise<{ success: boole
   return { success: true }
 }
 
+export async function updateStudentEmail(
+  studentId: string,
+  newEmail: string,
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) return { success: false, error: 'Not authenticated' }
+
+  // Load student — verify teacher owns it
+  const { data: student, error: loadError } = await supabase
+    .from('students')
+    .select('id, profile_id')
+    .eq('id', studentId)
+    .eq('teacher_id', user.id)
+    .single()
+
+  if (loadError || !student) return { success: false, error: 'Student not found' }
+
+  const admin = createAdminClient()
+
+  // 1. Update Supabase Auth email (if auth account exists)
+  if (student.profile_id) {
+    const { error: authUpdateError } = await admin.auth.admin.updateUserById(
+      student.profile_id,
+      { email: newEmail, email_confirm: true },
+    )
+    if (authUpdateError) return { success: false, error: authUpdateError.message }
+
+    // 2. Update profiles table
+    const { error: profileError } = await admin
+      .from('profiles')
+      .update({ email: newEmail })
+      .eq('id', student.profile_id)
+    if (profileError) return { success: false, error: profileError.message }
+  }
+
+  // 3. Update students table
+  const { error: studentError } = await admin
+    .from('students')
+    .update({ email: newEmail })
+    .eq('id', studentId)
+  if (studentError) return { success: false, error: studentError.message }
+
+  return { success: true }
+}
+
 export async function resetStudentPassword(studentId: string): Promise<ResetPasswordResult> {
   // Verify teacher owns this student
   const supabase = await createClient()
