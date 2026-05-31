@@ -81,7 +81,7 @@ export default function KanaBackground() {
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: -1,
+          zIndex: 0,
           pointerEvents: 'none',
           overflow: 'hidden',
           color: '#5b50fa',

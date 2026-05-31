@@ -22,10 +22,11 @@ export default async function StudentLayout({
   if (profile?.role !== 'student') redirect('/teacher/dashboard')
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen" style={{ background: 'transparent' }}>
+      <style>{`body { background: #f5f4ff; }`}</style>
       <KanaBackground />
       <StudentNav studentName={profile.full_name || user.email || 'Student'} />
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8" style={{ position: 'relative', zIndex: 1 }}>
         {children}
       </main>
     </div>
