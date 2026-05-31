@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import StudentNav from '@/components/student/StudentNav'
+import KanaBackground from '@/components/student/KanaBackground'
 
 export default async function StudentLayout({
   children,
@@ -22,6 +23,7 @@ export default async function StudentLayout({
 
   return (
     <div className="min-h-screen bg-surface">
+      <KanaBackground />
       <StudentNav studentName={profile.full_name || user.email || 'Student'} />
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         {children}
