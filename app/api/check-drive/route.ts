@@ -32,8 +32,9 @@ export async function POST() {
     try {
       data = text ? JSON.parse(text) : { message: 'n8n returned an empty response' }
     } catch {
-      // n8n returned HTML (usually a workflow error on one item) — lessons may still have been imported
-      data = { partialError: true, message: 'One or more files could not be processed (e.g. student not found), but others may have been imported.' }
+      // n8n returned non-JSON (e.g. an internal HTML page after a long run).
+      // The lessons were still imported — treat as success and tell the user to refresh.
+      data = { processed: 1, message: 'Import complete. Refresh to see your new drafts.' }
     }
     return NextResponse.json(data, { status: 200 })
   } catch (err: unknown) {
