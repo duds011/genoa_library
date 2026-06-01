@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, CheckCircle, Eye, Save, ChevronDown, ChevronUp, GripVertical, AlertTriangle, X } from 'lucide-react'
@@ -125,6 +125,40 @@ export default function LessonEditor({
   const [uploadingAudio, setUploadingAudio] = useState(false)
   const [audioError, setAudioError] = useState('')
   const [showAudioScript, setShowAudioScript] = useState(false)
+  const [audioScript, setAudioScript] = useState(initialAudioScript)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  async function startRecording() {
+    setAudioError('')
+    chunksRef.current = []
+    setRecordingSeconds(0)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = recorder
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        await uploadAudio(new File([blob], `lesson-${lessonId}.webm`, { type: 'audio/webm' }))
+      }
+      recorder.start()
+      setIsRecording(true)
+      timerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
+    } catch {
+      setAudioError('Microphone access denied. Please allow it in your browser and try again.')
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop()
+    setIsRecording(false)
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+  }
 
   // ─── Audio upload ─────────────────────────────────────────────────────────
 
@@ -220,6 +254,7 @@ export default function LessonEditor({
         confidence_label: confidenceLabel || null,
         teacher_note: teacherNote || null,
         teacher_notes: teacherNotes,
+        audio_script: audioScript || null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'lesson_id' })
 
@@ -656,59 +691,104 @@ export default function LessonEditor({
         </div>
       </div>
 
-      {/* 🎙️ Vocabulary Audio */}
-      <div className="card p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="section-title">🎙️ Vocabulary Audio <span className="text-gray-400 font-normal normal-case text-sm">(optional)</span></h3>
-        </div>
+      {/* 🎙️ Audio Review */}
+      <div className="card p-6 space-y-5">
+        <h3 className="section-title">🎙️ Audio Review <span className="text-gray-400 font-normal normal-case text-sm">(optional)</span></h3>
 
-        {/* AI-generated reading script */}
-        {initialAudioScript && (
-          <div>
+        {/* Script — always visible, collapsible */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="form-label mb-0">Reading Script</label>
             <button
               type="button"
               onClick={() => setShowAudioScript(s => !s)}
-              className="flex items-center gap-2 text-xs font-semibold text-brand-600 hover:text-brand-800 transition-colors mb-2"
+              className="flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-800 transition-colors"
             >
               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAudioScript ? 'rotate-180' : ''}`} />
-              {showAudioScript ? 'Hide' : 'Show'} Reading Script
+              {showAudioScript ? 'Hide script' : 'Show / edit script'}
             </button>
-            {showAudioScript && (
-              <pre className="text-xs text-ink/80 bg-indigo-50 border border-indigo-100 rounded-xl p-4 whitespace-pre-wrap font-mono max-h-56 overflow-auto leading-relaxed">
-                {initialAudioScript}
-              </pre>
-            )}
           </div>
-        )}
-        {!initialAudioScript && (
-          <p className="text-xs text-muted">A reading script will be auto-generated when the next lesson is imported via n8n.</p>
-        )}
+          {showAudioScript && (
+            <textarea
+              value={audioScript}
+              onChange={e => setAudioScript(e.target.value)}
+              rows={14}
+              placeholder="No script yet — auto-generated on import, or write one here."
+              className="textarea w-full text-sm leading-relaxed"
+            />
+          )}
+          {!showAudioScript && (
+            <p className="text-xs text-muted">
+              {audioScript ? 'Script ready — expand to review or edit before recording.' : 'No script yet — auto-generated on import, or add one manually.'}
+            </p>
+          )}
+        </div>
 
-        {/* Existing recording */}
-        {voiceFileUrl && (
+        {/* Record button */}
+        <div className="space-y-3">
+          <label className="form-label mb-0">{voiceFileUrl ? 'Re-record' : 'Record your voice'}</label>
+
+          {!isRecording && !uploadingAudio && (
+            <button
+              type="button"
+              onClick={startRecording}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
+              style={{ background: 'linear-gradient(135deg,#ef4444,#dc2626)' }}
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-white" />
+              Start Recording
+            </button>
+          )}
+
+          {isRecording && (
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 border border-red-200">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-sm font-semibold text-red-600">
+                  {Math.floor(recordingSeconds / 60).toString().padStart(2, '0')}:{(recordingSeconds % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={stopRecording}
+                className="px-5 py-2.5 rounded-xl font-semibold text-sm bg-gray-900 text-white hover:bg-gray-700 transition-colors"
+              >
+                Stop & Save
+              </button>
+            </div>
+          )}
+
+          {uploadingAudio && (
+            <p className="text-xs text-brand-600 font-medium">⏳ Saving recording…</p>
+          )}
+          {audioError && <p className="text-xs text-red-500">{audioError}</p>}
+        </div>
+
+        {/* Current recording */}
+        {voiceFileUrl && !uploadingAudio && (
           <div>
             <label className="form-label mb-2">Current Recording</label>
             <audio controls className="w-full mb-2" src={voiceFileUrl} />
-            <button type="button" onClick={removeAudio} className="text-xs text-red-400 hover:text-red-600 transition-colors">
-              Remove recording
-            </button>
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-green-600 font-medium">✓ Saved</span>
+              <button type="button" onClick={removeAudio} className="text-xs text-red-400 hover:text-red-600 transition-colors">
+                Remove
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Upload */}
+        {/* File upload fallback */}
         <div>
-          <label className="form-label">{voiceFileUrl ? 'Replace Recording' : 'Upload Recording'}</label>
-          <p className="text-xs text-muted mb-2">Record yourself reading the script above, then upload the audio file here. MP3, M4A, WAV — max 50 MB.</p>
+          <label className="form-label text-muted mb-1">Or upload a file</label>
           <input
             type="file"
             accept="audio/*"
             className="input text-sm file:mr-3 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100"
-            disabled={uploadingAudio}
+            disabled={uploadingAudio || isRecording}
             onChange={e => { if (e.target.files?.[0]) uploadAudio(e.target.files[0]) }}
           />
-          {uploadingAudio && <p className="text-xs text-brand-600 mt-1.5 font-medium">⏳ Uploading…</p>}
-          {audioError && <p className="text-xs text-red-500 mt-1.5">{audioError}</p>}
-          {voiceFileUrl && !uploadingAudio && <p className="text-xs text-green-600 mt-1.5 font-medium">✓ Recording saved</p>}
+          <p className="text-xs text-muted mt-1">MP3, M4A, WAV — max 50 MB.</p>
         </div>
       </div>
 
