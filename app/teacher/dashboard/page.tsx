@@ -38,7 +38,7 @@ export default async function TeacherDashboard() {
     `)
     .eq('teacher_id', user!.id)
     .eq('status', 'published')
-    .order('lesson_date', { ascending: true })
+    .order('lesson_date', { ascending: false })
 
   const totalStudents = students?.length ?? 0
   const totalLessons = (draftLessons?.length ?? 0) + (recentLessons?.length ?? 0)

@@ -1,68 +1,94 @@
 const JLPT_LEVELS = [
-  { level: 'N5', label: 'Beginner',           color: '#06b6d4' },
-  { level: 'N4', label: 'Elementary',          color: '#38bdf8' },
-  { level: 'N3', label: 'Intermediate',        color: '#818cf8' },
-  { level: 'N2', label: 'Upper-Intermediate',  color: '#a78bfa' },
-  { level: 'N1', label: 'Advanced',            color: '#7c3aed' },
+  { level: 'N5', label: 'Foundation',   bar: '#4ade80', barText: '#14532d', badge: '#dcfce7', badgeText: '#166534' },
+  { level: 'N4', label: 'Elementary',   bar: '#22d3ee', barText: '#164e63', badge: '#cffafe', badgeText: '#155e75' },
+  { level: 'N3', label: 'Intermediate', bar: '#60a5fa', barText: '#1e3a8a', badge: '#dbeafe', badgeText: '#1e40af' },
+  { level: 'N2', label: 'Advanced',     bar: '#a78bfa', barText: '#3b0764', badge: '#ede9fe', badgeText: '#5b21b6' },
+  { level: 'N1', label: 'Expert',       bar: '#f87171', barText: '#7f1d1d', badge: '#fee2e2', badgeText: '#991b1b' },
 ]
 
 export const JLPT_COLORS: Record<string, string> = Object.fromEntries(
-  JLPT_LEVELS.map(({ level, color }) => [level, color])
+  JLPT_LEVELS.map(({ level, bar }) => [level, bar])
+)
+
+export const JLPT_LABELS: Record<string, string> = Object.fromEntries(
+  JLPT_LEVELS.map(({ level, label }) => [level, label])
 )
 
 interface Props {
-  vocab: { jlpt_level?: string | null }[]
+  vocab?: { jlpt_level?: string | null }[]
+  distribution?: Record<string, number> | null
+  totalCount?: number | null
+  isPartial?: boolean
 }
 
-export default function VocabLevelBreakdown({ vocab }: Props) {
-  const total = vocab.length
-  if (total === 0) return null
-
+export default function VocabLevelBreakdown({
+  vocab = [],
+  distribution,
+  totalCount,
+  isPartial = false,
+}: Props) {
   const counts = JLPT_LEVELS.map(def => ({
     ...def,
-    count: vocab.filter(v => v.jlpt_level === def.level).length,
+    count: distribution
+      ? (distribution[def.level] ?? 0)
+      : vocab.filter(v => v.jlpt_level === def.level).length,
   })).filter(c => c.count > 0)
 
-  if (counts.length === 0) return null
+  const labeled = counts.reduce((sum, c) => sum + c.count, 0)
+  const displayTotal = totalCount ?? (distribution ? labeled : vocab.length)
+
+  if (labeled === 0) {
+    return (
+      <div className="card p-5">
+        <h2 className="text-xs font-bold text-muted uppercase tracking-widest mb-2">
+          Vocabulary Profile
+        </h2>
+        <p className="text-sm text-muted">No vocabulary items detected for this lesson.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="card p-5">
-      <h2 className="text-xs font-bold text-muted uppercase tracking-widest mb-3">
-        Vocabulary Level (JLPT)
-      </h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-bold text-muted uppercase tracking-widest">
+          Vocabulary Profile
+        </h2>
+        <span className="text-xs text-muted font-medium">
+          {displayTotal}{isPartial ? '+' : ''} vocabulary items covered
+        </span>
+      </div>
 
       {/* Segmented bar */}
-      <div className="flex rounded-full h-9 overflow-hidden mb-3">
-        {counts.map(({ level, color, count }) => (
+      <div className="flex rounded-xl overflow-hidden mb-3" style={{ height: '30px' }}>
+        {counts.map(({ level, bar, barText, count }) => (
           <div
             key={level}
-            className="flex items-center justify-center gap-1 text-white text-xs font-bold transition-all"
+            className="flex items-center justify-center text-xs font-bold transition-all overflow-hidden"
             style={{
-              width: `${(count / total) * 100}%`,
-              background: color,
-              minWidth: '44px',
+              width: `${(count / labeled) * 100}%`,
+              background: bar,
+              color: barText,
+              minWidth: 0,
+              padding: '0 0.35rem',
+              whiteSpace: 'nowrap',
             }}
           >
-            <span>{level}</span>
-            <span>{count}</span>
+            {(count / labeled) * 100 >= 9 ? `${count}` : ''}
           </div>
         ))}
       </div>
 
       {/* Badge legend */}
       <div className="flex flex-wrap gap-2">
-        {counts.map(({ level, label, color, count }) => (
+        {counts.map(({ level, label, badge, badgeText, count }) => (
           <span
             key={level}
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-            style={{
-              background: color + '18',
-              color,
-              border: `1px solid ${color}35`,
-            }}
+            style={{ background: badge, color: badgeText }}
           >
-            <strong>{level} {count}</strong>
-            <span className="font-normal opacity-70">{label}</span>
+            <strong>{count}</strong>
+            <span className="font-normal opacity-75">{label}</span>
           </span>
         ))}
       </div>

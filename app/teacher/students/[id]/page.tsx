@@ -54,10 +54,18 @@ export default async function StudentDetailPage({
   const firstTalk  = talks[0] ?? null
   const talkDelta  = latestTalk && firstTalk ? latestTalk - firstTalk : null
 
-  const totalVocab = published.reduce((acc: number, l: any) => acc + (l.vocabulary_items?.length ?? 0), 0)
-  const allVocab   = published.flatMap((l: any) => l.vocabulary_items || [])
+  const allVocabRaw = published.flatMap((l: any) => l.vocabulary_items || [])
+  const seenWords = new Set<string>()
+  const allVocab = allVocabRaw.filter((v: any) => {
+    if (!v.jlpt_level) return false
+    const key = (v.word ?? '').trim().toLowerCase()
+    if (!key || seenWords.has(key)) return false
+    seenWords.add(key)
+    return true
+  })
+  const totalVocab = allVocab.length
 
-  const lessonCount   = published.length
+  const lessonCount   = published.reduce((max: number, l: any) => Math.max(max, l.lesson_number ?? 0), 0)
   const nextMilestone = MILESTONES.find(m => m > lessonCount) ?? 50
   const levelLabel    = getLevelLabel(lessonCount)
 
@@ -136,7 +144,7 @@ export default async function StudentDetailPage({
         <>
           <div className="card px-5 py-4 flex items-center gap-3">
             <span className="text-xl">📚</span>
-            <span className="font-bold text-ink">{totalVocab} words learned across {lessonCount} lessons</span>
+            <span className="font-bold text-ink">{totalVocab} vocabulary items covered across {lessonCount} lessons</span>
           </div>
           <VocabLevelBreakdown vocab={allVocab} />
         </>

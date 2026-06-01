@@ -137,7 +137,7 @@ export default async function StudentPreviewPage({
       {/* Words learned */}
       <div className="card px-5 py-4 flex items-center gap-3">
         <span className="text-xl">📚</span>
-        <span className="font-bold text-ink">{totalVocab} words learned</span>
+        <span className="font-bold text-ink">{totalVocab} vocabulary items covered</span>
         {totalVocab > 0 && <span className="badge-green ml-1">{totalVocab} total</span>}
       </div>
 

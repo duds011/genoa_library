@@ -35,14 +35,14 @@ export default async function StudentDashboard() {
     .select(`
       id, lesson_number, lesson_date, title,
       lesson_summaries ( score, talk_percentage, recap ),
-      vocabulary_items ( id, jlpt_level ),
+      vocabulary_items ( id, word, jlpt_level ),
       homework_items ( id, completed )
     `)
     .eq('student_id', student.id)
     .eq('status', 'published')
     .order('lesson_number', { ascending: false })
 
-  const lessonCount = lessons?.length ?? 0
+  const lessonCount = (lessons || []).reduce((max: number, l: any) => Math.max(max, l.lesson_number ?? 0), 0)
   const scores = (lessons || []).map((l: any) => l.lesson_summaries?.score).filter(Boolean)
   const latestScore = scores[0] ?? null
   const avgScore = scores.length ? scores.reduce((a: number, b: number) => a + b, 0) / scores.length : null
@@ -50,8 +50,17 @@ export default async function StudentDashboard() {
   const latestTalk = talks[0] ?? null
   const firstTalk = talks[talks.length - 1] ?? null
   const talkDelta = latestTalk && firstTalk ? latestTalk - firstTalk : null
-  const totalVocab = (lessons || []).reduce((acc: number, l: any) => acc + (l.vocabulary_items?.length ?? 0), 0)
-  const allVocab = (lessons || []).flatMap((l: any) => l.vocabulary_items || [])
+  // Flatten all vocab, keep only items with a JLPT level, deduplicate by word
+  const allVocabRaw = (lessons || []).flatMap((l: any) => l.vocabulary_items || [])
+  const seenWords = new Set<string>()
+  const allVocab = allVocabRaw.filter((v: any) => {
+    if (!v.jlpt_level) return false
+    const key = (v.word ?? '').trim().toLowerCase()
+    if (!key || seenWords.has(key)) return false
+    seenWords.add(key)
+    return true
+  })
+  const totalVocab = allVocab.length
   const firstScore = scores[scores.length - 1]
   const scoreDelta = latestScore && firstScore
     ? (latestScore - firstScore >= 0 ? '+' : '') + (latestScore - firstScore).toFixed(1)
@@ -68,13 +77,17 @@ export default async function StudentDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="card p-6">
+      <div className="card p-6" style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f6f5ff 100%)' }}>
         <div className="flex items-center gap-2 px-3 py-1 bg-brand-50 rounded-full w-fit mb-1">
           <span className="w-2 h-2 rounded-full bg-brand-600 animate-pulse" />
           <span className="text-xs font-semibold text-brand-600">Student View</span>
         </div>
-        <h1 className="text-3xl font-extrabold mt-3" style={{ color: '#4f46e5' }}>
-          Language Library
+        <style>{`
+          @keyframes genoaShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+          .genoa-animated{background:linear-gradient(270deg,#7c3aed,#a855f7,#facc15,#7c3aed);background-size:400% 400%;animation:genoaShift 6s ease infinite;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+        `}</style>
+        <h1 className="genoa-animated text-3xl font-extrabold mt-3">
+          GENOA Library
         </h1>
         <p className="text-sm text-muted mt-0.5">
           Welcome, <strong className="text-ink">{user.email}</strong>. Your lessons are shown below.
@@ -87,12 +100,12 @@ export default async function StudentDashboard() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="stat-card">
             <span className="stat-label">Lessons</span>
-            <span className="stat-value" style={{ color: '#5b50fa' }}>{lessonCount}</span>
+            <span className="stat-value" style={{ color: '#4f46e5' }}>{lessonCount}</span>
           </div>
           <div className="stat-card">
             <span className="stat-label">Latest Score</span>
             <div className="flex flex-col">
-              <span className="stat-value" style={{ color: '#5b50fa' }}>
+              <span className="stat-value" style={{ color: '#4f46e5' }}>
                 {latestScore ?? '—'}<span className="text-base font-normal text-muted">/10</span>
               </span>
               <span className="text-xs text-muted">{scoreDelta} since lesson 1</span>
@@ -100,14 +113,14 @@ export default async function StudentDashboard() {
           </div>
           <div className="stat-card">
             <span className="stat-label">Avg Score</span>
-            <span className="stat-value" style={{ color: '#5b50fa' }}>
+            <span className="stat-value" style={{ color: '#4f46e5' }}>
               {avgScore ? avgScore.toFixed(1) : '—'}<span className="text-base font-normal text-muted">/10</span>
             </span>
           </div>
           <div className="stat-card">
             <span className="stat-label">You Talk</span>
             <div className="flex flex-col">
-              <span className="stat-value" style={{ color: '#5b50fa' }}>
+              <span className="stat-value" style={{ color: '#4f46e5' }}>
                 {latestTalk ?? '—'}<span className="text-base font-normal text-muted">%</span>
               </span>
               {talkDelta !== null && (
@@ -154,7 +167,7 @@ export default async function StudentDashboard() {
       {totalVocab > 0 && (
         <div className="card px-5 py-4 flex items-center gap-3 flex-wrap">
           <span className="text-xl">📚</span>
-          <span className="font-bold text-ink">{totalVocab} words learned</span>
+          <span className="font-bold text-ink">{totalVocab} vocabulary items covered</span>
           <div className="flex items-center gap-2 flex-wrap">
             {jlptCounts.map(({ level, count }) => (
               <span
@@ -200,7 +213,7 @@ export default async function StudentDashboard() {
               <div className="flex items-center justify-between gap-2">
                 <span className="badge-brand text-xs">Lesson {lesson.lesson_number}</span>
                 {lesson.lesson_summaries?.score != null && (
-                  <span className="text-xs font-bold text-brand-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
                     {lesson.lesson_summaries.score}/10
                   </span>
                 )}

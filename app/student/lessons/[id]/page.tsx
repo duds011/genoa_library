@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { formatDateShort } from '@/lib/utils'
 import { ArrowLeft, CheckCircle, Circle } from 'lucide-react'
 import SectionContent from '@/components/student/SectionContent'
-import { JLPT_COLORS } from '@/components/student/VocabLevelBreakdown'
+import VocabLevelBreakdown, { JLPT_COLORS, JLPT_LABELS } from '@/components/student/VocabLevelBreakdown'
 
 export default async function StudentLessonPage({
   params,
@@ -46,8 +46,8 @@ export default async function StudentLessonPage({
   const vocab    = (lesson.vocabulary_items || []).sort((a: any, b: any) => a.sort_order - b.sort_order)
   const homework = (lesson.homework_items   || []).sort((a: any, b: any) => a.sort_order - b.sort_order)
   const allSections   = (lesson.lesson_sections || []).sort((a: any, b: any) => a.sort_order - b.sort_order)
-  const mainTakeaways = allSections.find((s: any) => /main takeaway|takeaways/i.test(s.title)) ?? null
-  const sections      = allSections.filter((s: any) => !/main takeaway|takeaways/i.test(s.title))
+  const mainTakeaways = allSections.find((s: any) => /main takeaway|takeaways|corrections|refinement/i.test(s.title)) ?? null
+  const sections      = allSections.filter((s: any) => !/main takeaway|takeaways|corrections|refinement/i.test(s.title))
   const summary  = lesson.lesson_summaries
 
   const studentTalk = summary?.talk_percentage ?? 40
@@ -152,7 +152,7 @@ export default async function StudentLessonPage({
           {/* Main Takeaways — inside dashboard */}
           {mainTakeaways && (
             <div className="border-t border-indigo-50 pt-4 mt-1">
-              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-3">Main Takeaways</p>
+              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-3">Main Corrections & Refinements</p>
               <SectionContent content={mainTakeaways.content} />
             </div>
           )}
@@ -225,17 +225,24 @@ export default async function StudentLessonPage({
         </div>
       ))}
 
-      {/* ── Vocabulary ───────────────────────────────────────────────── */}
+      {/* ── Vocabulary Profile bar ───────────────────────────────────── */}
+      {(vocab.length > 0 || summary?.vocab_total_count) && (
+        <VocabLevelBreakdown
+          vocab={vocab}
+          distribution={summary?.vocab_level_distribution}
+          totalCount={summary?.vocab_total_count}
+        />
+      )}
+
+      {/* ── Key Vocabulary ───────────────────────────────────────────── */}
       {vocab.length > 0 && (
         <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="section-title">📖 Vocabulary</h2>
-            <span className="badge-purple">{vocab.length} words</span>
-          </div>
+          <h2 className="section-title mb-1">📖 Key Vocabulary</h2>
+          <p className="text-xs text-muted mb-4">Showing {vocab.length} key vocabulary items from this lesson.</p>
           <div className="space-y-3">
             {vocab.map((v: any) => (
               <div key={v.id} className="rounded-xl border border-indigo-50 bg-[#f8f7ff] p-4">
-                {/* Word + JLPT badge */}
+                {/* Word + level badge */}
                 <div className="flex items-center justify-between gap-2 mb-0.5">
                   <span className="font-bold text-brand-800 text-base">{v.word}</span>
                   {v.jlpt_level && (
@@ -247,11 +254,11 @@ export default async function StudentLessonPage({
                         border: `1px solid ${(JLPT_COLORS[v.jlpt_level] ?? '#818cf8')}40`,
                       }}
                     >
-                      {v.jlpt_level}
+                      {JLPT_LABELS[v.jlpt_level] ?? v.jlpt_level}
                     </span>
                   )}
                 </div>
-                {/* Romaji on its own line */}
+                {/* Romaji */}
                 {v.reading && (
                   <p className="text-xs text-purple-500 font-semibold italic mb-1">{v.reading}</p>
                 )}
