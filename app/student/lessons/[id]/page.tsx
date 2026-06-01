@@ -225,15 +225,6 @@ export default async function StudentLessonPage({
         </div>
       ))}
 
-      {/* ── Vocabulary Profile bar ───────────────────────────────────── */}
-      {(vocab.length > 0 || summary?.vocab_total_count) && (
-        <VocabLevelBreakdown
-          vocab={vocab}
-          distribution={summary?.vocab_level_distribution}
-          totalCount={summary?.vocab_total_count}
-        />
-      )}
-
       {/* ── Key Vocabulary ───────────────────────────────────────────── */}
       {vocab.length > 0 && (
         <div className="card p-6">
