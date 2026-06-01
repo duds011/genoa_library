@@ -60,6 +60,8 @@ interface Props {
   homework: HomeworkItem[]
   sections: LessonSection[]
   attachments: Attachment[]
+  hwSubmissions?: any[]
+  studentEmail?: string
   rawTranscript?: string
 }
 
@@ -77,6 +79,8 @@ export default function LessonEditor({
   homework: initialHomework,
   sections: initialSections,
   attachments: initialAttachments,
+  hwSubmissions: initialHwSubmissions = [],
+  studentEmail = '',
   rawTranscript,
 }: Props) {
   const router = useRouter()
@@ -158,6 +162,31 @@ export default function LessonEditor({
     mediaRecorderRef.current?.stop()
     setIsRecording(false)
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+  }
+
+  // Homework submissions (teacher view)
+  const [hwSubmissions, setHwSubmissions] = useState<any[]>(initialHwSubmissions)
+  const [hwFeedback, setHwFeedback] = useState('')
+  const [sendingFeedback, setSendingFeedback] = useState(false)
+  const [feedbackSent, setFeedbackSent] = useState(initialHwSubmissions.some((s: any) => s.feedback_sent_at))
+  const [feedbackError, setFeedbackError] = useState('')
+
+  async function sendFeedback() {
+    if (!hwFeedback.trim() || !assignedStudentId) return
+    setSendingFeedback(true)
+    setFeedbackError('')
+    try {
+      const res = await fetch('/api/send-homework-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId, studentId: assignedStudentId, feedback: hwFeedback }),
+      })
+      if (!res.ok) { setFeedbackError('Failed to send — try again.'); return }
+      setFeedbackSent(true)
+      setHwFeedback('')
+    } finally {
+      setSendingFeedback(false)
+    }
   }
 
   // ─── Audio upload ─────────────────────────────────────────────────────────
@@ -790,6 +819,68 @@ export default function LessonEditor({
           />
           <p className="text-xs text-muted mt-1">MP3, M4A, WAV — max 50 MB.</p>
         </div>
+      </div>
+
+      {/* 📤 Homework Submissions */}
+      <div className="card p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="section-title">📤 Homework Submissions</h3>
+          {hwSubmissions.length > 0 && (
+            <span className="badge-brand">{hwSubmissions.length} file{hwSubmissions.length !== 1 ? 's' : ''}</span>
+          )}
+        </div>
+
+        {hwSubmissions.length === 0 ? (
+          <p className="text-sm text-muted">No files submitted yet. The student can upload their homework from their lesson recap page.</p>
+        ) : (
+          <div className="space-y-2">
+            {hwSubmissions.map((s: any) => (
+              <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                <span className="text-base">📎</span>
+                <a
+                  href={s.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-brand-700 hover:underline flex-1 truncate"
+                >
+                  {s.file_name}
+                </a>
+                <span className="text-xs text-muted shrink-0">
+                  {new Date(s.created_at).toLocaleDateString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {hwSubmissions.length > 0 && (
+          <div className="space-y-3 pt-2 border-t border-gray-100">
+            <label className="form-label mb-0">
+              {feedbackSent ? 'Feedback already sent — update and resend?' : 'Send feedback to student'}
+            </label>
+            {feedbackSent && (
+              <p className="text-xs text-green-600 font-medium">✓ Feedback sent. Write a new message below to send again.</p>
+            )}
+            <textarea
+              className="textarea min-h-[80px]"
+              placeholder="Write your feedback on their submitted work…"
+              value={hwFeedback}
+              onChange={e => setHwFeedback(e.target.value)}
+            />
+            {feedbackError && <p className="text-xs text-red-500">{feedbackError}</p>}
+            <button
+              type="button"
+              onClick={sendFeedback}
+              disabled={sendingFeedback || !hwFeedback.trim() || !assignedStudentId}
+              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {sendingFeedback ? 'Sending…' : '✉️ Send Feedback'}
+            </button>
+            {!assignedStudentId && (
+              <p className="text-xs text-amber-600">Assign a student to this lesson before sending feedback.</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Teacher Notes (private) */}

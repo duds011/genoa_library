@@ -52,13 +52,22 @@ export default function ProgressCharts({ lessons }: Props) {
   const hasTalk   = data.some(l => l.talkPct !== null)
 
   return (
-    <div className="card overflow-hidden">
+    <div>
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center justify-center gap-2 px-5 py-3 font-bold text-sm transition-all duration-200"
+        style={{
+          background: '#eef2ff',
+          border: '1.5px solid #e0e7ff',
+          borderRadius: '12px',
+          color: '#4f46e5',
+          marginBottom: open ? '0.85rem' : 0,
+          borderBottomLeftRadius: open ? '12px' : '12px',
+          borderBottomRightRadius: open ? '12px' : '12px',
+        }}
       >
-        <span className="text-sm font-bold text-ink uppercase tracking-wide">Progress Charts</span>
-        <ChevronDown className={`w-4 h-4 text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        <span>Progress charts</span>
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (

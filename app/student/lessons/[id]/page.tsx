@@ -6,6 +6,7 @@ import { formatDateShort } from '@/lib/utils'
 import { ArrowLeft, CheckCircle, Circle } from 'lucide-react'
 import SectionContent from '@/components/student/SectionContent'
 import VocabLevelBreakdown, { JLPT_COLORS, JLPT_LABELS } from '@/components/student/VocabLevelBreakdown'
+import HomeworkSubmitSection from '@/components/student/HomeworkSubmitSection'
 
 export default async function StudentLessonPage({
   params,
@@ -43,6 +44,12 @@ export default async function StudentLessonPage({
   const teacherFirstName = teacherProfile?.full_name?.split(' ')[0] || 'your teacher'
 
   const attachments = (lesson.lesson_attachments || []).sort((a: any, b: any) => a.sort_order - b.sort_order)
+
+  const { data: hwSubmissions } = await supabase
+    .from('homework_submissions')
+    .select('*')
+    .eq('lesson_id', params.id)
+    .order('created_at')
   const vocab    = (lesson.vocabulary_items || []).sort((a: any, b: any) => a.sort_order - b.sort_order)
   const homework = (lesson.homework_items   || []).sort((a: any, b: any) => a.sort_order - b.sort_order)
   const allSections   = (lesson.lesson_sections || []).sort((a: any, b: any) => a.sort_order - b.sort_order)
@@ -193,6 +200,15 @@ export default async function StudentLessonPage({
             ))}
           </ul>
         </div>
+      )}
+
+      {/* ── Homework Submission ──────────────────────────────────────────── */}
+      {homework.length > 0 && (
+        <HomeworkSubmitSection
+          lessonId={lesson.id}
+          studentId={student.id}
+          initialSubmissions={hwSubmissions ?? []}
+        />
       )}
 
       {/* ── Attachments ──────────────────────────────────────────────── */}

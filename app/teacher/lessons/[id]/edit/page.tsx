@@ -37,6 +37,12 @@ export default async function EditLessonPage({
     .eq('teacher_id', user!.id)
     .order('full_name')
 
+  const { data: hwSubmissions } = await supabase
+    .from('homework_submissions')
+    .select('*')
+    .eq('lesson_id', params.id)
+    .order('created_at')
+
   // Sort items
   const vocab = (lesson.vocabulary_items || []).sort(
     (a: any, b: any) => a.sort_order - b.sort_order
@@ -96,6 +102,8 @@ export default async function EditLessonPage({
         homework={homework}
         sections={sections}
         attachments={attachments}
+        hwSubmissions={(hwSubmissions ?? []) as any[]}
+        studentEmail={(lesson.students as any)?.email ?? ''}
         rawTranscript={lesson.raw_transcript}
       />
     </div>
