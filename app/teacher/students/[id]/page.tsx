@@ -41,6 +41,19 @@ export default async function StudentDetailPage({
   const published = (lessons || []).filter((l: any) => l.status === 'published')
   const drafts    = (lessons || []).filter((l: any) => l.status === 'draft')
 
+  // Find which lessons have unreviewed homework or audio submissions
+  const lessonIds = (lessons || []).map((l: any) => l.id)
+  const lessonsWithUpdates = new Set<string>()
+  if (lessonIds.length > 0) {
+    const [{ data: unreviewedHw }, { data: unreviewedAudio }] = await Promise.all([
+      supabase.from('homework_submissions').select('lesson_id').in('lesson_id', lessonIds).is('reviewed_at', null),
+      supabase.from('student_audio_submissions').select('lesson_id').in('lesson_id', lessonIds).is('reviewed_at', null),
+    ])
+    for (const row of [...(unreviewedHw ?? []), ...(unreviewedAudio ?? [])]) {
+      lessonsWithUpdates.add((row as any).lesson_id)
+    }
+  }
+
   const scores      = published.map((l: any) => l.lesson_summaries?.score).filter(Boolean)
   const latestScore = scores[scores.length - 1] ?? null
   const firstScore  = scores[0] ?? null
@@ -232,24 +245,34 @@ export default async function StudentDetailPage({
                 </tr>
               </thead>
               <tbody>
-                {published.map((lesson: any) => (
-                  <tr key={lesson.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-5 py-3 font-semibold text-ink">{lesson.lesson_number}</td>
-                    <td className="px-5 py-3 text-muted">{formatDateShort(lesson.lesson_date)}</td>
-                    <td className="px-5 py-3">
-                      <span className="font-semibold text-brand-600">{lesson.lesson_summaries?.score ?? '—'}</span>
-                      <span className="text-muted">/10</span>
-                    </td>
-                    <td className="px-5 py-3 text-muted">{lesson.lesson_summaries?.talk_percentage ?? '—'}%</td>
-                    <td className="px-5 py-3 text-muted">{lesson.vocabulary_items?.length ?? 0}</td>
-                    <td className="px-5 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Link href={`/teacher/lessons/${lesson.id}/edit`} className="btn-ghost text-xs">Edit</Link>
-                        <DeleteLessonButton lessonId={lesson.id} lessonLabel={`Lesson ${lesson.lesson_number}`} variant="row" />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {published.map((lesson: any) => {
+                  const hasUpdate = lessonsWithUpdates.has(lesson.id)
+                  return (
+                    <tr key={lesson.id} className="border-b border-gray-50 hover:bg-gray-50">
+                      <td className="px-5 py-3 font-semibold text-ink">
+                        <div className="flex items-center gap-2">
+                          {lesson.lesson_number}
+                          {hasUpdate && (
+                            <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title="New submission" />
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-muted">{formatDateShort(lesson.lesson_date)}</td>
+                      <td className="px-5 py-3">
+                        <span className="font-semibold text-brand-600">{lesson.lesson_summaries?.score ?? '—'}</span>
+                        <span className="text-muted">/10</span>
+                      </td>
+                      <td className="px-5 py-3 text-muted">{lesson.lesson_summaries?.talk_percentage ?? '—'}%</td>
+                      <td className="px-5 py-3 text-muted">{lesson.vocabulary_items?.length ?? 0}</td>
+                      <td className="px-5 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Link href={`/teacher/lessons/${lesson.id}/edit`} className="btn-ghost text-xs">Edit</Link>
+                          <DeleteLessonButton lessonId={lesson.id} lessonLabel={`Lesson ${lesson.lesson_number}`} variant="row" />
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
