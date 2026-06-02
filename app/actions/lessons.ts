@@ -32,3 +32,25 @@ export async function deleteLesson(lessonId: string): Promise<{ success: boolean
 
   return { success: true }
 }
+
+export async function markLessonSubmissionsReviewed(lessonId: string): Promise<void> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  // Verify lesson belongs to this teacher
+  const { data: lesson } = await supabase
+    .from('lessons')
+    .select('id')
+    .eq('id', lessonId)
+    .eq('teacher_id', user.id)
+    .single()
+  if (!lesson) return
+
+  const now = new Date().toISOString()
+  await Promise.all([
+    supabase.from('homework_submissions').update({ reviewed_at: now }).eq('lesson_id', lessonId).is('reviewed_at', null),
+    supabase.from('student_audio_submissions').update({ reviewed_at: now }).eq('lesson_id', lessonId).is('reviewed_at', null),
+  ])
+  revalidatePath('/teacher/dashboard')
+}

@@ -46,6 +46,27 @@ export default async function TeacherDashboard() {
   const assignedDrafts = draftLessons?.filter((l: any) => l.student_id) ?? []
   const pendingDrafts = draftLessons?.length ?? 0
 
+  // Build lesson → student map for unreviewed submission lookup
+  const allLessons = [...(draftLessons ?? []), ...(recentLessons ?? [])]
+  const lessonIdToStudentId: Record<string, string> = {}
+  for (const l of allLessons) {
+    if (l.student_id) lessonIdToStudentId[l.id] = l.student_id
+  }
+  const lessonIds = Object.keys(lessonIdToStudentId)
+
+  // Find students with unreviewed homework or audio submissions
+  const studentsWithUpdates = new Set<string>()
+  if (lessonIds.length > 0) {
+    const [{ data: unreviewedHw }, { data: unreviewedAudio }] = await Promise.all([
+      supabase.from('homework_submissions').select('lesson_id').in('lesson_id', lessonIds).is('reviewed_at', null),
+      supabase.from('student_audio_submissions').select('lesson_id').in('lesson_id', lessonIds).is('reviewed_at', null),
+    ])
+    for (const row of [...(unreviewedHw ?? []), ...(unreviewedAudio ?? [])]) {
+      const sid = lessonIdToStudentId[(row as any).lesson_id]
+      if (sid) studentsWithUpdates.add(sid)
+    }
+  }
+
   return (
     <div className="space-y-8">
       {/* Page header */}
@@ -201,28 +222,34 @@ export default async function TeacherDashboard() {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {students?.map((student: any) => (
-              <Link
-                key={student.id}
-                href={`/teacher/students/${student.id}`}
-                className="card p-5 flex flex-col gap-2 hover:border-brand-200 hover:shadow-md transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
-                    {student.full_name.charAt(0).toUpperCase()}
+            {students?.map((student: any) => {
+              const hasUpdate = studentsWithUpdates.has(student.id)
+              return (
+                <Link
+                  key={student.id}
+                  href={`/teacher/students/${student.id}`}
+                  className="card p-5 flex flex-col gap-2 hover:border-brand-200 hover:shadow-md transition-all relative"
+                >
+                  {hasUpdate && (
+                    <span className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white" title="New submission" />
+                  )}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                      style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                      {student.full_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-ink text-sm">{student.full_name}</p>
+                      <p className="text-xs text-muted">{student.level}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-ink text-sm">{student.full_name}</p>
-                    <p className="text-xs text-muted">{student.level}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="badge-brand text-xs">{student.language}</span>
+                    <span className="text-xs text-muted">{student.email}</span>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="badge-brand text-xs">{student.language}</span>
-                  <span className="text-xs text-muted">{student.email}</span>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              )
+            })}
           </div>
         )}
       </section>

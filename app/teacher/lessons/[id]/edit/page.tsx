@@ -4,6 +4,7 @@ import LessonEditor from '@/components/teacher/LessonEditor'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { formatDateShort } from '@/lib/utils'
+import { markLessonSubmissionsReviewed } from '@/app/actions/lessons'
 
 export default async function EditLessonPage({
   params,
@@ -29,6 +30,9 @@ export default async function EditLessonPage({
     .single()
 
   if (!lesson) notFound()
+
+  // Mark all submissions for this lesson as reviewed (clears red dot)
+  await markLessonSubmissionsReviewed(params.id)
 
   // Fetch all students for reassignment dropdown
   const { data: allStudents } = await supabase
