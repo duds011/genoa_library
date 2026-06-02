@@ -262,6 +262,16 @@ export default function LessonEditor({
     setSections(prev => prev.filter(s => s.id !== id))
   }
 
+  async function addSection() {
+    const maxOrder = sections.reduce((max, s) => Math.max(max, s.sort_order ?? 0), -1)
+    const { data } = await supabase
+      .from('lesson_sections')
+      .insert({ lesson_id: lessonId, title: 'New Section', content: '', sort_order: maxOrder + 1 })
+      .select()
+      .single()
+    if (data) setSections(prev => [...prev, data as LessonSection])
+  }
+
   // ─── Save ─────────────────────────────────────────────────────────────────
 
   async function handleSave() {
@@ -527,7 +537,12 @@ export default function LessonEditor({
 
       {/* ── Lesson Sections ────────────────────────────────────────────────── */}
       <div className="card p-6 space-y-4">
-        <h3 className="section-title">📚 Lesson Sections</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="section-title">📚 Lesson Sections</h3>
+          <button onClick={addSection} className="btn-secondary text-xs">
+            <Plus className="w-3.5 h-3.5" /> Add Section
+          </button>
+        </div>
 
         {sections.length > 0 ? (
           <div className="space-y-3">
@@ -557,7 +572,7 @@ export default function LessonEditor({
           </div>
         ) : (
           <p className="text-sm text-muted text-center py-6">
-            No sections yet — sections are auto-generated when you import the transcript with Gemini notes.
+            No sections yet — click &quot;Add Section&quot; to create one, or import a transcript to auto-generate them.
           </p>
         )}
       </div>
