@@ -52,5 +52,9 @@ export async function markLessonSubmissionsReviewed(lessonId: string): Promise<v
     supabase.from('homework_submissions').update({ reviewed_at: now }).eq('lesson_id', lessonId).is('reviewed_at', null),
     supabase.from('student_audio_submissions').update({ reviewed_at: now }).eq('lesson_id', lessonId).is('reviewed_at', null),
   ])
+
+  // Revalidate dashboard + student detail page
+  const { data: lessonRow } = await supabase.from('lessons').select('student_id').eq('id', lessonId).single()
   revalidatePath('/teacher/dashboard')
+  if (lessonRow?.student_id) revalidatePath(`/teacher/students/${lessonRow.student_id}`)
 }
