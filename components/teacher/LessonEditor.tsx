@@ -62,6 +62,7 @@ interface Props {
   sections: LessonSection[]
   attachments: Attachment[]
   hwSubmissions?: any[]
+  audioSubmissions?: any[]
   studentEmail?: string
   rawTranscript?: string
 }
@@ -81,6 +82,7 @@ export default function LessonEditor({
   sections: initialSections,
   attachments: initialAttachments,
   hwSubmissions: initialHwSubmissions = [],
+  audioSubmissions = [],
   studentEmail = '',
   rawTranscript,
 }: Props) {
@@ -916,6 +918,31 @@ export default function LessonEditor({
             {!assignedStudentId && (
               <p className="text-xs text-amber-600">Assign a student to this lesson before sending feedback.</p>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* 🎙️ Student Practice Recordings */}
+      <div className="card p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="section-title">🎙️ Student Practice Recordings</h3>
+          {audioSubmissions.length > 0 && (
+            <span className="badge-brand">{audioSubmissions.length} recording{audioSubmissions.length !== 1 ? 's' : ''}</span>
+          )}
+        </div>
+        {audioSubmissions.length === 0 ? (
+          <p className="text-sm text-muted">No recordings yet. The student can submit voice recordings from their lesson recap page.</p>
+        ) : (
+          <div className="space-y-2">
+            {audioSubmissions.map((s: any) => (
+              <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-indigo-50 border border-indigo-100">
+                <span className="text-base">🎙️</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted mb-1">{new Date(s.created_at).toLocaleDateString()}</p>
+                  <audio controls src={s.audio_url} className="w-full h-8" style={{ minWidth: 0 }} />
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -7,6 +7,7 @@ import { ArrowLeft, CheckCircle, Circle } from 'lucide-react'
 import SectionContent from '@/components/student/SectionContent'
 import VocabLevelBreakdown, { JLPT_COLORS, JLPT_LABELS } from '@/components/student/VocabLevelBreakdown'
 import HomeworkSubmitSection from '@/components/student/HomeworkSubmitSection'
+import StudentAudioSubmit from '@/components/student/StudentAudioSubmit'
 
 export default async function StudentLessonPage({
   params,
@@ -47,6 +48,12 @@ export default async function StudentLessonPage({
 
   const { data: hwSubmissions } = await supabase
     .from('homework_submissions')
+    .select('*')
+    .eq('lesson_id', params.id)
+    .order('created_at')
+
+  const { data: audioSubmissions } = await supabase
+    .from('student_audio_submissions')
     .select('*')
     .eq('lesson_id', params.id)
     .order('created_at')
@@ -210,6 +217,13 @@ export default async function StudentLessonPage({
           initialSubmissions={hwSubmissions ?? []}
         />
       )}
+
+      {/* ── Practice Recording ───────────────────────────────────────────── */}
+      <StudentAudioSubmit
+        lessonId={lesson.id}
+        studentId={student.id}
+        initialSubmissions={audioSubmissions ?? []}
+      />
 
       {/* ── Attachments ──────────────────────────────────────────────── */}
       {attachments.length > 0 && (
