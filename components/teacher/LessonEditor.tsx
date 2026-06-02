@@ -3,8 +3,9 @@
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, CheckCircle, Eye, Save, ChevronDown, ChevronUp, GripVertical, AlertTriangle, X } from 'lucide-react'
+import { Plus, Trash2, CheckCircle, Eye, EyeOff, Save, ChevronDown, ChevronUp, GripVertical, AlertTriangle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import SectionContent from '@/components/student/SectionContent'
 import { deleteLesson } from '@/app/actions/lessons'
 
 interface LessonSection {
@@ -110,6 +111,7 @@ export default function LessonEditor({
 
   // Sections
   const [sections, setSections] = useState<LessonSection[]>(initialSections)
+  const [previewSections, setPreviewSections] = useState<Set<string>>(new Set())
 
   // Vocab
   const [vocabItems, setVocabItems] = useState<VocabItem[]>(initialVocab)
@@ -546,29 +548,49 @@ export default function LessonEditor({
 
         {sections.length > 0 ? (
           <div className="space-y-3">
-            {sections.sort((a, b) => a.sort_order - b.sort_order).map(s => (
-              <div key={s.id} className="border border-gray-100 rounded-xl overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100">
-                  <GripVertical className="w-3.5 h-3.5 text-gray-300 shrink-0" />
-                  <input
-                    className="flex-1 text-sm font-semibold text-ink bg-transparent border-none outline-none"
-                    value={s.title}
-                    onChange={e => updateSection(s.id, 'title', e.target.value)}
-                    onBlur={() => saveSection(s.id)}
-                  />
-                  <button onClick={() => deleteSection(s.id)} className="text-gray-300 hover:text-red-500 transition-colors shrink-0">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+            {sections.sort((a, b) => a.sort_order - b.sort_order).map(s => {
+              const isPreviewing = previewSections.has(s.id)
+              return (
+                <div key={s.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+                    <GripVertical className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                    <input
+                      className="flex-1 text-sm font-semibold text-ink bg-transparent border-none outline-none"
+                      value={s.title}
+                      onChange={e => updateSection(s.id, 'title', e.target.value)}
+                      onBlur={() => saveSection(s.id)}
+                    />
+                    <button
+                      onClick={() => setPreviewSections(prev => {
+                        const next = new Set(prev)
+                        isPreviewing ? next.delete(s.id) : next.add(s.id)
+                        return next
+                      })}
+                      className={cn('transition-colors shrink-0', isPreviewing ? 'text-brand-500 hover:text-brand-700' : 'text-gray-300 hover:text-brand-500')}
+                      title={isPreviewing ? 'Switch to edit' : 'Preview'}
+                    >
+                      {isPreviewing ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                    <button onClick={() => deleteSection(s.id)} className="text-gray-300 hover:text-red-500 transition-colors shrink-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {isPreviewing ? (
+                    <div className="px-4 py-3 min-h-[80px]">
+                      <SectionContent content={s.content} />
+                    </div>
+                  ) : (
+                    <textarea
+                      className="w-full px-4 py-3 text-xs text-ink/80 resize-y min-h-[80px] focus:outline-none focus:bg-indigo-50/30 transition-colors font-mono"
+                      value={s.content}
+                      onChange={e => updateSection(s.id, 'content', e.target.value)}
+                      onBlur={() => saveSection(s.id)}
+                      placeholder="Section content…"
+                    />
+                  )}
                 </div>
-                <textarea
-                  className="w-full px-4 py-3 text-xs text-ink/80 resize-y min-h-[80px] focus:outline-none focus:bg-indigo-50/30 transition-colors font-mono"
-                  value={s.content}
-                  onChange={e => updateSection(s.id, 'content', e.target.value)}
-                  onBlur={() => saveSection(s.id)}
-                  placeholder="Section content…"
-                />
-              </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           <p className="text-sm text-muted text-center py-6">
