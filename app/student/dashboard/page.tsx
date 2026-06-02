@@ -34,7 +34,7 @@ export default async function StudentDashboard() {
     .from('lessons')
     .select(`
       id, lesson_number, lesson_date, title,
-      lesson_summaries ( score, talk_percentage, recap ),
+      lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution, vocab_total_count ),
       vocabulary_items ( id, word, jlpt_level ),
       homework_items ( id, completed )
     `)
@@ -50,7 +50,18 @@ export default async function StudentDashboard() {
   const latestTalk = talks[0] ?? null
   const firstTalk = talks[talks.length - 1] ?? null
   const talkDelta = latestTalk && firstTalk ? latestTalk - firstTalk : null
-  // Flatten all vocab, keep only items with a JLPT level, deduplicate by word
+  // Aggregate vocab_level_distribution from all lessons (full GPT-detected counts, not just 10 key words)
+  const vocabDistribution: Record<string, number> = {}
+  for (const lesson of lessons || []) {
+    const dist = (lesson.lesson_summaries as any)?.vocab_level_distribution
+    if (dist && typeof dist === 'object') {
+      for (const [level, count] of Object.entries(dist)) {
+        vocabDistribution[level] = (vocabDistribution[level] ?? 0) + (count as number)
+      }
+    }
+  }
+  const totalVocab = Object.values(vocabDistribution).reduce((sum, n) => sum + n, 0)
+  // Keep allVocab for lessons that predate the distribution field (fallback)
   const allVocabRaw = (lessons || []).flatMap((l: any) => l.vocabulary_items || [])
   const seenWords = new Set<string>()
   const allVocab = allVocabRaw.filter((v: any) => {
@@ -60,7 +71,7 @@ export default async function StudentDashboard() {
     seenWords.add(key)
     return true
   })
-  const totalVocab = allVocab.length
+  const hasDistribution = totalVocab > 0
   const firstScore = scores[scores.length - 1]
   const scoreDelta = latestScore && firstScore
     ? (latestScore - firstScore >= 0 ? '+' : '') + (latestScore - firstScore).toFixed(1)
@@ -68,10 +79,12 @@ export default async function StudentDashboard() {
   const nextMilestone = MILESTONES.find(m => m > lessonCount) ?? 50
   const levelLabel = getLevelLabel(lessonCount)
 
-  // JLPT counts for inline badges
+  // JLPT counts for inline badges — use distribution if available, fall back to 10-word items
   const jlptCounts = JLPT_LEVELS.map(level => ({
     level,
-    count: allVocab.filter((v: any) => v.jlpt_level === level).length,
+    count: hasDistribution
+      ? (vocabDistribution[level] ?? 0)
+      : allVocab.filter((v: any) => v.jlpt_level === level).length,
   })).filter(c => c.count > 0)
 
   return (
@@ -187,7 +200,11 @@ export default async function StudentDashboard() {
       )}
 
       {/* Vocab level bar */}
-      {totalVocab > 0 && <VocabLevelBreakdown vocab={allVocab} />}
+      {totalVocab > 0 && (
+        hasDistribution
+          ? <VocabLevelBreakdown distribution={vocabDistribution} totalCount={totalVocab} />
+          : <VocabLevelBreakdown vocab={allVocab} />
+      )}
 
       {/* Collapsible progress charts */}
       {lessonCount >= 2 && (
