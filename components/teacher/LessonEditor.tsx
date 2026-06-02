@@ -154,7 +154,7 @@ export default function LessonEditor({
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
         await uploadAudio(new File([blob], `lesson-${lessonId}.webm`, { type: 'audio/webm' }))
       }
-      recorder.start()
+      recorder.start(1000) // flush data every second — prevents 15s cap on some browsers
       setIsRecording(true)
       timerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
     } catch {
@@ -206,8 +206,9 @@ export default function LessonEditor({
         .upload(path, file, { upsert: true })
       if (upErr) { setAudioError(upErr.message); return }
       const { data: { publicUrl } } = supabase.storage.from('lesson-audio').getPublicUrl(path)
+      const urlWithBust = `${publicUrl}?t=${Date.now()}` // bust browser cache on re-upload
       await supabase.from('lessons').update({ voice_file_url: publicUrl }).eq('id', lessonId)
-      setVoiceFileUrl(publicUrl)
+      setVoiceFileUrl(urlWithBust)
     } finally {
       setUploadingAudio(false)
     }

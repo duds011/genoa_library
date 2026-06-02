@@ -79,7 +79,7 @@ export default function StudentAudioSubmit({ lessonId, studentId, initialSubmiss
         const file = new File([blob], `recording-${Date.now()}.webm`, { type: 'audio/webm' })
         await uploadAudio(file, file.name)
       }
-      recorder.start()
+      recorder.start(1000) // flush data every second — prevents 15s cap on some browsers
       mediaRecorderRef.current = recorder
       setRecording(true)
       setRecordingSeconds(0)
