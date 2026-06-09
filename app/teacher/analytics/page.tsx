@@ -11,8 +11,7 @@ export default async function AnalyticsPage() {
     .select(`
       student_id, lesson_number,
       students ( full_name ),
-      lesson_summaries ( score, talk_percentage, vocab_level_distribution ),
-      vocabulary_items ( jlpt_level )
+      lesson_summaries ( score, talk_percentage, vocab_level_distribution )
     `)
     .eq('teacher_id', user!.id)
     .eq('status', 'published')
@@ -53,24 +52,14 @@ export default async function AnalyticsPage() {
       entry.talks.push(Number(summary.talk_percentage))
     }
 
-    // Vocab: prefer vocab_level_distribution (full GPT counts), fall back to vocabulary_items
+    // Vocab: only use vocab_level_distribution — no fallback.
+    // Matches student dashboard exactly: lessons without distribution are skipped.
     const dist = summary?.vocab_level_distribution
     if (dist && typeof dist === 'object' && Object.keys(dist).length > 0) {
       for (const [level, count] of Object.entries(dist)) {
         entry.vocabByLevel[level] = (entry.vocabByLevel[level] ?? 0) + Number(count)
       }
       entry.totalVocab += Object.values(dist).reduce((a, b) => a + b, 0)
-    } else {
-      // Fallback: count vocabulary_items rows that have a jlpt_level set
-      const items = (lesson as any).vocabulary_items as Array<{ jlpt_level?: string | null }> | null
-      if (items) {
-        for (const item of items) {
-          if (item.jlpt_level) {
-            entry.vocabByLevel[item.jlpt_level] = (entry.vocabByLevel[item.jlpt_level] ?? 0) + 1
-            entry.totalVocab += 1
-          }
-        }
-      }
     }
   }
 
