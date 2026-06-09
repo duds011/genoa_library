@@ -11,7 +11,8 @@ export default async function AnalyticsPage() {
     .select(`
       student_id, lesson_number,
       students ( full_name ),
-      lesson_summaries ( score, talk_percentage, vocab_level_distribution )
+      lesson_summaries ( score, talk_percentage, vocab_level_distribution ),
+      vocabulary_items ( jlpt_level )
     `)
     .eq('teacher_id', user!.id)
     .eq('status', 'published')
@@ -23,9 +24,13 @@ export default async function AnalyticsPage() {
     name: string
     scores: number[]
     talks: number[]
-    lessonScores: [number, number][]  // [lessonNumber, score]
-    vocabByLevel: Record<string, number>
-    totalVocab: number
+    lessonScores: [number, number][]
+    // From vocab_level_distribution (modern lessons — preferred)
+    distByLevel: Record<string, number>
+    distVocab: number
+    // From vocabulary_items (older lessons — fallback only used if no distribution at all)
+    itemsByLevel: Record<string, number>
+    itemsVocab: number
   }
   const rawMap = new Map<string, RawEntry>()
 
@@ -40,7 +45,7 @@ export default async function AnalyticsPage() {
     if (!student?.full_name) continue
 
     if (!rawMap.has(sid)) {
-      rawMap.set(sid, { name: student.full_name, scores: [], talks: [], lessonScores: [], vocabByLevel: {}, totalVocab: 0 })
+      rawMap.set(sid, { name: student.full_name, scores: [], talks: [], lessonScores: [], distByLevel: {}, distVocab: 0, itemsByLevel: {}, itemsVocab: 0 })
     }
     const entry = rawMap.get(sid)!
 
@@ -52,14 +57,24 @@ export default async function AnalyticsPage() {
       entry.talks.push(Number(summary.talk_percentage))
     }
 
-    // Vocab: only use vocab_level_distribution — no fallback.
-    // Matches student dashboard exactly: lessons without distribution are skipped.
+    // Preferred: vocab_level_distribution (full GPT counts)
     const dist = summary?.vocab_level_distribution
     if (dist && typeof dist === 'object' && Object.keys(dist).length > 0) {
       for (const [level, count] of Object.entries(dist)) {
-        entry.vocabByLevel[level] = (entry.vocabByLevel[level] ?? 0) + Number(count)
+        entry.distByLevel[level] = (entry.distByLevel[level] ?? 0) + Number(count)
       }
-      entry.totalVocab += Object.values(dist).reduce((a, b) => a + b, 0)
+      entry.distVocab += Object.values(dist).reduce((a, b) => a + b, 0)
+    }
+
+    // Fallback candidate: vocabulary_items (used only if this student has zero distribution)
+    const items = (lesson as any).vocabulary_items as Array<{ jlpt_level?: string | null }> | null
+    if (items) {
+      for (const item of items) {
+        if (item.jlpt_level) {
+          entry.itemsByLevel[item.jlpt_level] = (entry.itemsByLevel[item.jlpt_level] ?? 0) + 1
+          entry.itemsVocab += 1
+        }
+      }
     }
   }
 
@@ -79,19 +94,24 @@ export default async function AnalyticsPage() {
 
   // ── Build summaryData (sorted descending by avg score) ─────────────────────
   const summaryData: SummaryItem[] = Array.from(rawMap.values())
-    .map(s => ({
-      name: displayName(s.name),
-      fullName: s.name,
-      avgScore: s.scores.length
-        ? Math.round((s.scores.reduce((a, b) => a + b, 0) / s.scores.length) * 10) / 10
-        : 0,
-      avgTalk: s.talks.length
-        ? Math.round(s.talks.reduce((a, b) => a + b, 0) / s.talks.length)
-        : 0,
-      lessons: s.scores.length,
-      totalVocab: s.totalVocab,
-      vocabByLevel: s.vocabByLevel,
-    }))
+    .map(s => {
+      // Per-student decision: use distribution if the student has any; otherwise
+      // fall back to vocabulary_items so students with older lessons aren't blank.
+      const useDistribution = s.distVocab > 0
+      return {
+        name: displayName(s.name),
+        fullName: s.name,
+        avgScore: s.scores.length
+          ? Math.round((s.scores.reduce((a, b) => a + b, 0) / s.scores.length) * 10) / 10
+          : 0,
+        avgTalk: s.talks.length
+          ? Math.round(s.talks.reduce((a, b) => a + b, 0) / s.talks.length)
+          : 0,
+        lessons: s.scores.length,
+        totalVocab: useDistribution ? s.distVocab : s.itemsVocab,
+        vocabByLevel: useDistribution ? s.distByLevel : s.itemsByLevel,
+      }
+    })
     .sort((a, b) => b.avgScore - a.avgScore)
 
   // ── Build trendData: [{ lesson: 1, Derek: 8.5, Ian: 7.0, ... }, ...] ───────
