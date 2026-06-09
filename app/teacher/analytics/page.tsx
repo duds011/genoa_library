@@ -11,7 +11,8 @@ export default async function AnalyticsPage() {
     .select(`
       student_id, lesson_number,
       students ( full_name ),
-      lesson_summaries ( score, talk_percentage )
+      lesson_summaries ( score, talk_percentage, vocab_level_distribution, vocab_total_count ),
+      vocabulary_items ( jlpt_level )
     `)
     .eq('teacher_id', user!.id)
     .eq('status', 'published')
@@ -24,17 +25,24 @@ export default async function AnalyticsPage() {
     scores: number[]
     talks: number[]
     lessonScores: [number, number][]  // [lessonNumber, score]
+    vocabByLevel: Record<string, number>
+    totalVocab: number
   }
   const rawMap = new Map<string, RawEntry>()
 
   for (const lesson of (lessonData ?? [])) {
     const student = (lesson.students as any) as { full_name: string } | null
-    const summary = (lesson.lesson_summaries as any) as { score: number | null; talk_percentage: number | null } | null
+    const summary = (lesson.lesson_summaries as any) as {
+      score: number | null
+      talk_percentage: number | null
+      vocab_level_distribution?: Record<string, number> | null
+      vocab_total_count?: number | null
+    } | null
     const sid = lesson.student_id as string
     if (!student?.full_name) continue
 
     if (!rawMap.has(sid)) {
-      rawMap.set(sid, { name: student.full_name, scores: [], talks: [], lessonScores: [] })
+      rawMap.set(sid, { name: student.full_name, scores: [], talks: [], lessonScores: [], vocabByLevel: {}, totalVocab: 0 })
     }
     const entry = rawMap.get(sid)!
 
@@ -44,6 +52,27 @@ export default async function AnalyticsPage() {
     }
     if (summary?.talk_percentage != null) {
       entry.talks.push(Number(summary.talk_percentage))
+    }
+
+    // Vocab: prefer vocab_level_distribution (full GPT counts), fall back to vocabulary_items
+    const dist = summary?.vocab_level_distribution
+    if (dist && typeof dist === 'object' && Object.keys(dist).length > 0) {
+      for (const [level, count] of Object.entries(dist)) {
+        entry.vocabByLevel[level] = (entry.vocabByLevel[level] ?? 0) + Number(count)
+      }
+      const counted = summary?.vocab_total_count ?? Object.values(dist).reduce((a, b) => a + b, 0)
+      entry.totalVocab += Number(counted)
+    } else {
+      // Fallback: count vocabulary_items rows that have a jlpt_level set
+      const items = (lesson as any).vocabulary_items as Array<{ jlpt_level?: string | null }> | null
+      if (items) {
+        for (const item of items) {
+          if (item.jlpt_level) {
+            entry.vocabByLevel[item.jlpt_level] = (entry.vocabByLevel[item.jlpt_level] ?? 0) + 1
+            entry.totalVocab += 1
+          }
+        }
+      }
     }
   }
 
@@ -73,6 +102,8 @@ export default async function AnalyticsPage() {
         ? Math.round(s.talks.reduce((a, b) => a + b, 0) / s.talks.length)
         : 0,
       lessons: s.scores.length,
+      totalVocab: s.totalVocab,
+      vocabByLevel: s.vocabByLevel,
     }))
     .sort((a, b) => b.avgScore - a.avgScore)
 
@@ -92,13 +123,15 @@ export default async function AnalyticsPage() {
   const studentNames = summaryData.map(s => s.name)
 
   // ── Class-wide summary stats ────────────────────────────────────────────────
-  const allScores = summaryData.map(s => s.avgScore).filter(s => s > 0)
-  const allTalks  = summaryData.map(s => s.avgTalk).filter(t => t > 0)
-  const totalLessons  = summaryData.reduce((a, s) => a + s.lessons, 0)
+  const allScores    = summaryData.map(s => s.avgScore).filter(s => s > 0)
+  const allTalks     = summaryData.map(s => s.avgTalk).filter(t => t > 0)
+  const totalLessons = summaryData.reduce((a, s) => a + s.lessons, 0)
+  const totalVocab   = summaryData.reduce((a, s) => a + s.totalVocab, 0)
+
   const classAvgScore = allScores.length
     ? Math.round((allScores.reduce((a, b) => a + b, 0) / allScores.length) * 10) / 10
     : 0
-  const classAvgTalk  = allTalks.length
+  const classAvgTalk = allTalks.length
     ? Math.round(allTalks.reduce((a, b) => a + b, 0) / allTalks.length)
     : 0
   const topStudent = summaryData.length
@@ -110,6 +143,7 @@ export default async function AnalyticsPage() {
     avgScore: classAvgScore,
     avgTalk: classAvgTalk,
     topStudent,
+    totalVocab,
   }
 
   return (

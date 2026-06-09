@@ -31,7 +31,7 @@ export default async function StudentDetailPage({
     .from('lessons')
     .select(`
       id, lesson_number, lesson_date, status, title,
-      lesson_summaries ( score, talk_percentage, recap ),
+      lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution, vocab_total_count ),
       vocabulary_items ( id, jlpt_level ),
       homework_items ( id, completed )
     `)
@@ -67,6 +67,19 @@ export default async function StudentDetailPage({
   const firstTalk  = talks[0] ?? null
   const talkDelta  = latestTalk && firstTalk ? latestTalk - firstTalk : null
 
+  // Aggregate vocab_level_distribution (full GPT-detected vocab) — same source as student dashboard
+  const vocabDistribution: Record<string, number> = {}
+  for (const lesson of published) {
+    const dist = (lesson as any).lesson_summaries?.vocab_level_distribution
+    if (dist && typeof dist === 'object') {
+      for (const [level, count] of Object.entries(dist)) {
+        vocabDistribution[level] = (vocabDistribution[level] ?? 0) + (count as number)
+      }
+    }
+  }
+  const hasDistribution = Object.values(vocabDistribution).some(v => v > 0)
+
+  // Fallback: count vocabulary_items rows with a jlpt_level (for older lessons)
   const allVocabRaw = published.flatMap((l: any) => l.vocabulary_items || [])
   const seenWords = new Set<string>()
   const allVocab = allVocabRaw.filter((v: any) => {
@@ -76,7 +89,10 @@ export default async function StudentDetailPage({
     seenWords.add(key)
     return true
   })
-  const totalVocab = allVocab.length
+
+  const totalVocab = hasDistribution
+    ? Object.values(vocabDistribution).reduce((sum, n) => sum + n, 0)
+    : allVocab.length
 
   const lessonCount   = published.reduce((max: number, l: any) => Math.max(max, l.lesson_number ?? 0), 0)
   const nextMilestone = MILESTONES.find(m => m > lessonCount) ?? 50
@@ -159,7 +175,10 @@ export default async function StudentDetailPage({
             <span className="text-xl">📚</span>
             <span className="font-bold text-ink">{totalVocab} vocabulary items covered across {lessonCount} lessons</span>
           </div>
-          <VocabLevelBreakdown vocab={allVocab} />
+          {hasDistribution
+            ? <VocabLevelBreakdown distribution={vocabDistribution} totalCount={totalVocab} />
+            : <VocabLevelBreakdown vocab={allVocab} />
+          }
         </>
       )}
 
