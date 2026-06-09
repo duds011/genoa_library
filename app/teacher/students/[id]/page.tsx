@@ -31,7 +31,7 @@ export default async function StudentDetailPage({
     .from('lessons')
     .select(`
       id, lesson_number, lesson_date, status, title,
-      lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution, vocab_total_count ),
+      lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution ),
       vocabulary_items ( id, jlpt_level ),
       homework_items ( id, completed )
     `)

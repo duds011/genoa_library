@@ -11,7 +11,7 @@ export default async function AnalyticsPage() {
     .select(`
       student_id, lesson_number,
       students ( full_name ),
-      lesson_summaries ( score, talk_percentage, vocab_level_distribution, vocab_total_count ),
+      lesson_summaries ( score, talk_percentage, vocab_level_distribution ),
       vocabulary_items ( jlpt_level )
     `)
     .eq('teacher_id', user!.id)
@@ -36,7 +36,6 @@ export default async function AnalyticsPage() {
       score: number | null
       talk_percentage: number | null
       vocab_level_distribution?: Record<string, number> | null
-      vocab_total_count?: number | null
     } | null
     const sid = lesson.student_id as string
     if (!student?.full_name) continue
@@ -60,8 +59,7 @@ export default async function AnalyticsPage() {
       for (const [level, count] of Object.entries(dist)) {
         entry.vocabByLevel[level] = (entry.vocabByLevel[level] ?? 0) + Number(count)
       }
-      const counted = summary?.vocab_total_count ?? Object.values(dist).reduce((a, b) => a + b, 0)
-      entry.totalVocab += Number(counted)
+      entry.totalVocab += Object.values(dist).reduce((a, b) => a + b, 0)
     } else {
       // Fallback: count vocabulary_items rows that have a jlpt_level set
       const items = (lesson as any).vocabulary_items as Array<{ jlpt_level?: string | null }> | null
