@@ -244,7 +244,7 @@ export async function updateStudentEmail(
   return { success: true }
 }
 
-export async function resetStudentPassword(studentId: string): Promise<ResetPasswordResult> {
+export async function resetStudentPassword(studentId: string, newPassword: string): Promise<ResetPasswordResult> {
   // Verify teacher owns this student
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -259,8 +259,6 @@ export async function resetStudentPassword(studentId: string): Promise<ResetPass
 
   if (loadError || !student) return { success: false, error: 'Student not found' }
   if (!student.profile_id) return { success: false, error: 'Student has no auth account yet' }
-
-  const newPassword = Math.random().toString(36).slice(-10) + 'A1!'
 
   const admin = createAdminClient()
   const { error: updateError } = await admin.auth.admin.updateUserById(student.profile_id, {

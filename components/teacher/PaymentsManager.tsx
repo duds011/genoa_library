@@ -1,0 +1,498 @@
+'use client'
+
+import { useState, useTransition, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Plus, X, Check, Loader2, Trash2, CircleCheck, Wallet, Pencil, ChevronLeft, ChevronRight, ChevronRight as Chevron } from 'lucide-react'
+import { addPayment, updatePayment, deletePayment, markPaymentPaid, updateTeacherCurrency, PaymentInput } from '@/app/actions/payments'
+import { formatMoney, currencySymbol, CURRENCIES } from '@/lib/currency'
+
+export interface StudentOption {
+  id: string
+  fullName: string
+}
+
+export interface ManagedPayment {
+  id: string
+  studentId: string
+  studentName: string
+  amount: number
+  currency: string | null
+  status: 'paid' | 'pending'
+  description: string | null
+  lessons_covered: number | null
+  payment_date: string | null
+  due_date: string | null
+  method: string | null
+  created_at: string
+}
+
+// Sentinels for non-student income rows.
+const OTHER_ID = '__other__'
+const TRIAL_ID = '__trial__'
+
+const todayIso = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const isoFor = (y: number, m: number, day: number) => `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+
+// The date a payment occupies in the grid: paid → payment_date, pending → due_date, else created.
+const displayDate = (p: ManagedPayment) =>
+  (p.status === 'paid' ? p.payment_date : p.due_date) || p.created_at.slice(0, 10)
+
+function fmtFullDate(iso: string) {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+const emptyForm = () => ({
+  amount: '', status: 'paid' as 'paid' | 'pending', description: '',
+  lessons_covered: '', payment_date: todayIso(), due_date: '', method: '',
+})
+
+export default function PaymentsManager({
+  students, payments, currency,
+}: { students: StudentOption[]; payments: ManagedPayment[]; currency: string }) {
+  const router = useRouter()
+  const [pending, startTransition] = useTransition()
+  const [error, setError] = useState('')
+
+  const now = new Date()
+  const [viewYear, setViewYear] = useState(now.getFullYear())
+  const [viewMonth, setViewMonth] = useState(now.getMonth())
+
+  const [mode, setMode] = useState<'add' | 'edit' | null>(null)
+  const [editing, setEditing] = useState<ManagedPayment | null>(null)
+  const [studentId, setStudentId] = useState('')
+  const [form, setForm] = useState(emptyForm())
+
+  const [dayCell, setDayCell] = useState<{ studentId: string; name: string; date: string } | null>(null)
+
+  // ── Index payments by student + display date ───────────────────────────────
+  const byCell = new Map<string, ManagedPayment[]>()
+  for (const p of payments) {
+    const key = `${p.studentId}|${displayDate(p)}`
+    const arr = byCell.get(key) ?? []
+    arr.push(p)
+    byCell.set(key, arr)
+  }
+
+  const sortedStudents = [...students].sort((a, b) => a.fullName.localeCompare(b.fullName))
+  // Grid rows: all students alphabetically, then catch-all Trials and Other income rows.
+  const gridRows: StudentOption[] = [
+    ...sortedStudents,
+    { id: TRIAL_ID, fullName: 'Trials' },
+    { id: OTHER_ID, fullName: 'Other' },
+  ]
+  const SPECIAL_ROWS: Record<string, { label: string; icon: string }> = {
+    [TRIAL_ID]: { label: 'Trials', icon: '🎓' },
+    [OTHER_ID]: { label: 'Other', icon: '✨' },
+  }
+
+  // Days in the viewed month
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
+  const days = Array.from({ length: daysInMonth }, (_, i) => {
+    const day = i + 1
+    const iso = isoFor(viewYear, viewMonth, day)
+    const dow = new Date(viewYear, viewMonth, day).getDay()
+    return { day, iso, weekday: ['S', 'M', 'T', 'W', 'T', 'F', 'S'][dow], weekend: dow === 0 || dow === 6 }
+  })
+  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const today = todayIso()
+  const monthPrefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`
+
+  // Sum of a row's payments shown in the current month (the frozen "Total" column)
+  function rowTotal(id: string): number {
+    return days.reduce((t, d) => t + (byCell.get(`${id}|${d.iso}`) ?? []).reduce((a, p) => a + p.amount, 0), 0)
+  }
+
+  // Drag-to-scroll for the grid (desktop): grab anywhere and pan horizontally.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const drag = useRef({ down: false, startX: 0, left: 0, moved: false })
+  function onGridDown(e: React.MouseEvent) {
+    const el = scrollRef.current; if (!el) return
+    drag.current = { down: true, startX: e.pageX, left: el.scrollLeft, moved: false }
+  }
+  function onGridMove(e: React.MouseEvent) {
+    const el = scrollRef.current; const d = drag.current
+    if (!el || !d.down) return
+    const dx = e.pageX - d.startX
+    if (Math.abs(dx) > 4) d.moved = true
+    el.scrollLeft = d.left - dx
+    e.preventDefault()
+  }
+  function onGridUp() { drag.current.down = false; setTimeout(() => { drag.current.moved = false }, 0) }
+
+  // ── Totals ─────────────────────────────────────────────────────────────────
+  const totalReceived = payments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0)
+  const totalOutstanding = payments.filter(p => p.status === 'pending').reduce((s, p) => s + p.amount, 0)
+  const viewedMonthReceived = payments
+    .filter(p => p.status === 'paid' && p.payment_date && p.payment_date.startsWith(monthPrefix))
+    .reduce((s, p) => s + p.amount, 0)
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1) } else setViewMonth(viewMonth - 1)
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(viewYear + 1) } else setViewMonth(viewMonth + 1)
+  }
+  function jumpToday() { setViewYear(now.getFullYear()); setViewMonth(now.getMonth()) }
+
+  // ── Modal helpers ──────────────────────────────────────────────────────────
+  function openAdd(presetStudent?: string, presetDate?: string) {
+    setForm({ ...emptyForm(), payment_date: presetDate ?? todayIso(), due_date: presetDate ?? '' })
+    setStudentId(presetStudent ?? '')
+    setEditing(null); setError(''); setDayCell(null); setMode('add')
+  }
+  function openEdit(p: ManagedPayment) {
+    setForm({
+      amount: String(p.amount), status: p.status, description: p.description ?? '',
+      lessons_covered: p.lessons_covered != null ? String(p.lessons_covered) : '',
+      payment_date: p.payment_date ?? todayIso(), due_date: p.due_date ?? '', method: p.method ?? '',
+    })
+    setStudentId(p.studentId)
+    setEditing(p); setError(''); setDayCell(null); setMode('edit')
+  }
+  function closeModal() { setMode(null); setEditing(null) }
+
+  function handleCellClick(sid: string, name: string, date: string) {
+    if (drag.current.moved) return  // was a drag-scroll, not a click
+    const cell = byCell.get(`${sid}|${date}`) ?? []
+    if (cell.length === 0) openAdd(sid, date)
+    else setDayCell({ studentId: sid, name, date })
+  }
+
+  function handleSubmit() {
+    if (mode === 'add' && !studentId) { setError('Please select a student'); return }
+    const amount = parseFloat(form.amount)
+    if (!(amount > 0)) { setError('Enter an amount greater than zero'); return }
+    const input: PaymentInput = {
+      amount, status: form.status, description: form.description,
+      lessons_covered: form.lessons_covered ? parseInt(form.lessons_covered, 10) : null,
+      payment_date: form.payment_date || null, due_date: form.due_date || null, method: form.method,
+    }
+    startTransition(async () => {
+      const res = editing ? await updatePayment(editing.id, input) : await addPayment(studentId, input)
+      if (res.success) { closeModal(); router.refresh() }
+      else setError(res.error || 'Failed to save payment')
+    })
+  }
+  function handleMarkPaid(id: string) {
+    startTransition(async () => { await markPaymentPaid(id); closeModal(); setDayCell(null); router.refresh() })
+  }
+  function handleDelete(id: string) {
+    if (!confirm('Delete this payment record?')) return
+    startTransition(async () => { await deletePayment(id); closeModal(); setDayCell(null); router.refresh() })
+  }
+
+  const dayCellPayments = dayCell ? (byCell.get(`${dayCell.studentId}|${dayCell.date}`) ?? []) : []
+
+  return (
+    <div className="space-y-5">
+      {/* Summary cards */}
+      <div className="flex flex-wrap items-stretch gap-4">
+        <div className="stat-card flex-1 min-w-[150px]">
+          <span className="stat-label">{monthLabel}</span>
+          <span className="stat-value" style={{ color: '#10b981' }}>{formatMoney(viewedMonthReceived, currency)}</span>
+        </div>
+        <div className="stat-card flex-1 min-w-[150px]">
+          <span className="stat-label">Received all time</span>
+          <span className="stat-value">{formatMoney(totalReceived, currency)}</span>
+        </div>
+        <div className="stat-card flex-1 min-w-[150px]">
+          <span className="stat-label">Outstanding</span>
+          <span className="stat-value" style={{ color: totalOutstanding > 0 ? '#f97316' : undefined }}>
+            {formatMoney(totalOutstanding, currency)}
+          </span>
+        </div>
+      </div>
+
+      {/* Toolbar: month nav + add */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1">
+          <button onClick={prevMonth} className="p-1.5 rounded-lg text-muted hover:bg-gray-100 hover:text-ink transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+          <span className="font-bold text-ink w-40 text-center">{monthLabel}</span>
+          <button onClick={nextMonth} className="p-1.5 rounded-lg text-muted hover:bg-gray-100 hover:text-ink transition-colors"><ChevronRight className="w-4 h-4" /></button>
+        </div>
+        <button onClick={jumpToday} className="btn-ghost text-xs">Today</button>
+        <button onClick={() => openAdd()} className="btn-primary text-xs flex items-center gap-1.5 ml-auto">
+          <Plus className="w-3.5 h-3.5" /> Add Payment
+        </button>
+      </div>
+
+      {/* Excel-style grid */}
+      {students.length === 0 ? (
+        <div className="card p-12 text-center">
+          <p className="text-4xl mb-3">💸</p>
+          <p className="font-semibold text-ink mb-1">No students yet</p>
+          <p className="text-sm text-muted">Add students first to start tracking payments</p>
+        </div>
+      ) : (
+        <div className="card overflow-hidden">
+          <div
+            ref={scrollRef}
+            onMouseDown={onGridDown}
+            onMouseMove={onGridMove}
+            onMouseUp={onGridUp}
+            onMouseLeave={onGridUp}
+            className="overflow-x-auto cursor-grab active:cursor-grabbing select-none"
+          >
+            <table className="border-collapse text-xs">
+              <thead>
+                <tr>
+                  <th className="sticky left-0 z-20 bg-gray-50 border-b border-r border-gray-200 px-3 py-2 text-left text-[11px] font-semibold text-muted uppercase tracking-wide w-[150px] min-w-[150px] max-w-[150px]">
+                    Student
+                  </th>
+                  <th className="sticky left-[150px] z-20 bg-gray-50 border-b border-r border-gray-200 px-2 py-2 text-right text-[11px] font-semibold text-muted uppercase tracking-wide w-[84px] min-w-[84px]">
+                    Total
+                  </th>
+                  {days.map(d => (
+                    <th key={d.iso}
+                      className={`border-b border-gray-100 px-0 py-1.5 w-[68px] min-w-[68px] text-center font-semibold ${
+                        d.iso === today ? 'bg-brand-50' : d.weekend ? 'bg-gray-50/60' : 'bg-white'
+                      }`}>
+                      <div className={`text-sm leading-none ${d.iso === today ? 'text-brand-600' : 'text-ink'}`}>{d.day}</div>
+                      <div className="text-[9px] text-muted mt-0.5">{d.weekday}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {gridRows.map(s => {
+                  const special = SPECIAL_ROWS[s.id]
+                  const isFirstSpecial = s.id === TRIAL_ID
+                  return (
+                  <tr key={s.id} className={`group ${isFirstSpecial ? 'border-t-2 border-gray-200' : ''}`}>
+                    <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 px-3 py-2 w-[150px] min-w-[150px] max-w-[150px]">
+                      {special ? (
+                        <span className="font-semibold text-ink whitespace-nowrap flex items-center gap-1.5">
+                          <span className="text-base leading-none">{special.icon}</span> {special.label}
+                        </span>
+                      ) : (
+                        <Link
+                          href={`/teacher/students/${s.id}`}
+                          title={s.fullName}
+                          onClick={e => { if (drag.current.moved) e.preventDefault() }}
+                          className="font-medium text-ink hover:text-brand-600 transition-colors block truncate"
+                        >
+                          {s.fullName}
+                        </Link>
+                      )}
+                    </td>
+                    <td className="sticky left-[150px] z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 px-2 py-2 text-right w-[84px] min-w-[84px]">
+                      {rowTotal(s.id) > 0
+                        ? <span className="font-bold text-ink text-[11px]">{formatMoney(rowTotal(s.id), currency)}</span>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
+                    {days.map(d => {
+                      const cell = byCell.get(`${s.id}|${d.iso}`) ?? []
+                      const has = cell.length > 0
+                      const sum = cell.reduce((a, p) => a + p.amount, 0)
+                      const allPaid = has && cell.every(p => p.status === 'paid')
+                      const overdue = has && cell.some(p => p.status === 'pending' && p.due_date && p.due_date < today)
+                      const tone = allPaid
+                        ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
+                        : overdue
+                          ? 'bg-red-100 hover:bg-red-200 text-red-700'
+                          : 'bg-orange-100 hover:bg-orange-200 text-orange-700'
+                      return (
+                        <td key={d.iso} className={`border-b border-r border-gray-100 p-0 w-[68px] min-w-[68px] h-11 ${d.weekend && !has ? 'bg-gray-50/40' : ''}`}>
+                          <button
+                            onClick={() => handleCellClick(s.id, s.fullName, d.iso)}
+                            title={has ? cell.map(p => `${formatMoney(p.amount, currency)} ${p.status}`).join(', ') : 'Add payment'}
+                            className={`w-full h-11 flex flex-col items-center justify-center transition-colors px-1 ${has ? tone : 'hover:bg-brand-50'}`}
+                          >
+                            {has ? (
+                              <>
+                                <span className="text-[10px] font-bold leading-tight truncate max-w-full">{formatMoney(sum, currency)}</span>
+                                {cell.length > 1 && <span className="text-[8px] opacity-70 leading-none">{cell.length} items</span>}
+                              </>
+                            ) : (
+                              <span className="opacity-0 group-hover:opacity-30 text-muted">+</span>
+                            )}
+                          </button>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )})}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Legend + currency */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-muted">
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-emerald-200" /> paid</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-orange-200" /> pending</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-red-200" /> overdue</span>
+        <span>· Click a cell to add or open a payment.</span>
+        <span className="ml-auto flex items-center gap-2">
+          Currency:
+          <select
+            value={currency}
+            onChange={e => startTransition(async () => { await updateTeacherCurrency(e.target.value); router.refresh() })}
+            disabled={pending}
+            className="input text-[11px] py-1 w-auto"
+          >
+            {CURRENCIES.map(c => <option key={c} value={c}>{c} ({currencySymbol(c)})</option>)}
+          </select>
+        </span>
+      </div>
+
+      {/* ── Day-cell popup ── */}
+      {dayCell && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/40" onClick={() => setDayCell(null)}>
+          <div className="card w-full max-w-md p-6 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-ink">{dayCell.name}</h3>
+                <p className="text-xs text-muted">{fmtFullDate(dayCell.date)}</p>
+              </div>
+              <button onClick={() => setDayCell(null)} className="text-gray-400 hover:text-ink"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="space-y-2.5">
+              {dayCellPayments.map(p => {
+                const overdue = p.status === 'pending' && p.due_date && p.due_date < today
+                return (
+                  <div key={p.id} className={`rounded-xl border px-3.5 py-3 ${
+                    p.status === 'paid' ? 'border-emerald-100 bg-emerald-50/50' : overdue ? 'border-red-200 bg-red-50/50' : 'border-orange-100 bg-orange-50/50'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-ink">{formatMoney(p.amount, p.currency ?? currency)}</span>
+                      <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 uppercase tracking-wide ${
+                        p.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'
+                      }`}>{p.status}</span>
+                      {p.lessons_covered != null && <span className="text-[11px] text-muted">· {p.lessons_covered} lesson{p.lessons_covered === 1 ? '' : 's'}</span>}
+                    </div>
+                    {p.description && <p className="text-sm text-muted mt-0.5">{p.description}</p>}
+                    {p.method && <p className="text-[11px] text-muted mt-0.5">{p.method}</p>}
+                    <div className="flex items-center gap-1 mt-2 -mb-1">
+                      <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg text-gray-400 hover:text-ink hover:bg-white" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                      {p.status === 'pending' && (
+                        <button onClick={() => handleMarkPaid(p.id)} disabled={pending} className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-white" title="Mark paid"><CircleCheck className="w-3.5 h-3.5" /></button>
+                      )}
+                      <button onClick={() => handleDelete(p.id)} disabled={pending} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-white" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <button onClick={() => openAdd(dayCell.studentId, dayCell.date)} className="btn-secondary text-xs w-full justify-center mt-4">
+              <Plus className="w-3.5 h-3.5" /> Add another payment this day
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add / edit modal ── */}
+      {mode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={closeModal}>
+          <div className="card w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-brand-600" />
+                <h3 className="font-bold text-ink">{mode === 'add' ? 'New Payment' : 'Payment Details'}</h3>
+              </div>
+              <button onClick={closeModal} className="text-gray-400 hover:text-ink"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="space-y-3">
+              {mode === 'add' ? (
+                <div>
+                  <label className="text-[11px] font-semibold text-muted uppercase tracking-wide">Student</label>
+                  <select value={studentId} onChange={e => setStudentId(e.target.value)} className="input w-full text-sm mt-1">
+                    <option value="">Select a student…</option>
+                    {sortedStudents.map(s => <option key={s.id} value={s.id}>{s.fullName}</option>)}
+                    <option value={TRIAL_ID}>🎓 Trial lesson (not a student)</option>
+                    <option value={OTHER_ID}>✨ Other (not a student)</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2.5 rounded-xl bg-gray-50 px-3.5 py-2.5">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                    {editing && SPECIAL_ROWS[editing.studentId] ? SPECIAL_ROWS[editing.studentId].icon : editing?.studentName.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="font-semibold text-ink text-sm">{editing?.studentName}</span>
+                  {editing && !SPECIAL_ROWS[editing.studentId] && (
+                    <Link href={`/teacher/students/${editing.studentId}`} className="ml-auto text-gray-300 hover:text-brand-600"><Chevron className="w-4 h-4" /></Link>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-muted uppercase tracking-wide">Amount ({currencySymbol(currency)})</label>
+                  <input type="number" min="0" step="0.01" inputMode="decimal" value={form.amount}
+                    onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" className="input w-full text-sm mt-1" autoFocus={mode === 'add'} />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted uppercase tracking-wide">Status</label>
+                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as 'paid' | 'pending' })} className="input w-full text-sm mt-1">
+                    <option value="paid">Paid</option>
+                    <option value="pending">Pending</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-muted uppercase tracking-wide">What it covers</label>
+                <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
+                  placeholder="e.g. June package — 4 lessons" className="input w-full text-sm mt-1" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-muted uppercase tracking-wide">{form.status === 'paid' ? 'Payment date' : 'Due date'}</label>
+                  <input type="date"
+                    value={form.status === 'paid' ? form.payment_date : form.due_date}
+                    onChange={e => setForm(form.status === 'paid' ? { ...form, payment_date: e.target.value } : { ...form, due_date: e.target.value })}
+                    className="input w-full text-sm mt-1" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted uppercase tracking-wide">Lessons covered</label>
+                  <input type="number" min="0" step="1" value={form.lessons_covered}
+                    onChange={e => setForm({ ...form, lessons_covered: e.target.value })} placeholder="optional" className="input w-full text-sm mt-1" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-muted uppercase tracking-wide">Method</label>
+                <input value={form.method} onChange={e => setForm({ ...form, method: e.target.value })}
+                  placeholder="e.g. Bank transfer, Cash, Revolut" className="input w-full text-sm mt-1" />
+              </div>
+
+              {error && <p className="text-xs text-red-500">{error}</p>}
+
+              <div className="flex items-center gap-2 pt-2">
+                {mode === 'edit' && editing && (
+                  <>
+                    <button onClick={() => handleDelete(editing.id)} disabled={pending} className="btn-ghost text-xs text-red-500 hover:bg-red-50">
+                      <Trash2 className="w-3.5 h-3.5" /> Delete
+                    </button>
+                    {editing.status === 'pending' && (
+                      <button onClick={() => handleMarkPaid(editing.id)} disabled={pending} className="btn-secondary text-xs">
+                        <CircleCheck className="w-3.5 h-3.5" /> Mark paid
+                      </button>
+                    )}
+                  </>
+                )}
+                <div className="ml-auto flex items-center gap-2">
+                  <button onClick={closeModal} className="btn-ghost text-xs" disabled={pending}>Cancel</button>
+                  <button onClick={handleSubmit} className="btn-primary text-xs" disabled={pending}>
+                    {pending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    {mode === 'add' ? 'Add Payment' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

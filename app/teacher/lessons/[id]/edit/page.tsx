@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import LessonEditor from '@/components/teacher/LessonEditor'
+import ExerciseReview from '@/components/teacher/ExerciseReview'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { formatDateShort } from '@/lib/utils'
@@ -23,7 +24,8 @@ export default async function EditLessonPage({
       vocabulary_items ( * ),
       homework_items ( * ),
       lesson_sections ( * ),
-      lesson_attachments ( * )
+      lesson_attachments ( * ),
+      lesson_exercises ( * )
     `)
     .eq('id', params.id)
     .eq('teacher_id', user!.id)
@@ -53,6 +55,11 @@ export default async function EditLessonPage({
     .eq('lesson_id', params.id)
     .order('created_at')
 
+  const { data: exSubmissions } = await supabase
+    .from('exercise_submissions')
+    .select('exercise_id, answer, is_correct')
+    .eq('lesson_id', params.id)
+
   // Sort items
   const vocab = (lesson.vocabulary_items || []).sort(
     (a: any, b: any) => a.sort_order - b.sort_order
@@ -64,6 +71,9 @@ export default async function EditLessonPage({
     (a: any, b: any) => a.sort_order - b.sort_order
   )
   const attachments = (lesson.lesson_attachments || []).sort(
+    (a: any, b: any) => a.sort_order - b.sort_order
+  )
+  const exercises = (lesson.lesson_exercises || []).sort(
     (a: any, b: any) => a.sort_order - b.sort_order
   )
 
@@ -117,6 +127,16 @@ export default async function EditLessonPage({
         studentEmail={(lesson.students as any)?.email ?? ''}
         rawTranscript={lesson.raw_transcript}
       />
+
+      {/* Auto-generated practice exercises — review before publishing + student results */}
+      {exercises.length > 0 && (
+        <ExerciseReview
+          lessonId={lesson.id}
+          exercises={exercises as any}
+          submissions={(exSubmissions ?? []) as any}
+          initialShow={(lesson as any).show_exercises !== false}
+        />
+      )}
     </div>
   )
 }

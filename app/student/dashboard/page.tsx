@@ -209,12 +209,22 @@ export default async function StudentDashboard() {
       {/* Collapsible progress charts */}
       {lessonCount >= 2 && (
         <ProgressCharts
-          lessons={(lessons || []).map((l: any) => ({
-            lessonNumber: l.lesson_number,
-            score: l.lesson_summaries?.score ?? null,
-            talkPct: l.lesson_summaries?.talk_percentage ?? null,
-            vocabCount: l.vocabulary_items?.length ?? 0,
-          }))}
+          lessons={(lessons || []).map((l: any) => {
+            // Use the full GPT-detected vocab count (same source as the vocab profile),
+            // not just the ~10 key words Noa curates per lesson.
+            const summary = l.lesson_summaries
+            const dist = summary?.vocab_level_distribution
+            const distSum = dist && typeof dist === 'object'
+              ? Object.values(dist).reduce((a: number, b: any) => a + Number(b), 0)
+              : 0
+            const vocabCount = summary?.vocab_total_count ?? (distSum > 0 ? distSum : (l.vocabulary_items?.length ?? 0))
+            return {
+              lessonNumber: l.lesson_number,
+              score: summary?.score ?? null,
+              talkPct: summary?.talk_percentage ?? null,
+              vocabCount,
+            }
+          })}
         />
       )}
 

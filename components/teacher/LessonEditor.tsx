@@ -6,7 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, CheckCircle, Eye, EyeOff, Save, ChevronDown, ChevronUp, GripVertical, AlertTriangle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import SectionContent from '@/components/student/SectionContent'
+import AudioFeedback from '@/components/teacher/AudioFeedback'
+import TeacherFeedbackRecorder from '@/components/teacher/TeacherFeedbackRecorder'
 import { deleteLesson } from '@/app/actions/lessons'
+import { setHomeworkFeedbackAudio } from '@/app/actions/audioFeedback'
 
 interface LessonSection {
   id: string
@@ -321,14 +324,17 @@ export default function LessonEditor({
         .update({ status: 'published', updated_at: new Date().toISOString() })
         .eq('id', lessonId)
 
-      // Send notification email — log errors but don't block the publish
-      fetch('/api/notify-student', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lessonId, studentId: assignedStudentId }),
-      })
-        .then(async r => { if (!r.ok) console.error('notify-student failed:', await r.text()) })
-        .catch(err => console.error('notify-student error:', err))
+      // Send notification email before navigating away (fire-and-forget aborts on navigation)
+      try {
+        const r = await fetch('/api/notify-student', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lessonId, studentId: assignedStudentId }),
+        })
+        if (!r.ok) console.error('notify-student failed:', await r.text())
+      } catch (err) {
+        console.error('notify-student error:', err)
+      }
 
       router.push(`/teacher/students/${assignedStudentId}`)
       router.refresh()
@@ -907,6 +913,14 @@ export default function LessonEditor({
               value={hwFeedback}
               onChange={e => setHwFeedback(e.target.value)}
             />
+            <div>
+              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5">Or send a voice note</p>
+              <TeacherFeedbackRecorder
+                pathPrefix={`feedback/hw-${lessonId}`}
+                existingUrl={(initialHwSubmissions[0] as any)?.feedback_audio_url ?? null}
+                onUploaded={(audioUrl) => { setHomeworkFeedbackAudio(lessonId, audioUrl) }}
+              />
+            </div>
             {feedbackError && <p className="text-xs text-red-500">{feedbackError}</p>}
             <button
               type="button"
@@ -936,12 +950,20 @@ export default function LessonEditor({
         ) : (
           <div className="space-y-2">
             {audioSubmissions.map((s: any) => (
-              <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-indigo-50 border border-indigo-100">
-                <span className="text-base">🎙️</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted mb-1">{new Date(s.created_at).toLocaleDateString()}</p>
-                  <audio controls src={s.audio_url} className="w-full h-8" style={{ minWidth: 0 }} />
+              <div key={s.id} className="p-3 rounded-xl bg-indigo-50 border border-indigo-100">
+                <div className="flex items-center gap-3">
+                  <span className="text-base">🎙️</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted mb-1 flex items-center gap-2">
+                      {new Date(s.created_at).toLocaleDateString()}
+                      {s.exercise_id && (
+                        <span className="text-[10px] font-bold text-brand-600 bg-white border border-indigo-100 rounded-full px-2 py-0.5">🎯 exercise</span>
+                      )}
+                    </p>
+                    <audio controls src={s.audio_url} className="w-full h-8" style={{ minWidth: 0 }} />
+                  </div>
                 </div>
+                <AudioFeedback submissionId={s.id} initialFeedback={s.teacher_feedback} initialFeedbackAudioUrl={s.feedback_audio_url} />
               </div>
             ))}
           </div>

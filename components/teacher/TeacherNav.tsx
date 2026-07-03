@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { BookOpen, Users, LayoutDashboard, LogOut, BarChart2 } from 'lucide-react'
+import { BookOpen, Users, LayoutDashboard, LogOut, BarChart2, Wallet, StickyNote } from 'lucide-react'
 
 export default function TeacherNav({ teacherName }: { teacherName: string }) {
   const pathname = usePathname()
@@ -18,6 +18,8 @@ export default function TeacherNav({ teacherName }: { teacherName: string }) {
   const links = [
     { href: '/teacher/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/teacher/students', label: 'Students', icon: Users },
+    { href: '/teacher/notes', label: 'Notes', icon: StickyNote },
+    { href: '/teacher/payments', label: 'Payments', icon: Wallet },
     { href: '/teacher/analytics', label: 'Analytics', icon: BarChart2 },
   ]
 

@@ -9,6 +9,7 @@ interface Submission {
   file_name: string
   file_url: string
   teacher_feedback: string | null
+  feedback_audio_url: string | null
   feedback_sent_at: string | null
   created_at: string
 }
@@ -59,7 +60,7 @@ export default function HomeworkSubmitSection({ lessonId, studentId, initialSubm
     setSubmissions(prev => prev.filter(s => s.id !== id))
   }
 
-  const feedback = submissions.find(s => s.teacher_feedback)
+  const feedback = submissions.find(s => s.teacher_feedback || s.feedback_audio_url)
 
   return (
     <div className="card p-6 space-y-4">
@@ -69,10 +70,11 @@ export default function HomeworkSubmitSection({ lessonId, studentId, initialSubm
       </div>
 
       {/* Teacher feedback */}
-      {feedback?.teacher_feedback && (
+      {feedback && (feedback.teacher_feedback || feedback.feedback_audio_url) && (
         <div className="p-4 rounded-xl border border-brand-200 bg-brand-50">
-          <p className="text-[10px] font-bold text-brand-600 uppercase tracking-widest mb-1.5">Teacher Feedback</p>
-          <p className="text-sm text-ink leading-relaxed whitespace-pre-line">{feedback.teacher_feedback}</p>
+          <p className="text-[10px] font-bold text-brand-600 uppercase tracking-widest mb-1.5">Noa Feedback</p>
+          {feedback.teacher_feedback && <p className="text-sm text-ink leading-relaxed whitespace-pre-line">{feedback.teacher_feedback}</p>}
+          {feedback.feedback_audio_url && <audio controls src={feedback.feedback_audio_url} className="w-full h-9 mt-2" />}
         </div>
       )}
 
