@@ -25,9 +25,9 @@ export default function LessonTabs({ tabs }: { tabs: RecapTab[] }) {
 
   return (
     <div>
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto -mx-1 px-1"
-        style={{ scrollbarWidth: 'none' }}>
+      {/* Tab bar — horizontal scroll only; lock vertical drag on touch */}
+      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto overflow-y-hidden touch-pan-x overscroll-x-contain -mx-1 px-1"
+        style={{ scrollbarWidth: 'none', touchAction: 'pan-x' }}>
         {tabs.map(t => {
           const on = active === t.id
           return (
