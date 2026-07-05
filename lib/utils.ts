@@ -44,6 +44,28 @@ export function getLevelLabel(lessonCount: number): string {
   return 'Advanced'
 }
 
+// Test parts, in display order. Unknown sections fall back to "Other".
+export const TEST_SECTIONS: { key: string; part: string; title: string }[] = [
+  { key: 'speaking', part: 'Part 1', title: 'Speaking' },
+  { key: 'reading',  part: 'Part 2', title: 'Reading & Writing' },
+  { key: 'grammar',  part: 'Part 3', title: 'Grammar' },
+  { key: 'general',  part: '',       title: 'Other' },
+]
+
+// Group questions into their sections, preserving section order + sort_order.
+export function groupBySection<T extends { section?: string; sort_order: number }>(
+  questions: T[],
+): { key: string; part: string; title: string; items: T[] }[] {
+  return TEST_SECTIONS
+    .map(s => ({
+      ...s,
+      items: questions
+        .filter(q => (q.section ?? 'general') === s.key || (s.key === 'general' && !TEST_SECTIONS.some(x => x.key === (q.section ?? 'general'))))
+        .sort((a, b) => a.sort_order - b.sort_order),
+    }))
+    .filter(s => s.items.length > 0)
+}
+
 export function getLevelEmoji(lessonCount: number): string {
   if (lessonCount < 5) return '🌱'
   if (lessonCount < 10) return '🌸'

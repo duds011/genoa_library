@@ -4,13 +4,17 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Clock, Loader2, Mic, Square, Send, Trash2, RotateCcw, Play, Pause, Sparkles, CheckCircle2 } from 'lucide-react'
-import { startTestAttempt, saveWrittenAnswer, submitTest } from '@/app/actions/tests'
+import { startTestAttempt, saveWrittenAnswer, saveChoiceAnswer, submitTest } from '@/app/actions/tests'
 import type { TestQuestion, TestSubmission } from '@/lib/types'
+import { groupBySection } from '@/lib/utils'
 
 const TYPE_LABEL: Record<string, string> = {
   written: '✍️ Written',
   speak: '🎙️ Speaking',
   read_aloud: '🎙️ Read aloud',
+  reading_passage: '📖 Reading',
+  multiple_choice: '✅ Multiple choice',
+  fill_blank: '✏️ Fill in the blank',
 }
 
 export default function TestRunner({
@@ -132,25 +136,40 @@ function StartedTest({
         </div>
       </div>
 
-      {ordered.map((q, i) => (
-        <div key={q.id} className="card p-5">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-bold text-ink bg-gray-100 rounded-full w-6 h-6 inline-flex items-center justify-center">{i + 1}</span>
-            <span className="text-[11px] font-bold text-brand-600 bg-brand-50 border border-indigo-100 rounded-full px-2.5 py-0.5">
-              {TYPE_LABEL[q.type] ?? q.type}
-            </span>
-            <span className="text-[11px] text-muted">{q.points} pt{q.points !== 1 ? 's' : ''}</span>
-          </div>
-          <p className="text-sm font-semibold text-ink mb-2">{q.prompt}</p>
+      {(() => {
+        let n = 0
+        return groupBySection(ordered).map(section => (
+          <div key={section.key} className="space-y-3">
+            <div className="flex items-center gap-2 pt-2">
+              {section.part && <span className="text-[11px] font-bold uppercase tracking-wide text-white bg-brand-600 rounded-full px-2.5 py-0.5">{section.part}</span>}
+              <h2 className="text-base font-bold text-ink">{section.title}</h2>
+            </div>
+            {section.items.map(q => {
+              const isPassage = q.type === 'reading_passage'
+              if (!isPassage) n += 1
+              return (
+                <div key={q.id} className="card p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    {!isPassage && <span className="text-xs font-bold text-ink bg-gray-100 rounded-full w-6 h-6 inline-flex items-center justify-center">{n}</span>}
+                    <span className="text-[11px] font-bold text-brand-600 bg-brand-50 border border-indigo-100 rounded-full px-2.5 py-0.5">
+                      {TYPE_LABEL[q.type] ?? q.type}
+                    </span>
+                    {!isPassage && <span className="text-[11px] text-muted">{q.points} pt{q.points !== 1 ? 's' : ''}</span>}
+                  </div>
+                  {q.type !== 'multiple_choice' && <p className="text-sm font-semibold text-ink mb-2">{q.prompt}</p>}
 
-          <QuestionBody
-            q={q}
-            testId={test.id}
-            studentId={studentId}
-            initial={initialSubmissions.find(s => s.question_id === q.id)}
-          />
-        </div>
-      ))}
+                  <QuestionBody
+                    q={q}
+                    testId={test.id}
+                    studentId={studentId}
+                    initial={initialSubmissions.find(s => s.question_id === q.id)}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        ))
+      })()}
 
       {/* Submit bar */}
       <div className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t border-gray-100 px-4 py-3">
@@ -178,6 +197,20 @@ function QuestionBody({
   studentId: string
   initial?: TestSubmission
 }) {
+  if (q.type === 'reading_passage') {
+    return (
+      <div className={`rounded-lg px-4 py-3 border border-gray-100 ${q.data?.script === 'romaji' ? '' : 'bg-[#f8f7ff]'}`}>
+        <p className="text-base text-ink leading-relaxed whitespace-pre-line">{q.data?.text}</p>
+        {q.data?.translation && <p className="text-xs text-muted mt-2 whitespace-pre-line">{q.data.translation}</p>}
+      </div>
+    )
+  }
+  if (q.type === 'multiple_choice') {
+    return <ChoiceAnswer testId={testId} questionId={q.id} prompt={q.prompt} data={q.data} initial={initial?.answer_text ?? ''} />
+  }
+  if (q.type === 'fill_blank') {
+    return <FillBlankAnswer testId={testId} questionId={q.id} data={q.data} initial={initial?.answer_text ?? ''} />
+  }
   if (q.type === 'written') {
     return <WrittenAnswer testId={testId} questionId={q.id} data={q.data} initial={initial?.answer_text ?? ''} />
   }
@@ -247,6 +280,86 @@ function WrittenAnswer({
       <div className="h-4 mt-1">
         {status === 'saving' && <span className="text-[11px] text-muted">Saving…</span>}
         {status === 'saved' && <span className="text-[11px] text-green-600 inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Saved</span>}
+      </div>
+    </div>
+  )
+}
+
+function ChoiceAnswer({
+  testId, questionId, prompt, data, initial,
+}: {
+  testId: string
+  questionId: string
+  prompt: string
+  data: any
+  initial: string
+}) {
+  const [selected, setSelected] = useState<number | null>(initial === '' ? null : Number(initial))
+  const opts: string[] = data?.options ?? []
+
+  function choose(i: number) {
+    setSelected(i)
+    saveChoiceAnswer({ testId, questionId, answer: String(i) }).catch(() => {})
+  }
+
+  return (
+    <div>
+      <p className="text-sm font-semibold text-ink mb-3">{data?.question || prompt}</p>
+      <div className="flex flex-col gap-2">
+        {opts.map((o, i) => (
+          <button
+            key={i}
+            onClick={() => choose(i)}
+            className={`text-left rounded-lg border px-3.5 py-2.5 text-sm transition-colors ${
+              selected === i ? 'border-brand-400 bg-brand-50 text-brand-700 font-semibold' : 'border-gray-200 bg-white hover:border-brand-200 hover:bg-brand-50'
+            }`}
+          >
+            {o}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function FillBlankAnswer({
+  testId, questionId, data, initial,
+}: {
+  testId: string
+  questionId: string
+  data: any
+  initial: string
+}) {
+  const [selected, setSelected] = useState<string>(initial)
+  const opts: string[] = data?.options ?? []
+
+  function choose(o: string) {
+    setSelected(o)
+    saveChoiceAnswer({ testId, questionId, answer: o }).catch(() => {})
+  }
+
+  return (
+    <div>
+      <div className="bg-[#f8f7ff] rounded-lg px-3.5 py-3 my-1 text-base text-ink">
+        {data?.before}
+        <span className="inline-block min-w-[52px] text-center font-bold border-b-2 px-2 mx-0.5 text-brand-600 border-brand-400">
+          {selected || '＿＿'}
+        </span>
+        {data?.after}
+      </div>
+      {data?.en && <p className="text-xs text-muted mb-2">{data.en}</p>}
+      <div className="flex flex-wrap gap-2">
+        {opts.map((o, i) => (
+          <button
+            key={i}
+            onClick={() => choose(o)}
+            className={`rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
+              selected === o ? 'border-brand-400 bg-brand-50 text-brand-700 font-semibold' : 'border-gray-200 bg-white hover:border-brand-200 hover:bg-brand-50'
+            }`}
+          >
+            {o}
+          </button>
+        ))}
       </div>
     </div>
   )

@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import type { TestQuestionType } from '@/lib/types'
 
 interface GeneratedQuestion {
+  section?: string
   type: TestQuestionType
   prompt: string
   points?: number
@@ -90,8 +91,10 @@ export async function buildTest(input: {
     return { success: false, error: testErr?.message ?? 'Could not save the test.' }
   }
 
+  const validSections = ['speaking', 'reading', 'grammar']
   const rows = generated.questions.map((q, i) => ({
     test_id: test.id,
+    section: validSections.includes(q.section ?? '') ? q.section : 'general',
     type: q.type,
     prompt: q.prompt,
     data: q.data ?? {},
@@ -135,27 +138,34 @@ async function generateTestWithAI(
 
   const user = `Build a ${student.language} progress test for a ${student.level} student named ${student.full_name}.
 
-The test must:
-- Be completable in about 45 minutes.
-- Contain 8 to 12 questions total.
-- Mix "written" questions (student types their answer) and "speak" questions (student records a spoken answer). Include at least 3 of each. You may include a couple of "read_aloud" questions.
-- Progress from easier to harder.
-- Only cover material from the lessons below.
+The test is completable in about 45 minutes and is organised into THREE parts. Every question has a "section" field set to one of "speaking", "reading", or "grammar":
+
+PART 1 — "speaking": 3 to 4 questions of type "speak" and/or "read_aloud".
+PART 2 — "reading": a reading-comprehension block. Start with ONE "reading_passage" question containing a short passage written in EITHER romaji OR hiragana (choose based on the student's level — lower levels get hiragana/romaji), then 3 to 4 "multiple_choice" questions that ask about that passage. You may also add one "written" question here (short writing task).
+PART 3 — "grammar": 3 to 5 grammar questions of type "multiple_choice" and/or "fill_blank".
+
+Rules:
+- Order the questions by section: all speaking first, then reading, then grammar.
+- Only cover material from the lessons below. Progress from easier to harder.
+- 12 to 16 questions total.
 
 Return ONLY valid JSON (no markdown) matching exactly this shape:
 {
   "title": string,
-  "instructions": string,          // short instructions for the student, mention it is a 45-minute test
+  "instructions": string,          // short instructions for the student, mention it is a 45-minute, 3-part test
   "questions": [
     {
-      "type": "written" | "speak" | "read_aloud",
+      "section": "speaking" | "reading" | "grammar",
+      "type": "written" | "speak" | "read_aloud" | "reading_passage" | "multiple_choice" | "fill_blank",
       "prompt": string,            // the question / task shown to the student
-      "points": number,            // 1-5, harder questions worth more
+      "points": number,            // 1-5, harder questions worth more (reading_passage = 0)
       "data": {
-        // for "written": { "context"?: string, "reference_answer": string, "guidance"?: string }
-        //   reference_answer = a model answer to help the teacher grade.
-        // for "speak": { "prompt_jp"?: string, "prompt_en"?: string, "hint"?: string }
-        // for "read_aloud": { "focus"?: string, "sentences": [ { "jp": string, "en": string } ] }
+        // "speak":           { "prompt_jp"?: string, "prompt_en"?: string, "hint"?: string }
+        // "read_aloud":      { "focus"?: string, "sentences": [ { "jp": string, "en": string } ] }
+        // "reading_passage": { "text": string, "script": "romaji" | "hiragana", "translation"?: string }
+        // "multiple_choice": { "question": string, "options": [string, ...], "answer": number }  // answer = index of correct option
+        // "fill_blank":      { "before": string, "after": string, "options": [string, ...], "answer": string, "en"?: string }
+        // "written":         { "context"?: string, "reference_answer": string, "guidance"?: string }
       }
     }
   ]
@@ -202,8 +212,9 @@ ${material}`
   }
 
   // Keep only supported types
+  const supportedTypes = ['written', 'speak', 'read_aloud', 'reading_passage', 'multiple_choice', 'fill_blank']
   parsed.questions = parsed.questions.filter(
-    q => q && ['written', 'speak', 'read_aloud'].includes(q.type) && typeof q.prompt === 'string',
+    q => q && supportedTypes.includes(q.type) && typeof q.prompt === 'string',
   )
   if (parsed.questions.length === 0) throw new Error('No usable questions were generated. Try again.')
 
@@ -327,6 +338,50 @@ export async function saveWrittenAnswer(input: {
         question_id: input.questionId,
         student_id: student.id,
         answer_text: input.answerText,
+      },
+      { onConflict: 'question_id,student_id' },
+    )
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+// Auto-graded questions (multiple_choice / fill_blank). Correctness is computed
+// server-side from the stored question so the client can't be trusted to grade.
+export async function saveChoiceAnswer(input: {
+  testId: string
+  questionId: string
+  answer: string   // MC: the chosen option index as a string; fill_blank: the chosen option
+}): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  const { data: student } = await supabase
+    .from('students').select('id').eq('profile_id', user.id).single()
+  if (!student) return { success: false, error: 'Student not found' }
+
+  const { data: q } = await supabase
+    .from('test_questions').select('type, data, points').eq('id', input.questionId).single()
+  if (!q) return { success: false, error: 'Question not found' }
+
+  let correct = false
+  if (q.type === 'multiple_choice') {
+    correct = Number(input.answer) === Number((q.data as any)?.answer)
+  } else if (q.type === 'fill_blank') {
+    correct = String(input.answer).trim() === String((q.data as any)?.answer ?? '').trim()
+  }
+  const score = correct ? (q.points ?? 1) : 0
+
+  const { error } = await supabase
+    .from('test_submissions')
+    .upsert(
+      {
+        test_id: input.testId,
+        question_id: input.questionId,
+        student_id: student.id,
+        answer_text: input.answer,
+        score,
+        reviewed_at: new Date().toISOString(),
       },
       { onConflict: 'question_id,student_id' },
     )

@@ -29,7 +29,8 @@ CREATE TRIGGER tests_updated_at
 CREATE TABLE test_questions (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   test_id     UUID REFERENCES tests(id) ON DELETE CASCADE NOT NULL,
-  type        TEXT NOT NULL CHECK (type IN ('written', 'speak', 'read_aloud')),
+  section     TEXT NOT NULL DEFAULT 'general',  -- speaking | reading | grammar
+  type        TEXT NOT NULL CHECK (type IN ('written', 'speak', 'read_aloud', 'reading_passage', 'multiple_choice', 'fill_blank')),
   prompt      TEXT NOT NULL,
   data        JSONB DEFAULT '{}'::jsonb,
   points      INTEGER DEFAULT 1,

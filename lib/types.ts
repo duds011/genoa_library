@@ -68,7 +68,15 @@ export interface HomeworkItem {
   created_at: string
 }
 
-export type TestQuestionType = 'written' | 'speak' | 'read_aloud'
+export type TestQuestionType =
+  | 'written'
+  | 'speak'
+  | 'read_aloud'
+  | 'reading_passage'
+  | 'multiple_choice'
+  | 'fill_blank'
+
+export type TestSection = 'speaking' | 'reading' | 'grammar' | 'general'
 
 export interface Test {
   id: string
@@ -88,6 +96,7 @@ export interface Test {
 export interface TestQuestion {
   id: string
   test_id: string
+  section: TestSection
   type: TestQuestionType
   prompt: string
   data: any

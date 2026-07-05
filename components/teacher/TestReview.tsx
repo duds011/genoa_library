@@ -2,14 +2,18 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Loader2, Clock, FileText, Sparkles, Save } from 'lucide-react'
+import { Trash2, Loader2, Clock, FileText, Sparkles, Save, CheckCircle2 } from 'lucide-react'
 import { setTestStatus, deleteTest, deleteTestQuestion, gradeTestAnswer } from '@/app/actions/tests'
 import type { TestQuestion, TestSubmission } from '@/lib/types'
+import { groupBySection } from '@/lib/utils'
 
 const TYPE_LABEL: Record<string, string> = {
   written: '✍️ Written',
   speak: '🎙️ Speaking',
   read_aloud: '🎙️ Read aloud',
+  reading_passage: '📖 Reading',
+  multiple_choice: '✅ Multiple choice',
+  fill_blank: '✏️ Fill in the blank',
 }
 
 export default function TestReview({
@@ -117,36 +121,84 @@ export default function TestReview({
         )}
       </div>
 
-      {/* Questions */}
-      <div className="space-y-3">
-        {ordered.map((q, i) => (
-          <div key={q.id} className="card p-5">
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-ink bg-gray-100 rounded-full w-6 h-6 inline-flex items-center justify-center">{i + 1}</span>
-                <span className="text-[11px] font-bold text-brand-600 bg-brand-50 border border-indigo-100 rounded-full px-2.5 py-0.5">
-                  {TYPE_LABEL[q.type] ?? q.type}
-                </span>
-                <span className="text-[11px] text-muted">{q.points} pt{q.points !== 1 ? 's' : ''}</span>
-              </div>
-              <button onClick={() => handleDeleteQuestion(q.id)} disabled={pending} className="text-gray-400 hover:text-red-500 shrink-0" title="Remove question">
-                {busyId === q.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-              </button>
+      {/* Questions grouped by part */}
+      {(() => {
+        let n = 0
+        return groupBySection(ordered).map(section => (
+          <div key={section.key} className="space-y-3">
+            <div className="flex items-center gap-2 pt-1">
+              {section.part && <span className="text-[11px] font-bold uppercase tracking-wide text-white bg-brand-600 rounded-full px-2.5 py-0.5">{section.part}</span>}
+              <h2 className="section-title">{section.title}</h2>
             </div>
+            {section.items.map(q => {
+              const isPassage = q.type === 'reading_passage'
+              if (!isPassage) n += 1
+              return (
+                <div key={q.id} className="card p-5">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2">
+                      {!isPassage && <span className="text-xs font-bold text-ink bg-gray-100 rounded-full w-6 h-6 inline-flex items-center justify-center">{n}</span>}
+                      <span className="text-[11px] font-bold text-brand-600 bg-brand-50 border border-indigo-100 rounded-full px-2.5 py-0.5">
+                        {TYPE_LABEL[q.type] ?? q.type}
+                      </span>
+                      {!isPassage && <span className="text-[11px] text-muted">{q.points} pt{q.points !== 1 ? 's' : ''}</span>}
+                    </div>
+                    <button onClick={() => handleDeleteQuestion(q.id)} disabled={pending} className="text-gray-400 hover:text-red-500 shrink-0" title="Remove question">
+                      {busyId === q.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  </div>
 
-            <p className="text-sm font-semibold text-ink">{q.prompt}</p>
-            <QuestionPreview q={q} />
+                  {q.type !== 'multiple_choice' && <p className="text-sm font-semibold text-ink">{q.prompt}</p>}
+                  <QuestionPreview q={q} />
 
-            {/* Student's answer + grading */}
-            <AnswerGrader submission={subByQuestion.get(q.id)} points={q.points} />
+                  {/* Student's answer + grading (not for display-only passages) */}
+                  {!isPassage && <AnswerGrader q={q} submission={subByQuestion.get(q.id)} points={q.points} />}
+                </div>
+              )
+            })}
           </div>
-        ))}
-      </div>
+        ))
+      })()}
     </div>
   )
 }
 
 function QuestionPreview({ q }: { q: TestQuestion }) {
+  if (q.type === 'reading_passage') {
+    return (
+      <div className="mt-2 rounded-lg bg-[#f8f7ff] border border-gray-100 px-4 py-3">
+        <span className="text-[10px] font-bold uppercase tracking-wide text-muted">{q.data?.script ?? 'text'}</span>
+        <p className="text-base text-ink leading-relaxed whitespace-pre-line mt-1">{q.data?.text}</p>
+        {q.data?.translation && <p className="text-xs text-muted mt-2 whitespace-pre-line">{q.data.translation}</p>}
+      </div>
+    )
+  }
+  if (q.type === 'multiple_choice') {
+    return (
+      <div className="mt-1">
+        <p className="text-sm font-medium text-ink mb-1.5">{q.data?.question || q.prompt}</p>
+        <ul className="space-y-1">
+          {(q.data?.options ?? []).map((o: string, i: number) => (
+            <li key={i} className={`text-sm flex items-center gap-1.5 ${i === q.data?.answer ? 'text-green-700 font-semibold' : 'text-muted'}`}>
+              {i === q.data?.answer ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : <span className="w-3.5 h-3.5 inline-block rounded-full border border-gray-300" />}
+              {o}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+  if (q.type === 'fill_blank') {
+    return (
+      <div className="mt-1">
+        <p className="text-sm text-ink">
+          {q.data?.before}<span className="font-bold text-green-700"> {q.data?.answer} </span>{q.data?.after}
+        </p>
+        {q.data?.en && <p className="text-xs text-muted mt-0.5">{q.data.en}</p>}
+        <p className="text-[11px] text-muted mt-1">Options: {(q.data?.options ?? []).join(' · ')}</p>
+      </div>
+    )
+  }
   if (q.type === 'read_aloud') {
     return (
       <div className="mt-2">
@@ -180,7 +232,7 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
   )
 }
 
-function AnswerGrader({ submission, points }: { submission?: TestSubmission; points: number }) {
+function AnswerGrader({ q, submission, points }: { q: TestQuestion; submission?: TestSubmission; points: number }) {
   const [pending, startTransition] = useTransition()
   const [score, setScore] = useState<string>(submission?.score != null ? String(submission.score) : '')
   const [feedback, setFeedback] = useState(submission?.teacher_feedback ?? '')
@@ -188,6 +240,21 @@ function AnswerGrader({ submission, points }: { submission?: TestSubmission; poi
 
   if (!submission) {
     return <p className="text-xs text-muted mt-3 italic">No answer submitted yet.</p>
+  }
+
+  // Auto-graded choice questions: show the student's pick + correctness inline
+  const isChoice = q.type === 'multiple_choice' || q.type === 'fill_blank'
+  let choiceLabel: string | null = null
+  let choiceCorrect = false
+  if (isChoice && submission.answer_text != null) {
+    if (q.type === 'multiple_choice') {
+      const idx = Number(submission.answer_text)
+      choiceLabel = (q.data?.options ?? [])[idx] ?? String(submission.answer_text)
+      choiceCorrect = idx === Number(q.data?.answer)
+    } else {
+      choiceLabel = String(submission.answer_text)
+      choiceCorrect = choiceLabel.trim() === String(q.data?.answer ?? '').trim()
+    }
   }
 
   function save() {
@@ -205,9 +272,17 @@ function AnswerGrader({ submission, points }: { submission?: TestSubmission; poi
   return (
     <div className="mt-3 rounded-xl border border-gray-100 bg-gray-50/60 p-3.5 space-y-2.5">
       <p className="text-[10px] font-bold text-muted uppercase tracking-widest">Student answer</p>
-      {submission.answer_text && <p className="text-sm text-ink whitespace-pre-line">{submission.answer_text}</p>}
-      {submission.audio_url && <audio controls src={submission.audio_url} className="w-full h-9" />}
-      {!submission.answer_text && !submission.audio_url && <p className="text-xs text-muted italic">Empty answer.</p>}
+      {isChoice ? (
+        <p className={`text-sm font-semibold ${choiceCorrect ? 'text-green-600' : 'text-red-600'}`}>
+          Chose: {choiceLabel ?? '—'} {choiceCorrect ? '✓' : '✗'}
+        </p>
+      ) : (
+        <>
+          {submission.answer_text && <p className="text-sm text-ink whitespace-pre-line">{submission.answer_text}</p>}
+          {submission.audio_url && <audio controls src={submission.audio_url} className="w-full h-9" />}
+          {!submission.answer_text && !submission.audio_url && <p className="text-xs text-muted italic">Empty answer.</p>}
+        </>
+      )}
 
       <div className="flex items-center gap-2 pt-1">
         <input
