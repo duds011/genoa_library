@@ -177,8 +177,9 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
   if (q.type === 'multiple_choice') {
     return (
       <div className="mt-1">
-        <p className="text-sm font-medium text-ink mb-1.5">{q.data?.question || q.prompt}</p>
-        <ul className="space-y-1">
+        <p className="text-sm font-medium text-ink">{q.data?.question || q.prompt}</p>
+        {q.data?.question_romaji && <p className="text-xs text-brand-600 italic mb-1.5">{q.data.question_romaji}</p>}
+        <ul className="space-y-1 mt-1.5">
           {(q.data?.options ?? []).map((o: string, i: number) => (
             <li key={i} className={`text-sm flex items-center gap-1.5 ${i === q.data?.answer ? 'text-green-700 font-semibold' : 'text-muted'}`}>
               {i === q.data?.answer ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : <span className="w-3.5 h-3.5 inline-block rounded-full border border-gray-300" />}
@@ -221,7 +222,6 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
       <div className="mt-2">
         {q.data?.prompt_jp && <p className="text-sm text-ink">{q.data.prompt_jp}</p>}
         {q.data?.prompt_romaji && <p className="text-xs text-brand-600 italic">{q.data.prompt_romaji}</p>}
-        {q.data?.prompt_en && <p className="text-xs text-muted">{q.data.prompt_en}</p>}
         {q.data?.hint && <p className="text-[11px] text-brand-500 mt-1">💡 {q.data.hint}</p>}
       </div>
     )

@@ -122,7 +122,9 @@ export default async function StudentTestPage({
                       </div>
                     ) : (
                       <>
-                        <p className="text-sm font-semibold text-ink mb-2">{q.type === 'multiple_choice' ? (q.data?.question || q.prompt) : q.prompt}</p>
+                        <p className="text-sm font-semibold text-ink">{q.type === 'multiple_choice' ? (q.data?.question || q.prompt) : q.prompt}</p>
+                        {q.type === 'multiple_choice' && q.data?.question_romaji && <p className="text-xs text-brand-600 italic mb-1">{q.data.question_romaji}</p>}
+                        <div className="mb-2" />
                         {isChoice ? (
                           <>
                             <p className={`text-sm font-semibold ${choiceCorrect ? 'text-green-600' : 'text-red-600'}`}>

@@ -236,7 +236,6 @@ function QuestionBody({
         <div className="mb-3 bg-[#f8f7ff] rounded-lg px-3 py-2.5 border border-gray-100">
           {q.data?.prompt_jp && <p className="text-base text-ink">{q.data.prompt_jp}</p>}
           {q.data?.prompt_romaji && <p className="text-sm text-brand-600 italic mt-0.5">{q.data.prompt_romaji}</p>}
-          {q.data?.prompt_en && <p className="text-xs text-muted mt-0.5">{q.data.prompt_en}</p>}
           {q.data?.hint && <p className="text-[11px] text-brand-500 mt-1.5">💡 {q.data.hint}</p>}
         </div>
       )}
@@ -307,8 +306,9 @@ function ChoiceAnswer({
 
   return (
     <div>
-      <p className="text-sm font-semibold text-ink mb-3">{data?.question || prompt}</p>
-      <div className="flex flex-col gap-2">
+      <p className="text-sm font-semibold text-ink">{data?.question || prompt}</p>
+      {data?.question_romaji && <p className="text-xs text-brand-600 italic mb-2">{data.question_romaji}</p>}
+      <div className="flex flex-col gap-2 mt-3">
         {opts.map((o, i) => (
           <button
             key={i}

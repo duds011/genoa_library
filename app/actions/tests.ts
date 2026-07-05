@@ -160,6 +160,7 @@ async function generateTestWithAI(
 - For "speak": put the hiragana in "prompt_jp" and its romaji reading in "prompt_romaji".
 - For "read_aloud": every sentence object has "jp" (hiragana) AND "romaji".
 - For "reading_passage": put the hiragana passage in "text", set "script" to "hiragana", and put the FULL romaji reading of the passage in "romaji".
+- For "multiple_choice": put the hiragana question in "question" and its romaji reading in "question_romaji".
 - For "hint" text, and for every "multiple_choice"/"fill_blank" option and answer that contains Japanese, write the hiragana followed by its romaji in parentheses, e.g. がくせい (gakusei).
 Always include romaji — never leave a Japanese phrase without its romaji reading.`,
     hiragana: `SCRIPT: Write ALL Japanese in hiragana (use katakana only where a word is normally katakana). Do NOT use kanji and do NOT use rōmaji anywhere. For "reading_passage", set "script" to "hiragana".`,
@@ -168,7 +169,7 @@ Always include romaji — never leave a Japanese phrase without its romaji readi
 
   const sectionSpecs: Record<string, string> = {
     speaking: `"speaking": 3 to 4 questions of type "speak" and/or "read_aloud".`,
-    reading: `"reading": a reading-comprehension block. Start with ONE "reading_passage" question containing a short passage, then 3 to 4 "multiple_choice" questions about that passage. You may also add one "written" question here (short writing task).`,
+    reading: `"reading": a reading-comprehension block. Start with ONE "reading_passage" question containing a short passage, then 3 to 4 "multiple_choice" comprehension questions. Each "question" MUST be a genuine question that the student answers by reading the passage (e.g. "メアリーさんは なんねんせいですか。" = what year student is Mary?, what time, who, how many, where). Do NOT just restate a sentence from the passage as the stem — it must be an actual question, ending in か or a question mark. The options are plausible answers to that question. You may also add one "written" question here (a short writing task).`,
     grammar: `"grammar": 3 to 5 grammar questions of type "multiple_choice" and/or "fill_blank".`,
   }
   const partsList = options.sections
@@ -202,7 +203,8 @@ Return ONLY valid JSON (no markdown) matching exactly this shape:
         // "speak":           { "prompt_jp"?: string, "prompt_romaji"?: string, "prompt_en"?: string, "hint"?: string }
         // "read_aloud":      { "focus"?: string, "sentences": [ { "jp": string, "romaji"?: string, "en": string } ] }
         // "reading_passage": { "text": string, "script": "romaji" | "hiragana", "romaji"?: string, "translation"?: string }
-        // "multiple_choice": { "question": string, "options": [string, ...], "answer": number }  // answer = index of correct option
+        // "multiple_choice": { "question": string, "question_romaji"?: string, "options": [string, ...], "answer": number }  // answer = index of correct option; question must be a real question
+        //   for reading: a comprehension question about the passage; for grammar: a grammar/vocab question
         // "fill_blank":      { "before": string, "after": string, "options": [string, ...], "answer": string, "en"?: string }
         // "written":         { "context"?: string, "reference_answer": string, "guidance"?: string }
       }
