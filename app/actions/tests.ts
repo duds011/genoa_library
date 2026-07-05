@@ -156,7 +156,12 @@ async function generateTestWithAI(
   const system = `You are an expert ${student.language} language examiner. You design fair, well-calibrated progress tests that evaluate a student across the specific lessons they have studied. You only test material that appears in the provided lesson content.`
 
   const scriptInstruction = {
-    romaji: `SCRIPT: The student does NOT read Japanese script. Write ALL Japanese in rōmaji (Latin letters) only — no hiragana, katakana, or kanji anywhere (passages, options, sentences, prompts). For "reading_passage", set "script" to "romaji".`,
+    romaji: `SCRIPT — BEGINNER (hiragana + romaji): The student is a beginner still learning to read kana, so EVERY Japanese phrase must be shown in hiragana AND with a full romaji reading so they can read it. Never use kanji.
+- For "speak": put the hiragana in "prompt_jp" and its romaji reading in "prompt_romaji".
+- For "read_aloud": every sentence object has "jp" (hiragana) AND "romaji".
+- For "reading_passage": put the hiragana passage in "text", set "script" to "hiragana", and put the FULL romaji reading of the passage in "romaji".
+- For "hint" text, and for every "multiple_choice"/"fill_blank" option and answer that contains Japanese, write the hiragana followed by its romaji in parentheses, e.g. がくせい (gakusei).
+Always include romaji — never leave a Japanese phrase without its romaji reading.`,
     hiragana: `SCRIPT: Write ALL Japanese in hiragana (use katakana only where a word is normally katakana). Do NOT use kanji and do NOT use rōmaji anywhere. For "reading_passage", set "script" to "hiragana".`,
     kanji: `SCRIPT: Write Japanese using normal hiragana/katakana plus basic kanji. Immediately after each kanji word, give its hiragana reading in parentheses, e.g. 学校(がっこう). Do not use rōmaji. For "reading_passage", set "script" to "hiragana".`,
   }[options.script]
@@ -194,9 +199,9 @@ Return ONLY valid JSON (no markdown) matching exactly this shape:
       "prompt": string,            // the question / task shown to the student
       "points": number,            // 1-5, harder questions worth more (reading_passage = 0)
       "data": {
-        // "speak":           { "prompt_jp"?: string, "prompt_en"?: string, "hint"?: string }
-        // "read_aloud":      { "focus"?: string, "sentences": [ { "jp": string, "en": string } ] }
-        // "reading_passage": { "text": string, "script": "romaji" | "hiragana", "translation"?: string }
+        // "speak":           { "prompt_jp"?: string, "prompt_romaji"?: string, "prompt_en"?: string, "hint"?: string }
+        // "read_aloud":      { "focus"?: string, "sentences": [ { "jp": string, "romaji"?: string, "en": string } ] }
+        // "reading_passage": { "text": string, "script": "romaji" | "hiragana", "romaji"?: string, "translation"?: string }
         // "multiple_choice": { "question": string, "options": [string, ...], "answer": number }  // answer = index of correct option
         // "fill_blank":      { "before": string, "after": string, "options": [string, ...], "answer": string, "en"?: string }
         // "written":         { "context"?: string, "reference_answer": string, "guidance"?: string }

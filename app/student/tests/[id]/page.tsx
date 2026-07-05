@@ -117,6 +117,7 @@ export default async function StudentTestPage({
                     {isPassage ? (
                       <div className="rounded-lg bg-[#f8f7ff] border border-gray-100 px-4 py-3">
                         <p className="text-base text-ink leading-relaxed whitespace-pre-line">{q.data?.text}</p>
+                        {q.data?.romaji && <p className="text-sm text-brand-600 italic leading-relaxed whitespace-pre-line mt-1">{q.data.romaji}</p>}
                         {q.data?.translation && <p className="text-xs text-muted mt-2 whitespace-pre-line">{q.data.translation}</p>}
                       </div>
                     ) : (

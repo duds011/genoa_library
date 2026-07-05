@@ -169,6 +169,7 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
       <div className="mt-2 rounded-lg bg-[#f8f7ff] border border-gray-100 px-4 py-3">
         <span className="text-[10px] font-bold uppercase tracking-wide text-muted">{q.data?.script ?? 'text'}</span>
         <p className="text-base text-ink leading-relaxed whitespace-pre-line mt-1">{q.data?.text}</p>
+        {q.data?.romaji && <p className="text-sm text-brand-600 italic leading-relaxed whitespace-pre-line mt-1">{q.data.romaji}</p>}
         {q.data?.translation && <p className="text-xs text-muted mt-2 whitespace-pre-line">{q.data.translation}</p>}
       </div>
     )
@@ -203,9 +204,13 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
     return (
       <div className="mt-2">
         {q.data?.focus && <p className="text-xs text-muted mb-1.5">Focus: {q.data.focus}</p>}
-        <ul className="space-y-1">
+        <ul className="space-y-1.5">
           {(q.data?.sentences ?? []).map((s: any, i: number) => (
-            <li key={i} className="text-sm text-ink">{s.jp} <span className="text-muted text-xs">— {s.en}</span></li>
+            <li key={i} className="text-sm text-ink">
+              {s.jp}
+              {s.romaji && <span className="text-brand-600 italic text-xs"> · {s.romaji}</span>}
+              <span className="text-muted text-xs"> — {s.en}</span>
+            </li>
           ))}
         </ul>
       </div>
@@ -215,6 +220,7 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
     return (
       <div className="mt-2">
         {q.data?.prompt_jp && <p className="text-sm text-ink">{q.data.prompt_jp}</p>}
+        {q.data?.prompt_romaji && <p className="text-xs text-brand-600 italic">{q.data.prompt_romaji}</p>}
         {q.data?.prompt_en && <p className="text-xs text-muted">{q.data.prompt_en}</p>}
         {q.data?.hint && <p className="text-[11px] text-brand-500 mt-1">💡 {q.data.hint}</p>}
       </div>

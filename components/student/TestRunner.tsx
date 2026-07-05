@@ -199,8 +199,9 @@ function QuestionBody({
 }) {
   if (q.type === 'reading_passage') {
     return (
-      <div className={`rounded-lg px-4 py-3 border border-gray-100 ${q.data?.script === 'romaji' ? '' : 'bg-[#f8f7ff]'}`}>
+      <div className="rounded-lg px-4 py-3 border border-gray-100 bg-[#f8f7ff]">
         <p className="text-base text-ink leading-relaxed whitespace-pre-line">{q.data?.text}</p>
+        {q.data?.romaji && <p className="text-sm text-brand-600 italic leading-relaxed whitespace-pre-line mt-1">{q.data.romaji}</p>}
         {q.data?.translation && <p className="text-xs text-muted mt-2 whitespace-pre-line">{q.data.translation}</p>}
       </div>
     )
@@ -224,6 +225,7 @@ function QuestionBody({
             {(q.data?.sentences ?? []).map((s: any, j: number) => (
               <div key={j} className="bg-white rounded-lg px-3 py-2 border border-gray-100">
                 <p className="text-base text-ink">{s.jp}</p>
+                {s.romaji && <p className="text-sm text-brand-600 italic mt-0.5">{s.romaji}</p>}
                 {s.en && <p className="text-xs text-muted mt-0.5">{s.en}</p>}
               </div>
             ))}
@@ -233,6 +235,7 @@ function QuestionBody({
       {q.type === 'speak' && (
         <div className="mb-3 bg-[#f8f7ff] rounded-lg px-3 py-2.5 border border-gray-100">
           {q.data?.prompt_jp && <p className="text-base text-ink">{q.data.prompt_jp}</p>}
+          {q.data?.prompt_romaji && <p className="text-sm text-brand-600 italic mt-0.5">{q.data.prompt_romaji}</p>}
           {q.data?.prompt_en && <p className="text-xs text-muted mt-0.5">{q.data.prompt_en}</p>}
           {q.data?.hint && <p className="text-[11px] text-brand-500 mt-1.5">💡 {q.data.hint}</p>}
         </div>
