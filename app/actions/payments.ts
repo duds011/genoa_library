@@ -161,6 +161,24 @@ export async function deletePayment(paymentId: string): Promise<PaymentResult> {
   return { success: true }
 }
 
+// Set a student's remaining prepaid-lesson balance. Pass null to stop tracking.
+export async function setLessonsRemaining(studentId: string, value: number | null): Promise<PaymentResult> {
+  const auth = await authorizeStudent(studentId)
+  if ('error' in auth) return { success: false, error: auth.error }
+
+  const next = value === null ? null : Math.round(value)
+  const { error } = await auth.supabase
+    .from('students')
+    .update({ lessons_remaining: next })
+    .eq('id', studentId)
+    .eq('teacher_id', auth.userId)
+
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/teacher/payments')
+  revalidatePath(`/teacher/students/${studentId}`)
+  return { success: true }
+}
+
 export async function updateTeacherCurrency(currency: string): Promise<PaymentResult> {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()

@@ -4,12 +4,13 @@ import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, X, Check, Loader2, Trash2, CircleCheck, Wallet, Pencil, ChevronLeft, ChevronRight, ChevronRight as Chevron } from 'lucide-react'
-import { addPayment, updatePayment, deletePayment, markPaymentPaid, updateTeacherCurrency, PaymentInput } from '@/app/actions/payments'
+import { addPayment, updatePayment, deletePayment, markPaymentPaid, updateTeacherCurrency, setLessonsRemaining, PaymentInput } from '@/app/actions/payments'
 import { formatMoney, currencySymbol, CURRENCIES } from '@/lib/currency'
 
 export interface StudentOption {
   id: string
   fullName: string
+  lessonsRemaining?: number | null
 }
 
 export interface ManagedPayment {
@@ -67,6 +68,31 @@ export default function PaymentsManager({
   const [form, setForm] = useState(emptyForm())
 
   const [dayCell, setDayCell] = useState<{ studentId: string; name: string; date: string } | null>(null)
+
+  // Lessons-left balance per student + editor modal
+  const lessonsLeftMap = new Map(students.map(s => [s.id, s.lessonsRemaining ?? null]))
+  const [lessonsFor, setLessonsFor] = useState<{ id: string; name: string } | null>(null)
+  const [lessonsDraft, setLessonsDraft] = useState('')
+
+  function openLessons(id: string, name: string) {
+    const cur = lessonsLeftMap.get(id)
+    setLessonsDraft(cur != null ? String(cur) : '')
+    setLessonsFor({ id, name })
+  }
+  function bumpLessons(delta: number) {
+    const base = parseInt(lessonsDraft || '0', 10) || 0
+    setLessonsDraft(String(base + delta))
+  }
+  function saveLessons() {
+    if (!lessonsFor) return
+    const trimmed = lessonsDraft.trim()
+    const value = trimmed === '' ? null : parseInt(trimmed, 10)
+    startTransition(async () => {
+      await setLessonsRemaining(lessonsFor.id, Number.isNaN(value as number) ? null : value)
+      setLessonsFor(null)
+      router.refresh()
+    })
+  }
 
   // ── Index payments by student + display date ───────────────────────────────
   const byCell = new Map<string, ManagedPayment[]>()
@@ -243,7 +269,10 @@ export default function PaymentsManager({
                   <th className="sticky left-0 z-20 bg-gray-50 border-b border-r border-gray-200 px-3 py-2 text-left text-[11px] font-semibold text-muted uppercase tracking-wide w-[150px] min-w-[150px] max-w-[150px]">
                     Student
                   </th>
-                  <th className="sticky left-[150px] z-20 bg-gray-50 border-b border-r border-gray-200 px-2 py-2 text-right text-[11px] font-semibold text-muted uppercase tracking-wide w-[84px] min-w-[84px]">
+                  <th className="sticky left-[150px] z-20 bg-gray-50 border-b border-r border-gray-200 px-2 py-2 text-center text-[11px] font-semibold text-muted uppercase tracking-wide w-[90px] min-w-[90px] max-w-[90px]">
+                    Lessons Left
+                  </th>
+                  <th className="sticky left-[240px] z-20 bg-gray-50 border-b border-r border-gray-200 px-2 py-2 text-right text-[11px] font-semibold text-muted uppercase tracking-wide w-[84px] min-w-[84px]">
                     Total
                   </th>
                   {days.map(d => (
@@ -279,7 +308,27 @@ export default function PaymentsManager({
                         </Link>
                       )}
                     </td>
-                    <td className="sticky left-[150px] z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 px-2 py-2 text-right w-[84px] min-w-[84px]">
+                    <td className="sticky left-[150px] z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 p-0 text-center w-[90px] min-w-[90px] max-w-[90px]">
+                      {special ? (
+                        <span className="text-gray-300">—</span>
+                      ) : (() => {
+                        const lr = lessonsLeftMap.get(s.id)
+                        const tone = lr == null ? 'text-gray-300'
+                          : lr <= 0 ? 'text-red-600'
+                          : lr <= 2 ? 'text-orange-600'
+                          : 'text-emerald-600'
+                        return (
+                          <button
+                            onClick={() => openLessons(s.id, s.fullName)}
+                            title="Set lessons left"
+                            className="w-full h-full px-2 py-2 flex items-center justify-center gap-1 hover:bg-brand-50 transition-colors"
+                          >
+                            <span className={`font-bold text-sm ${tone}`}>{lr == null ? '—' : lr}</span>
+                          </button>
+                        )
+                      })()}
+                    </td>
+                    <td className="sticky left-[240px] z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 px-2 py-2 text-right w-[84px] min-w-[84px]">
                       {rowTotal(s.id) > 0
                         ? <span className="font-bold text-ink text-[11px]">{formatMoney(rowTotal(s.id), currency)}</span>
                         : <span className="text-gray-300">—</span>}
@@ -384,6 +433,45 @@ export default function PaymentsManager({
             <button onClick={() => openAdd(dayCell.studentId, dayCell.date)} className="btn-secondary text-xs w-full justify-center mt-4">
               <Plus className="w-3.5 h-3.5" /> Add another payment this day
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Lessons-left editor ── */}
+      {lessonsFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setLessonsFor(null)}>
+          <div className="card w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-1">
+              <h3 className="font-bold text-ink">Lessons left — {lessonsFor.name}</h3>
+              <button onClick={() => setLessonsFor(null)} className="text-gray-400 hover:text-ink"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-xs text-muted mb-4">
+              Set how many prepaid lessons remain. This goes down by 1 automatically every time a new lesson
+              is added for this student. Leave blank to stop tracking.
+            </p>
+
+            <label className="text-[11px] font-semibold text-muted uppercase tracking-wide">Lessons remaining</label>
+            <input
+              type="number"
+              value={lessonsDraft}
+              onChange={e => setLessonsDraft(e.target.value)}
+              placeholder="not tracked"
+              className="input w-full text-sm mt-1"
+              autoFocus
+            />
+            <div className="flex flex-wrap gap-2 mt-3">
+              {[1, 4, 8, 10].map(n => (
+                <button key={n} onClick={() => bumpLessons(n)} className="btn-ghost text-xs border border-gray-200">+{n}</button>
+              ))}
+              <button onClick={() => setLessonsDraft('')} className="btn-ghost text-xs text-muted ml-auto">Clear</button>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button onClick={() => setLessonsFor(null)} className="btn-ghost text-xs" disabled={pending}>Cancel</button>
+              <button onClick={saveLessons} className="btn-primary text-xs" disabled={pending}>
+                {pending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Save
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -8,7 +8,7 @@ export default async function PaymentsPage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   const [{ data: students }, { data: payments }, { data: profile }] = await Promise.all([
-    supabase.from('students').select('id, full_name').eq('teacher_id', user!.id).order('full_name'),
+    supabase.from('students').select('id, full_name, lessons_remaining').eq('teacher_id', user!.id).order('full_name'),
     supabase.from('payments').select('*').eq('teacher_id', user!.id),
     supabase.from('profiles').select('currency').eq('id', user!.id).single(),
   ])
@@ -34,7 +34,11 @@ export default async function PaymentsPage() {
     created_at: p.created_at,
   }))
 
-  const studentOptions: StudentOption[] = (students ?? []).map(s => ({ id: s.id, fullName: s.full_name }))
+  const studentOptions: StudentOption[] = (students ?? []).map(s => ({
+    id: s.id,
+    fullName: s.full_name,
+    lessonsRemaining: (s as any).lessons_remaining ?? null,
+  }))
 
   // ── Monthly revenue: 12 months ending at the latest month that has a payment
   //    (or the current month, whichever is later — so future-dated payments show).
