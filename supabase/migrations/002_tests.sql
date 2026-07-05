@@ -14,6 +14,7 @@ CREATE TABLE tests (
   status            TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
   duration_minutes  INTEGER NOT NULL DEFAULT 45,
   lesson_numbers    INTEGER[] DEFAULT '{}',   -- lessons this test covers (for display)
+  config            JSONB DEFAULT '{}'::jsonb, -- build options: { script, sections }
   created_at        TIMESTAMPTZ DEFAULT NOW(),
   updated_at        TIMESTAMPTZ DEFAULT NOW()
 );

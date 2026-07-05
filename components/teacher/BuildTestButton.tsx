@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileText, Loader2, X, Sparkles } from 'lucide-react'
-import { buildTest } from '@/app/actions/tests'
+import { buildTest, type TestScript } from '@/app/actions/tests'
 import { formatDateShort } from '@/lib/utils'
 
 interface LessonOption {
@@ -12,6 +12,18 @@ interface LessonOption {
   title?: string | null
   lesson_date: string
 }
+
+const SCRIPT_OPTIONS: { value: TestScript; label: string; hint: string }[] = [
+  { value: 'romaji',   label: 'Romaji',   hint: 'Latin letters only' },
+  { value: 'hiragana', label: 'Hiragana', hint: 'Kana, no kanji' },
+  { value: 'kanji',    label: 'Kanji + kana', hint: 'Kanji with readings' },
+]
+
+const SECTION_OPTIONS: { value: string; label: string }[] = [
+  { value: 'speaking', label: '🎙️ Speaking' },
+  { value: 'reading',  label: '📖 Reading & Writing' },
+  { value: 'grammar',  label: '✏️ Grammar' },
+]
 
 export default function BuildTestButton({
   studentId,
@@ -23,8 +35,18 @@ export default function BuildTestButton({
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [script, setScript] = useState<TestScript>('hiragana')
+  const [sections, setSections] = useState<Set<string>>(new Set(['speaking', 'reading', 'grammar']))
   const [building, setBuilding] = useState(false)
   const [error, setError] = useState('')
+
+  function toggleSection(v: string) {
+    setSections(prev => {
+      const next = new Set(prev)
+      next.has(v) ? next.delete(v) : next.add(v)
+      return next
+    })
+  }
 
   const allSelected = lessons.length > 0 && selected.size === lessons.length
 
@@ -42,8 +64,13 @@ export default function BuildTestButton({
 
   async function handleBuild() {
     if (selected.size === 0) { setError('Pick at least one lesson.'); return }
+    if (sections.size === 0) { setError('Pick at least one part to include.'); return }
     setBuilding(true); setError('')
-    const res = await buildTest({ studentId, lessonIds: Array.from(selected) })
+    const res = await buildTest({
+      studentId,
+      lessonIds: Array.from(selected),
+      options: { script, sections: Array.from(sections) },
+    })
     setBuilding(false)
     if (!res.success || !res.testId) {
       setError(res.error ?? 'Something went wrong building the test.')
@@ -75,16 +102,58 @@ export default function BuildTestButton({
               </button>
             </div>
             <p className="text-xs text-muted mb-4">
-              Choose which lessons the 45-minute test should cover. The AI builds written & speaking
-              questions from that material. You review before it&apos;s shared with the student.
+              Customize the 45-minute test for this student, then pick the lessons it should cover.
+              You review before it&apos;s shared.
             </p>
 
-            <button
-              onClick={toggleAll}
-              className="text-xs font-semibold text-brand-600 mb-2 hover:underline"
-            >
-              {allSelected ? 'Clear all' : 'Select all lessons'}
-            </button>
+            {/* Script */}
+            <div className="mb-4">
+              <p className="text-xs font-bold text-ink uppercase tracking-wide mb-1.5">Japanese script</p>
+              <div className="grid grid-cols-3 gap-2">
+                {SCRIPT_OPTIONS.map(o => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => setScript(o.value)}
+                    className={`rounded-lg border px-2 py-2 text-center transition-colors ${
+                      script === o.value ? 'border-brand-400 bg-brand-50' : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className={`block text-xs font-bold ${script === o.value ? 'text-brand-700' : 'text-ink'}`}>{o.label}</span>
+                    <span className="block text-[10px] text-muted mt-0.5">{o.hint}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Parts */}
+            <div className="mb-4">
+              <p className="text-xs font-bold text-ink uppercase tracking-wide mb-1.5">Parts to include</p>
+              <div className="flex flex-wrap gap-2">
+                {SECTION_OPTIONS.map(o => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => toggleSection(o.value)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      sections.has(o.value) ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-gray-200 text-muted hover:bg-gray-50'
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-ink uppercase tracking-wide">Lessons to cover</p>
+              <button
+                onClick={toggleAll}
+                className="text-xs font-semibold text-brand-600 hover:underline"
+              >
+                {allSelected ? 'Clear all' : 'Select all'}
+              </button>
+            </div>
 
             <div className="space-y-2 mb-4">
               {lessons.map(l => (

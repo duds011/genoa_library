@@ -20,9 +20,17 @@ interface GeneratedTest {
 
 // ─── Teacher: build a test from selected lessons via OpenAI ──────────────────
 
+export type TestScript = 'romaji' | 'hiragana' | 'kanji'
+
+export interface BuildTestOptions {
+  script: TestScript
+  sections: string[]   // any of 'speaking' | 'reading' | 'grammar'
+}
+
 export async function buildTest(input: {
   studentId: string
   lessonIds: string[]
+  options?: BuildTestOptions
 }): Promise<{ success: boolean; testId?: string; error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -65,9 +73,18 @@ export async function buildTest(input: {
 
   const lessonNumbers = lessons.map((l: any) => l.lesson_number).filter((n: any) => n != null)
 
+  // Normalise build options (script + which parts to include)
+  const allSections = ['speaking', 'reading', 'grammar']
+  const script: TestScript = ['romaji', 'hiragana', 'kanji'].includes(input.options?.script as string)
+    ? (input.options!.script)
+    : 'hiragana'
+  let sections = (input.options?.sections ?? allSections).filter(s => allSections.includes(s))
+  if (sections.length === 0) sections = allSections
+  const options: BuildTestOptions = { script, sections }
+
   let generated: GeneratedTest
   try {
-    generated = await generateTestWithAI(student, lessons)
+    generated = await generateTestWithAI(student, lessons, options)
   } catch (e: any) {
     return { success: false, error: e?.message ?? 'AI generation failed.' }
   }
@@ -83,6 +100,7 @@ export async function buildTest(input: {
       status: 'draft',
       duration_minutes: 45,
       lesson_numbers: lessonNumbers,
+      config: options,
     })
     .select('id')
     .single()
@@ -115,6 +133,7 @@ export async function buildTest(input: {
 async function generateTestWithAI(
   student: { full_name: string; level: string; language: string },
   lessons: any[],
+  options: BuildTestOptions,
 ): Promise<GeneratedTest> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) throw new Error('OPENAI_API_KEY is not configured.')
@@ -136,18 +155,33 @@ async function generateTestWithAI(
 
   const system = `You are an expert ${student.language} language examiner. You design fair, well-calibrated progress tests that evaluate a student across the specific lessons they have studied. You only test material that appears in the provided lesson content.`
 
+  const scriptInstruction = {
+    romaji: `SCRIPT: The student does NOT read Japanese script. Write ALL Japanese in rōmaji (Latin letters) only — no hiragana, katakana, or kanji anywhere (passages, options, sentences, prompts). For "reading_passage", set "script" to "romaji".`,
+    hiragana: `SCRIPT: Write ALL Japanese in hiragana (use katakana only where a word is normally katakana). Do NOT use kanji and do NOT use rōmaji anywhere. For "reading_passage", set "script" to "hiragana".`,
+    kanji: `SCRIPT: Write Japanese using normal hiragana/katakana plus basic kanji. Immediately after each kanji word, give its hiragana reading in parentheses, e.g. 学校(がっこう). Do not use rōmaji. For "reading_passage", set "script" to "hiragana".`,
+  }[options.script]
+
+  const sectionSpecs: Record<string, string> = {
+    speaking: `"speaking": 3 to 4 questions of type "speak" and/or "read_aloud".`,
+    reading: `"reading": a reading-comprehension block. Start with ONE "reading_passage" question containing a short passage, then 3 to 4 "multiple_choice" questions about that passage. You may also add one "written" question here (short writing task).`,
+    grammar: `"grammar": 3 to 5 grammar questions of type "multiple_choice" and/or "fill_blank".`,
+  }
+  const partsList = options.sections
+    .map((s, i) => `PART ${i + 1} — ${sectionSpecs[s]}`)
+    .join('\n')
+  const sectionOrder = options.sections.join(', then ')
+
   const user = `Build a ${student.language} progress test for a ${student.level} student named ${student.full_name}.
 
-The test is completable in about 45 minutes and is organised into THREE parts. Every question has a "section" field set to one of "speaking", "reading", or "grammar":
+The test is completable in about 45 minutes. Every question has a "section" field. Build ONLY these parts, in this order:
+${partsList}
 
-PART 1 — "speaking": 3 to 4 questions of type "speak" and/or "read_aloud".
-PART 2 — "reading": a reading-comprehension block. Start with ONE "reading_passage" question containing a short passage written in EITHER romaji OR hiragana (choose based on the student's level — lower levels get hiragana/romaji), then 3 to 4 "multiple_choice" questions that ask about that passage. You may also add one "written" question here (short writing task).
-PART 3 — "grammar": 3 to 5 grammar questions of type "multiple_choice" and/or "fill_blank".
+${scriptInstruction}
 
 Rules:
-- Order the questions by section: all speaking first, then reading, then grammar.
+- Order the questions by section: ${sectionOrder}.
 - Only cover material from the lessons below. Progress from easier to harder.
-- 12 to 16 questions total.
+- Aim for 4 to 6 questions per part.
 
 Return ONLY valid JSON (no markdown) matching exactly this shape:
 {
