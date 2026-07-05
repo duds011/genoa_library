@@ -298,6 +298,54 @@ export async function deleteTest(testId: string): Promise<{ success: boolean; er
   return { success: true, studentId: test?.student_id }
 }
 
+export async function updateTest(input: {
+  testId: string
+  title: string
+  instructions: string
+  duration_minutes: number
+}): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('tests')
+    .update({
+      title: input.title.trim() || 'Progress Test',
+      instructions: input.instructions.trim() || null,
+      duration_minutes: Math.max(1, Math.round(input.duration_minutes) || 45),
+    })
+    .eq('id', input.testId)
+    .eq('teacher_id', user.id)
+  if (error) return { success: false, error: error.message }
+  revalidatePath(`/teacher/tests/${input.testId}`)
+  return { success: true }
+}
+
+// Teacher edits a generated question — prompt, points and the type-specific data.
+export async function updateTestQuestion(input: {
+  questionId: string
+  prompt: string
+  points: number
+  data: any
+}): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  // RLS (test_questions_teacher) restricts updates to the teacher's own tests
+  const { error } = await supabase
+    .from('test_questions')
+    .update({
+      prompt: input.prompt.trim(),
+      points: Math.max(0, Math.round(input.points) || 0),
+      data: input.data ?? {},
+    })
+    .eq('id', input.questionId)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
 export async function deleteTestQuestion(questionId: string): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

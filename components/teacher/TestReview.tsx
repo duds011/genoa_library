@@ -2,10 +2,11 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Loader2, Clock, FileText, Sparkles, Save, CheckCircle2 } from 'lucide-react'
-import { setTestStatus, deleteTest, deleteTestQuestion, gradeTestAnswer } from '@/app/actions/tests'
+import { Trash2, Loader2, Clock, FileText, Sparkles, Save, CheckCircle2, Pencil } from 'lucide-react'
+import { setTestStatus, deleteTest, deleteTestQuestion, gradeTestAnswer, updateTest } from '@/app/actions/tests'
 import type { TestQuestion, TestSubmission } from '@/lib/types'
 import { groupBySection } from '@/lib/utils'
+import QuestionEditor from './QuestionEditor'
 
 const TYPE_LABEL: Record<string, string> = {
   written: '✍️ Written',
@@ -30,7 +31,23 @@ export default function TestReview({
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [published, setPublished] = useState(test.status === 'published')
+
+  // Editable test details (title / instructions / duration)
+  const [editingDetails, setEditingDetails] = useState(false)
+  const [title, setTitle] = useState(test.title)
+  const [instructions, setInstructions] = useState(test.instructions ?? '')
+  const [duration, setDuration] = useState<number>(test.duration_minutes)
+  const [savingDetails, setSavingDetails] = useState(false)
+
+  async function saveDetails() {
+    setSavingDetails(true)
+    await updateTest({ testId: test.id, title, instructions, duration_minutes: duration })
+    setSavingDetails(false)
+    setEditingDetails(false)
+    router.refresh()
+  }
 
   const subByQuestion = new Map(submissions.map(s => [s.question_id, s]))
 
@@ -78,20 +95,48 @@ export default function TestReview({
               </span>
             </div>
             <h1 className="text-xl font-bold text-ink flex items-center gap-2">
-              <FileText className="w-5 h-5 text-brand-600" /> {test.title}
+              <FileText className="w-5 h-5 text-brand-600" /> {title}
             </h1>
             <div className="flex items-center gap-3 mt-1 text-xs text-muted">
-              <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {test.duration_minutes} min</span>
+              <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {duration} min</span>
               {test.lesson_numbers?.length > 0 && <span>Covers lessons {test.lesson_numbers.join(', ')}</span>}
               <span>{ordered.length} questions</span>
             </div>
           </div>
-          <button onClick={handleDeleteTest} disabled={pending} className="text-gray-400 hover:text-red-500 shrink-0" title="Delete test">
-            <Trash2 className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => setEditingDetails(v => !v)} className="text-gray-400 hover:text-brand-600" title="Edit test details">
+              <Pencil className="w-4 h-4" />
+            </button>
+            <button onClick={handleDeleteTest} disabled={pending} className="text-gray-400 hover:text-red-500" title="Delete test">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {test.instructions && <p className="text-sm text-muted mt-3 whitespace-pre-line">{test.instructions}</p>}
+        {editingDetails ? (
+          <div className="mt-3 space-y-2 rounded-xl border border-gray-100 p-3">
+            <label className="block">
+              <span className="text-[11px] font-semibold text-muted uppercase tracking-wide">Title</span>
+              <input value={title} onChange={e => setTitle(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none" />
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-semibold text-muted uppercase tracking-wide">Instructions</span>
+              <textarea value={instructions} onChange={e => setInstructions(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none" />
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-semibold text-muted uppercase tracking-wide">Duration (minutes)</span>
+              <input type="number" min={1} value={duration} onChange={e => setDuration(Number(e.target.value))} className="mt-1 w-28 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none" />
+            </label>
+            <div className="flex items-center gap-2 pt-1">
+              <button onClick={saveDetails} disabled={savingDetails} className="btn-primary text-xs disabled:opacity-50">
+                {savingDetails ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save
+              </button>
+              <button onClick={() => setEditingDetails(false)} disabled={savingDetails} className="btn-ghost text-xs">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          instructions && <p className="text-sm text-muted mt-3 whitespace-pre-line">{instructions}</p>
+        )}
 
         <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
           <div>
@@ -143,16 +188,31 @@ export default function TestReview({
                       </span>
                       {!isPassage && <span className="text-[11px] text-muted">{q.points} pt{q.points !== 1 ? 's' : ''}</span>}
                     </div>
-                    <button onClick={() => handleDeleteQuestion(q.id)} disabled={pending} className="text-gray-400 hover:text-red-500 shrink-0" title="Remove question">
-                      {busyId === q.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => setEditingId(editingId === q.id ? null : q.id)} disabled={pending} className="text-gray-400 hover:text-brand-600" title="Edit question">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDeleteQuestion(q.id)} disabled={pending} className="text-gray-400 hover:text-red-500" title="Remove question">
+                        {busyId === q.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
 
-                  {q.type !== 'multiple_choice' && <p className="text-sm font-semibold text-ink">{q.prompt}</p>}
-                  <QuestionPreview q={q} />
+                  {editingId === q.id ? (
+                    <QuestionEditor
+                      q={q}
+                      onDone={() => { setEditingId(null); router.refresh() }}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  ) : (
+                    <>
+                      {q.type !== 'multiple_choice' && <p className="text-sm font-semibold text-ink">{q.prompt}</p>}
+                      <QuestionPreview q={q} />
 
-                  {/* Student's answer + grading (not for display-only passages) */}
-                  {!isPassage && <AnswerGrader q={q} submission={subByQuestion.get(q.id)} points={q.points} />}
+                      {/* Student's answer + grading (not for display-only passages) */}
+                      {!isPassage && <AnswerGrader q={q} submission={subByQuestion.get(q.id)} points={q.points} />}
+                    </>
+                  )}
                 </div>
               )
             })}
