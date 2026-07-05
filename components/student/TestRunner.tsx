@@ -1,0 +1,405 @@
+'use client'
+
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { Clock, Loader2, Mic, Square, Send, Trash2, RotateCcw, Play, Pause, Sparkles, CheckCircle2 } from 'lucide-react'
+import { startTestAttempt, saveWrittenAnswer, submitTest } from '@/app/actions/tests'
+import type { TestQuestion, TestSubmission } from '@/lib/types'
+
+const TYPE_LABEL: Record<string, string> = {
+  written: '✍️ Written',
+  speak: '🎙️ Speaking',
+  read_aloud: '🎙️ Read aloud',
+}
+
+export default function TestRunner({
+  test,
+  questions,
+  studentId,
+  initialSubmissions,
+  startedAt,
+}: {
+  test: { id: string; title: string; instructions?: string | null; duration_minutes: number; lesson_numbers: number[] }
+  questions: TestQuestion[]
+  studentId: string
+  initialSubmissions: TestSubmission[]
+  startedAt: string | null
+}) {
+  const router = useRouter()
+  const ordered = [...questions].sort((a, b) => a.sort_order - b.sort_order)
+  const [started, setStarted] = useState<string | null>(startedAt)
+  const [starting, setStarting] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  // ── Not started yet: show the start screen ────────────────────────────────
+  if (!started) {
+    const begin = async () => {
+      setStarting(true)
+      const res = await startTestAttempt(test.id)
+      if (res.success && res.startedAt) setStarted(res.startedAt)
+      else setStarting(false)
+    }
+    return (
+      <div className="card p-8 text-center max-w-lg mx-auto">
+        <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-white mb-4"
+          style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+          <Sparkles className="w-6 h-6" />
+        </div>
+        <h1 className="text-xl font-bold text-ink">{test.title}</h1>
+        {test.lesson_numbers?.length > 0 && (
+          <p className="text-sm text-muted mt-1">Covering lessons {test.lesson_numbers.join(', ')}</p>
+        )}
+        <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-brand-50 text-brand-600 text-sm font-semibold">
+          <Clock className="w-4 h-4" /> {test.duration_minutes} minutes · {ordered.length} questions
+        </div>
+        {test.instructions && <p className="text-sm text-muted mt-4 whitespace-pre-line">{test.instructions}</p>}
+        <p className="text-xs text-muted mt-4">
+          The timer starts as soon as you begin and keeps running even if you close the page. Answer every
+          question, then submit before time runs out.
+        </p>
+        <button onClick={begin} disabled={starting} className="btn-primary w-full justify-center mt-6 disabled:opacity-50">
+          {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+          {starting ? 'Starting…' : 'Start test'}
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <StartedTest
+      test={test}
+      ordered={ordered}
+      studentId={studentId}
+      initialSubmissions={initialSubmissions}
+      startedAt={started}
+      submitting={submitting}
+      onSubmit={async () => {
+        setSubmitting(true)
+        await submitTest(test.id)
+        router.refresh()
+      }}
+    />
+  )
+}
+
+function StartedTest({
+  test, ordered, studentId, initialSubmissions, startedAt, submitting, onSubmit,
+}: {
+  test: { id: string; title: string; duration_minutes: number }
+  ordered: TestQuestion[]
+  studentId: string
+  initialSubmissions: TestSubmission[]
+  startedAt: string
+  submitting: boolean
+  onSubmit: () => void
+}) {
+  const endTime = new Date(startedAt).getTime() + test.duration_minutes * 60_000
+  const [remaining, setRemaining] = useState(() => Math.max(0, endTime - Date.now()))
+  const submitRef = useRef(onSubmit)
+  submitRef.current = onSubmit
+  const autoSubmitted = useRef(false)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const left = Math.max(0, endTime - Date.now())
+      setRemaining(left)
+      if (left === 0 && !autoSubmitted.current) {
+        autoSubmitted.current = true
+        submitRef.current()
+      }
+    }, 1000)
+    return () => clearInterval(id)
+  }, [endTime])
+
+  const mins = Math.floor(remaining / 60_000)
+  const secs = Math.floor((remaining % 60_000) / 1000)
+  const low = remaining < 5 * 60_000
+
+  return (
+    <div className="space-y-4 pb-24">
+      {/* Sticky timer */}
+      <div className="sticky top-14 z-30 -mx-4 sm:mx-0">
+        <div className={`flex items-center justify-between gap-3 px-4 py-3 sm:rounded-xl border ${low ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'} shadow-sm`}>
+          <div>
+            <h1 className="font-bold text-ink text-sm">{test.title}</h1>
+            <p className="text-xs text-muted">{ordered.length} questions</p>
+          </div>
+          <div className={`inline-flex items-center gap-1.5 font-bold tabular-nums text-lg ${low ? 'text-red-600' : 'text-brand-600'}`}>
+            <Clock className="w-4 h-4" />
+            {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+          </div>
+        </div>
+      </div>
+
+      {ordered.map((q, i) => (
+        <div key={q.id} className="card p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-bold text-ink bg-gray-100 rounded-full w-6 h-6 inline-flex items-center justify-center">{i + 1}</span>
+            <span className="text-[11px] font-bold text-brand-600 bg-brand-50 border border-indigo-100 rounded-full px-2.5 py-0.5">
+              {TYPE_LABEL[q.type] ?? q.type}
+            </span>
+            <span className="text-[11px] text-muted">{q.points} pt{q.points !== 1 ? 's' : ''}</span>
+          </div>
+          <p className="text-sm font-semibold text-ink mb-2">{q.prompt}</p>
+
+          <QuestionBody
+            q={q}
+            testId={test.id}
+            studentId={studentId}
+            initial={initialSubmissions.find(s => s.question_id === q.id)}
+          />
+        </div>
+      ))}
+
+      {/* Submit bar */}
+      <div className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t border-gray-100 px-4 py-3">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+          <span className="text-xs text-muted hidden sm:block">Your written answers save automatically.</span>
+          <button
+            onClick={() => { if (confirm('Submit your test? You will not be able to change your answers afterwards.')) onSubmit() }}
+            disabled={submitting}
+            className="btn-primary justify-center ml-auto disabled:opacity-50"
+          >
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {submitting ? 'Submitting…' : 'Submit test'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function QuestionBody({
+  q, testId, studentId, initial,
+}: {
+  q: TestQuestion
+  testId: string
+  studentId: string
+  initial?: TestSubmission
+}) {
+  if (q.type === 'written') {
+    return <WrittenAnswer testId={testId} questionId={q.id} data={q.data} initial={initial?.answer_text ?? ''} />
+  }
+  // speak / read_aloud
+  return (
+    <div>
+      {q.type === 'read_aloud' && (
+        <div className="mb-3">
+          {q.data?.focus && <p className="text-xs text-muted mb-1.5">Focus: {q.data.focus}</p>}
+          <div className="space-y-1.5">
+            {(q.data?.sentences ?? []).map((s: any, j: number) => (
+              <div key={j} className="bg-white rounded-lg px-3 py-2 border border-gray-100">
+                <p className="text-base text-ink">{s.jp}</p>
+                {s.en && <p className="text-xs text-muted mt-0.5">{s.en}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {q.type === 'speak' && (
+        <div className="mb-3 bg-[#f8f7ff] rounded-lg px-3 py-2.5 border border-gray-100">
+          {q.data?.prompt_jp && <p className="text-base text-ink">{q.data.prompt_jp}</p>}
+          {q.data?.prompt_en && <p className="text-xs text-muted mt-0.5">{q.data.prompt_en}</p>}
+          {q.data?.hint && <p className="text-[11px] text-brand-500 mt-1.5">💡 {q.data.hint}</p>}
+        </div>
+      )}
+      <TestAudioAnswer testId={testId} questionId={q.id} studentId={studentId} initial={initial} />
+    </div>
+  )
+}
+
+function WrittenAnswer({
+  testId, questionId, data, initial,
+}: {
+  testId: string
+  questionId: string
+  data: any
+  initial: string
+}) {
+  const [value, setValue] = useState(initial)
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const persist = useCallback((text: string) => {
+    setStatus('saving')
+    saveWrittenAnswer({ testId, questionId, answerText: text }).then(() => setStatus('saved')).catch(() => setStatus('idle'))
+  }, [testId, questionId])
+
+  function onChange(text: string) {
+    setValue(text)
+    setStatus('idle')
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => persist(text), 800)
+  }
+
+  return (
+    <div>
+      {data?.context && <p className="text-sm text-ink bg-[#f8f7ff] rounded-lg px-3 py-2 mb-2">{data.context}</p>}
+      <textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onBlur={() => { if (timer.current) clearTimeout(timer.current); persist(value) }}
+        rows={4}
+        placeholder="Type your answer…"
+        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+      />
+      <div className="h-4 mt-1">
+        {status === 'saving' && <span className="text-[11px] text-muted">Saving…</span>}
+        {status === 'saved' && <span className="text-[11px] text-green-600 inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Saved</span>}
+      </div>
+    </div>
+  )
+}
+
+// iOS Safari can't record audio/webm — pick a format the browser supports.
+function pickRecordingType(): string {
+  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return ''
+  for (const t of ['audio/webm', 'audio/mp4', 'audio/ogg']) if (MediaRecorder.isTypeSupported(t)) return t
+  return ''
+}
+function extForType(type: string): string {
+  if (type.includes('mp4')) return 'm4a'
+  if (type.includes('ogg')) return 'ogg'
+  return 'webm'
+}
+
+function TestAudioAnswer({
+  testId, questionId, studentId, initial,
+}: {
+  testId: string
+  questionId: string
+  studentId: string
+  initial?: TestSubmission
+}) {
+  const supabase = createClient()
+  const [audioUrl, setAudioUrl] = useState<string | null>(initial?.audio_url ?? null)
+  const [recording, setRecording] = useState(false)
+  const [seconds, setSeconds] = useState(0)
+  const [uploading, setUploading] = useState(false)
+  const [playing, setPlaying] = useState(false)
+  const [error, setError] = useState('')
+  const [pending, setPending] = useState<{ url: string; file: File } | null>(null)
+
+  const recRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  function discardPending() {
+    setPending(prev => { if (prev) URL.revokeObjectURL(prev.url); return null })
+  }
+
+  async function sendPending() {
+    if (!pending) return
+    setUploading(true); setError('')
+    try {
+      const ext = pending.file.name.split('.').pop() ?? 'webm'
+      const path = `tests/${testId}/q-${questionId}-${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('student-audio').upload(path, pending.file)
+      if (upErr) { setError(`Upload failed: ${upErr.message}`); return }
+      const { data: { publicUrl } } = supabase.storage.from('student-audio').getPublicUrl(path)
+      const { error: insErr } = await supabase
+        .from('test_submissions')
+        .upsert(
+          { test_id: testId, question_id: questionId, student_id: studentId, audio_url: publicUrl, file_name: pending.file.name },
+          { onConflict: 'question_id,student_id' },
+        )
+      if (insErr) { setError(`Could not save your recording: ${insErr.message}`); return }
+      setAudioUrl(publicUrl)
+      audioRef.current = null; setPlaying(false)
+      discardPending()
+    } catch (e: any) {
+      setError(e?.message ?? 'Something went wrong sending your recording.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function start() {
+    setError('')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mime = pickRecordingType()
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+      chunksRef.current = []
+      rec.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      rec.onstop = () => {
+        stream.getTracks().forEach(t => t.stop())
+        const type = rec.mimeType || mime || 'audio/webm'
+        const blob = new Blob(chunksRef.current, { type })
+        const file = new File([blob], `recording-${Date.now()}.${extForType(type)}`, { type })
+        setPending({ url: URL.createObjectURL(file), file })
+      }
+      rec.start(1000)
+      recRef.current = rec
+      setRecording(true); setSeconds(0)
+      timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000)
+    } catch (e: any) {
+      if (e?.name === 'NotAllowedError' || e?.name === 'SecurityError') setError('Microphone access denied.')
+      else setError('Recording is not supported on this browser.')
+    }
+  }
+
+  function stop() {
+    recRef.current?.stop()
+    if (timerRef.current) clearInterval(timerRef.current)
+    setRecording(false); setSeconds(0)
+  }
+
+  function togglePlay() {
+    if (!audioUrl) return
+    if (playing) { audioRef.current?.pause(); setPlaying(false); return }
+    if (!audioRef.current) {
+      audioRef.current = new Audio(audioUrl)
+      audioRef.current.onended = () => setPlaying(false)
+    }
+    audioRef.current.play(); setPlaying(true)
+  }
+
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+
+  return (
+    <div>
+      {pending ? (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 space-y-2.5">
+          <p className="text-xs font-semibold text-amber-700">🎧 Listen back, then send it.</p>
+          <audio controls src={pending.url} className="w-full h-9" />
+          <div className="flex items-center gap-2">
+            <button onClick={sendPending} disabled={uploading} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 disabled:opacity-50">
+              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              {uploading ? 'Sending…' : 'Send'}
+            </button>
+            <button onClick={discardPending} disabled={uploading} className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-ink disabled:opacity-50">
+              <Trash2 className="w-3 h-3" /> Discard
+            </button>
+          </div>
+        </div>
+      ) : audioUrl ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={togglePlay} className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700">
+            {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+          </button>
+          <span className="text-xs font-semibold text-green-600">✓ Recorded</span>
+          <button onClick={() => { setAudioUrl(null); audioRef.current = null; setPlaying(false); start() }} disabled={uploading} className="text-xs text-muted hover:text-ink inline-flex items-center gap-1">
+            <RotateCcw className="w-3 h-3" /> Re-record
+          </button>
+        </div>
+      ) : recording ? (
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-red-600">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> {fmt(seconds)}
+          </span>
+          <button onClick={stop} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-semibold hover:bg-red-600">
+            <Square className="w-3 h-3" /> Stop
+          </button>
+        </div>
+      ) : (
+        <button onClick={start} disabled={uploading} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 disabled:opacity-50">
+          <Mic className="w-3.5 h-3.5" /> Record answer
+        </button>
+      )}
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+    </div>
+  )
+}

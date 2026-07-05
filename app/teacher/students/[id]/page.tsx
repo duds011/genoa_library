@@ -6,8 +6,9 @@ import StudentProgressChart from '@/components/teacher/StudentProgressChart'
 import VocabLevelBreakdown from '@/components/student/VocabLevelBreakdown'
 import ResetPasswordButton from '@/components/teacher/ResetPasswordButton'
 import UpdateEmailButton from '@/components/teacher/UpdateEmailButton'
-import { PenLine, BookOpen, ArrowLeft } from 'lucide-react'
+import { PenLine, BookOpen, ArrowLeft, FileText, Clock } from 'lucide-react'
 import DeleteLessonButton from '@/components/teacher/DeleteLessonButton'
+import BuildTestButton from '@/components/teacher/BuildTestButton'
 
 const MILESTONES = [1, 5, 10, 25, 50]
 const MILESTONE_EMOJIS = ['🌱', '🌸', '🌿', '⭐', '🏆']
@@ -40,6 +41,13 @@ export default async function StudentDetailPage({
 
   const published = (lessons || []).filter((l: any) => l.status === 'published')
   const drafts    = (lessons || []).filter((l: any) => l.status === 'draft')
+
+  // Tests built for this student
+  const { data: tests } = await supabase
+    .from('tests')
+    .select('id, title, status, duration_minutes, lesson_numbers, created_at')
+    .eq('student_id', params.id)
+    .order('created_at', { ascending: false })
 
   // Find which lessons have unreviewed homework or audio submissions
   const lessonIds = (lessons || []).map((l: any) => l.id)
@@ -128,6 +136,10 @@ export default async function StudentDetailPage({
             {drafts.length > 0 && (
               <span className="badge-draft">{drafts.length} draft{drafts.length > 1 ? 's' : ''} pending</span>
             )}
+            <BuildTestButton
+              studentId={student.id}
+              lessons={published.map((l: any) => ({ id: l.id, lesson_number: l.lesson_number, title: l.title, lesson_date: l.lesson_date }))}
+            />
             <UpdateEmailButton studentId={student.id} currentEmail={student.email} />
             {student.profile_id && <ResetPasswordButton studentId={student.id} />}
           </div>
@@ -217,6 +229,33 @@ export default async function StudentDetailPage({
             : '🏆 Maximum milestone reached!'}
         </p>
       </div>
+
+      {/* Tests */}
+      {(tests?.length ?? 0) > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="w-4 h-4 text-brand-600" />
+            <h2 className="section-title">Tests</h2>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {(tests || []).map((t: any) => (
+              <Link key={t.id} href={`/teacher/tests/${t.id}`} className="card p-5 hover:border-brand-200 hover:shadow-md transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-[10px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 ${t.status === 'published' ? 'text-green-600 bg-green-50 border border-green-100' : 'text-orange-600 bg-orange-50 border border-orange-100'}`}>
+                    {t.status === 'published' ? 'Published' : 'Draft'}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-xs text-muted"><Clock className="w-3.5 h-3.5" /> {t.duration_minutes} min</span>
+                </div>
+                <p className="font-semibold text-ink">{t.title}</p>
+                {t.lesson_numbers?.length > 0 && (
+                  <p className="text-xs text-muted mt-0.5">Covers lessons {t.lesson_numbers.join(', ')}</p>
+                )}
+                <span className="btn-ghost text-xs mt-3 -ml-1 inline-flex">Review & grade →</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Pending drafts */}
       {drafts.length > 0 && (

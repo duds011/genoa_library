@@ -42,6 +42,14 @@ export default async function StudentDashboard() {
     .eq('status', 'published')
     .order('lesson_number', { ascending: false })
 
+  // Published tests + this student's attempt state
+  const { data: tests } = await supabase
+    .from('tests')
+    .select('id, title, duration_minutes, lesson_numbers, created_at, test_attempts ( started_at, submitted_at )')
+    .eq('student_id', student.id)
+    .eq('status', 'published')
+    .order('created_at', { ascending: false })
+
   const lessonCount = (lessons || []).reduce((max: number, l: any) => Math.max(max, l.lesson_number ?? 0), 0)
   const scores = (lessons || []).map((l: any) => l.lesson_summaries?.score).filter(Boolean)
   const latestScore = scores[0] ?? null
@@ -226,6 +234,48 @@ export default async function StudentDashboard() {
             }
           })}
         />
+      )}
+
+      {/* Tests / Evaluations */}
+      {(tests?.length ?? 0) > 0 && (
+        <section>
+          <h2 className="text-sm font-bold text-ink mb-3 uppercase tracking-wide">Your Tests</h2>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {(tests || []).map((t: any) => {
+              const attempt = Array.isArray(t.test_attempts) ? t.test_attempts[0] : t.test_attempts
+              const submitted = !!attempt?.submitted_at
+              const inProgress = !!attempt?.started_at && !submitted
+              return (
+                <Link
+                  key={t.id}
+                  href={`/student/tests/${t.id}`}
+                  className="card p-5 flex flex-col gap-3 hover:border-brand-200 hover:shadow-md transition-all"
+                  style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f6f5ff 100%)' }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="badge-brand text-xs">📝 Test</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 ${
+                      submitted ? 'text-green-600 bg-green-50 border border-green-100'
+                      : inProgress ? 'text-orange-600 bg-orange-50 border border-orange-100'
+                      : 'text-brand-600 bg-brand-50 border border-indigo-100'
+                    }`}>
+                      {submitted ? 'Submitted' : inProgress ? 'In progress' : 'Not started'}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-ink text-base leading-snug">{t.title}</h3>
+                    <p className="text-xs text-muted mt-0.5">
+                      ⏱️ {t.duration_minutes} min{t.lesson_numbers?.length > 0 ? ` • Lessons ${t.lesson_numbers.join(', ')}` : ''}
+                    </p>
+                  </div>
+                  <button className="btn-primary w-full justify-center mt-auto">
+                    {submitted ? 'View results →' : inProgress ? 'Resume test →' : 'Start test →'}
+                  </button>
+                </Link>
+              )
+            })}
+          </div>
+        </section>
       )}
 
       {/* Lessons */}
