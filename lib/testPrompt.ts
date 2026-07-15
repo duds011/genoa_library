@@ -33,26 +33,6 @@ export interface GeneratedTest {
 export const FOCUS_MAX = 500
 export const ALL_SECTIONS = ['speaking', 'reading', 'grammar']
 
-/**
- * Wraps a scene description from the test AI in the house style.
- *
- * The style and the no-text rule live here rather than in the test prompt so
- * every image matches, and so the ban can't be forgotten one generation in
- * three. Text is banned outright: image models render Japanese as convincing
- * gibberish, and gibberish inside a Japanese exam is worse than no picture.
- */
-export function imagePromptFor(scene: string): string {
-  return [
-    'A clean, friendly flat vector illustration for a Japanese language exam.',
-    `Scene: ${scene.trim()}`,
-    'Style: soft indigo and purple palette, warm off-white background, simple rounded shapes,',
-    'generous negative space, uncluttered composition, gentle and welcoming.',
-    'Every object must be instantly recognisable on its own without any label.',
-    'ABSOLUTELY NO text, letters, words, numbers, price tags, signage, labels, captions or writing',
-    'of any kind anywhere in the image.',
-  ].join(' ')
-}
-
 const clamp = (n: number, lo: number, hi: number) => Math.min(Math.max(n, lo), hi)
 
 /**
@@ -139,20 +119,6 @@ Shape the test around it: choose the situations, vocabulary and tasks from the l
 This steers WHICH lesson material you pick and how you frame it — it does NOT license new material. Everything must still come from the lessons below. If the focus asks for something the lessons never covered, get as close as the lessons allow and stay within them. Never invent vocabulary or grammar the student has not studied.`
     : ''
 
-  // Pictures are only worth it where the picture IS the task. "How old are
-  // you?" gains nothing from an illustration; "describe this scene" cannot work
-  // without one.
-  const imageInstruction = `PICTURES — a few questions are illustrated. Add an "image_scene" to "data" ONLY on these:
-${options.sections.includes('reading') ? '- The ONE "reading_passage": a scene showing the setting the passage takes place in.\n' : ''}${options.sections.includes('speaking') ? '- EXACTLY 1 or 2 "speak" questions, and no more. Make these picture-description tasks: the student looks at the scene and talks about it (what is there, what it costs, whose it is, what the people are doing). Word the "prompt"/"prompt_jp" so it only makes sense with the picture, e.g. "えに なにが ありますか。" — and the scene must contain what you ask about.\n' : ''}
-"image_scene" is a SHORT English description of what to draw — objects, people, setting. Rules:
-- Only things from the lessons below. If the lessons covered a shop and prices, draw a shop; do not invent a train station.
-- Concrete and countable: name the objects plainly ("a wristwatch, a folded umbrella, a shoulder bag on a shop counter"). The student has to be able to name what they see.
-- Describe ONLY the scene. No style, no colours, no "illustration of" — that is added separately.
-- NEVER ask for text, signs, price tags, numbers or writing in the scene. The picture must carry meaning through objects alone.
-- Every other question must have NO "image_scene".
-
-`
-
   const coverageInstruction = `COVERAGE — the test must reflect the lessons the teacher picked (${lessonNumbers.join(', ')}):
 - Draw on ALL of these lessons, not just the most recent. Every lesson listed must be the source of at least one question.
 - Spread the questions roughly evenly across them; later lessons can carry the harder material.
@@ -168,7 +134,6 @@ ${focusInstruction}
 
 ${coverageInstruction}
 
-${imageInstruction}
 ${scriptInstruction}
 
 NO ENGLISH TRANSLATIONS — this is a test, not a study sheet:
@@ -196,7 +161,6 @@ Return ONLY valid JSON (no markdown) matching exactly this shape:
       "lesson_number": number,     // which lesson this question draws from — one of: ${lessonNumbers.join(', ')}
       "data": {
         // every type also takes "hint"?: string — a short English nudge, revealed only if the student asks. Never a translation, never the answer.
-        // "image_scene"?: string — ONLY on the reading_passage and 1-2 picture-description "speak" questions. See PICTURES above.
         // "speak":           { "prompt_jp"?: string, "prompt_romaji"?: string, "hint"?: string }
         // "read_aloud":      { "focus"?: string, "sentences": [ { "jp": string, "romaji"?: string } ], "hint"?: string }
         // "reading_passage": { "text": string, "script": "romaji" | "hiragana", "romaji"?: string }

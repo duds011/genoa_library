@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import {
   buildTestPrompt,
-  imagePromptFor,
   stripTranslations,
   testShape,
   FOCUS_MAX,
@@ -105,35 +104,20 @@ export async function buildTest(input: {
   }
 
   const validSections = ['speaking', 'reading', 'grammar']
-
-  // Illustrated questions are capped here rather than trusted to the prompt:
-  // each picture is a slow background job, and the model will happily decide
-  // that all nine speaking questions deserve one.
-  const MAX_IMAGES = 3
-  let imagesQueued = 0
-
-  const rows = generated.questions.map((q, i) => {
-    const scene = typeof q.data?.image_scene === 'string' ? q.data.image_scene.trim() : ''
-    const wantsImage = scene.length > 0 && imagesQueued < MAX_IMAGES
-    if (wantsImage) imagesQueued++
-
-    return {
-      test_id: test.id,
-      section: validSections.includes(q.section ?? '') ? q.section : 'general',
-      type: q.type,
-      prompt: q.prompt,
-      // Which lesson the question came from rides along in data (no column for
-      // it), so Noa can see the test really does span the lessons she picked.
-      data: {
-        ...(q.data ?? {}),
-        ...(lessonNumbers.includes(q.lesson_number as number) ? { lesson_number: q.lesson_number } : {}),
-      },
-      points: q.points ?? 1,
-      sort_order: i,
-      image_prompt: wantsImage ? imagePromptFor(scene) : null,
-      image_status: wantsImage ? 'pending' : 'none',
-    }
-  })
+  const rows = generated.questions.map((q, i) => ({
+    test_id: test.id,
+    section: validSections.includes(q.section ?? '') ? q.section : 'general',
+    type: q.type,
+    prompt: q.prompt,
+    // Which lesson the question came from rides along in data (no column for
+    // it), so Noa can see the test really does span the lessons she picked.
+    data: {
+      ...(q.data ?? {}),
+      ...(lessonNumbers.includes(q.lesson_number as number) ? { lesson_number: q.lesson_number } : {}),
+    },
+    points: q.points ?? 1,
+    sort_order: i,
+  }))
 
   const { error: qErr } = await supabase.from('test_questions').insert(rows)
   if (qErr) {
