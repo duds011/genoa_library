@@ -94,6 +94,9 @@ Always include romaji — never leave a Japanese phrase without its romaji readi
     speaking: `"speaking": ${perPart} substantial questions of type "speak" and/or "read_aloud". Make this part meaty.
 - Each "read_aloud" carries 5 to 7 full sentences (not words or fragments), long enough to test rhythm and connected speech.
 - Each "speak" asks for a real spoken answer of 3 to 5 sentences — describe your day, compare two things, explain why, tell a short story, role-play a conversation turn. Never a one-word answer.
+- CRITICAL: a "speak" question must give the student something they can actually say. "prompt_jp" must be a genuine question (ending in か or ？) or an explicit role-play instruction that names the situation and their part in it.
+  NEVER put a bare command, request or statement in "prompt_jp" — there is nothing to answer and the student just freezes. WRONG: "あなたのがくせいしょうをみせてください。" (please show your student ID). RIGHT: "なんねんせいですか。" or a role-play like "You are at a shop. Ask how much the watch costs, then ask if they have a cheaper one."
+  To test a request form such as ～ください, frame it as a role-play that makes the student produce the request — never as a sentence with nothing to answer.
 - Include at least two "read_aloud"; the rest are "speak".`,
     reading: `"reading": a reading-comprehension block.
 - Start with ONE "reading_passage" question containing a SUBSTANTIAL passage of about ${passageSentences} sentences — a connected story or description with a beginning, middle and end, not a list of unrelated sentences.

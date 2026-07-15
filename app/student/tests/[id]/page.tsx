@@ -3,7 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Clock, FileText } from 'lucide-react'
 import TestRunner from '@/components/student/TestRunner'
-import { groupBySection } from '@/lib/utils'
+import { groupBySection, testScore } from '@/lib/utils'
 import type { TestQuestion, TestSubmission } from '@/lib/types'
 
 const TYPE_LABEL: Record<string, string> = {
@@ -53,10 +53,11 @@ export default async function StudentTestPage({
   // Already submitted → show read-only results with teacher feedback
   if (attempt?.submitted_at) {
     const subByQ = new Map(subs.map(s => [s.question_id, s]))
-    const graded = subs.filter(s => s.score != null)
-    const totalScore = graded.reduce((sum, s) => sum + Number(s.score), 0)
-    const maxScore = questions.reduce((sum, q) => sum + (q.points ?? 1), 0)
-    const anyGraded = graded.length > 0
+    // Multiple-choice and fill-in answers are marked the moment they're saved,
+    // but speaking and writing wait on Noa. Showing a bare "12 / 26" straight
+    // after submitting reads as a bad mark when really half of it is unmarked.
+    const { score, maxScore, awaiting } = testScore(questions, subs)
+    const anyGraded = score > 0 || subs.some(s => s.score != null)
 
     return (
       <div className="space-y-4">
@@ -66,15 +67,26 @@ export default async function StudentTestPage({
             <FileText className="w-5 h-5 text-brand-600" /> {test.title}
           </h1>
           <p className="text-sm text-muted mt-1">You submitted this test.</p>
-          {anyGraded && (
-            <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-2 text-sm font-bold text-emerald-700">
-              Score: {totalScore} / {maxScore}
-            </div>
-          )}
-          {!anyGraded && (
+
+          {!anyGraded ? (
             <p className="mt-3 text-sm text-brand-600 bg-brand-50 rounded-xl px-4 py-2 inline-block">
               ⏳ Your teacher is reviewing your answers.
             </p>
+          ) : awaiting > 0 ? (
+            <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
+              <p className="text-sm font-bold text-amber-800">
+                So far: {score} / {maxScore} — not your final score yet
+              </p>
+              <p className="text-xs text-amber-700 mt-1">
+                Only the multiple-choice and fill-in-the-blank answers are marked automatically.
+                Noa still has {awaiting} answer{awaiting !== 1 ? 's' : ''} to mark by hand — your speaking
+                and writing. Your score will go up as she marks them.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-2 text-sm font-bold text-emerald-700">
+              Final score: {score} / {maxScore}
+            </div>
           )}
         </div>
 
@@ -111,7 +123,11 @@ export default async function StudentTestPage({
                     <div className="flex items-center gap-2 mb-2">
                       {!isPassage && <span className="text-xs font-bold text-ink bg-gray-100 rounded-full w-6 h-6 inline-flex items-center justify-center">{n}</span>}
                       <span className="text-[11px] font-bold text-brand-600 bg-brand-50 border border-indigo-100 rounded-full px-2.5 py-0.5">{TYPE_LABEL[q.type] ?? q.type}</span>
-                      {s?.score != null && !isPassage && <span className="text-[11px] font-bold text-emerald-600">{s.score}/{q.points}</span>}
+                      {!isPassage && (
+                        s?.score != null
+                          ? <span className="text-[11px] font-bold text-emerald-600">{s.score}/{q.points}</span>
+                          : <span className="text-[11px] font-semibold text-amber-600">Noa still to mark</span>
+                      )}
                     </div>
 
                     {isPassage ? (

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Clock, Loader2, Mic, Square, Send, Trash2, RotateCcw, Play, Pause, Sparkles, CheckCircle2, Lightbulb } from 'lucide-react'
+import { Clock, Loader2, Mic, Square, Send, RotateCcw, Sparkles, CheckCircle2, Lightbulb } from 'lucide-react'
 import { startTestAttempt, saveWrittenAnswer, saveChoiceAnswer, submitTest } from '@/app/actions/tests'
 import type { TestQuestion, TestSubmission } from '@/lib/types'
 import { groupBySection } from '@/lib/utils'
@@ -174,7 +174,9 @@ function StartedTest({
       {/* Submit bar */}
       <div className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t border-gray-100 px-4 py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-          <span className="text-xs text-muted hidden sm:block">Your written answers save automatically.</span>
+          <span className="text-xs text-muted hidden sm:block">
+            Every answer saves as you go — recordings too. Submit once you&apos;re done.
+          </span>
           <button
             onClick={() => { if (confirm('Submit your test? You will not be able to change your answers afterwards.')) onSubmit() }}
             disabled={submitting}
@@ -410,6 +412,13 @@ function extForType(type: string): string {
   return 'webm'
 }
 
+// Recording saves itself the moment the student stops. There is no per-answer
+// "send": they record, listen back, re-record if they want, and submit the whole
+// test once at the end.
+//
+// The upload still happens per answer rather than being held in memory until
+// submit — the test auto-submits when the timer runs out, and a tab crash or a
+// refresh would otherwise take every recording with it.
 function TestAudioAnswer({
   testId, questionId, studentId, initial,
 }: {
@@ -419,46 +428,39 @@ function TestAudioAnswer({
   initial?: TestSubmission
 }) {
   const supabase = createClient()
-  const [audioUrl, setAudioUrl] = useState<string | null>(initial?.audio_url ?? null)
+  const [savedUrl, setSavedUrl] = useState<string | null>(initial?.audio_url ?? null)
+  const [localUrl, setLocalUrl] = useState<string | null>(null)
   const [recording, setRecording] = useState(false)
   const [seconds, setSeconds] = useState(0)
-  const [uploading, setUploading] = useState(false)
-  const [playing, setPlaying] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [pending, setPending] = useState<{ url: string; file: File } | null>(null)
 
   const recRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  // Held so a failed upload can be retried without making them record again.
+  const lastFileRef = useRef<File | null>(null)
 
-  function discardPending() {
-    setPending(prev => { if (prev) URL.revokeObjectURL(prev.url); return null })
-  }
-
-  async function sendPending() {
-    if (!pending) return
-    setUploading(true); setError('')
+  async function save(file: File) {
+    setSaving(true); setError('')
     try {
-      const ext = pending.file.name.split('.').pop() ?? 'webm'
+      const ext = file.name.split('.').pop() ?? 'webm'
       const path = `tests/${testId}/q-${questionId}-${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage.from('student-audio').upload(path, pending.file)
-      if (upErr) { setError(`Upload failed: ${upErr.message}`); return }
+      const { error: upErr } = await supabase.storage.from('student-audio').upload(path, file)
+      if (upErr) { setError('Could not save that recording.'); return }
       const { data: { publicUrl } } = supabase.storage.from('student-audio').getPublicUrl(path)
       const { error: insErr } = await supabase
         .from('test_submissions')
         .upsert(
-          { test_id: testId, question_id: questionId, student_id: studentId, audio_url: publicUrl, file_name: pending.file.name },
+          { test_id: testId, question_id: questionId, student_id: studentId, audio_url: publicUrl, file_name: file.name },
           { onConflict: 'question_id,student_id' },
         )
-      if (insErr) { setError(`Could not save your recording: ${insErr.message}`); return }
-      setAudioUrl(publicUrl)
-      audioRef.current = null; setPlaying(false)
-      discardPending()
-    } catch (e: any) {
-      setError(e?.message ?? 'Something went wrong sending your recording.')
+      if (insErr) { setError('Could not save that recording.'); return }
+      setSavedUrl(publicUrl)
+    } catch {
+      setError('Could not save that recording.')
     } finally {
-      setUploading(false)
+      setSaving(false)
     }
   }
 
@@ -475,7 +477,9 @@ function TestAudioAnswer({
         const type = rec.mimeType || mime || 'audio/webm'
         const blob = new Blob(chunksRef.current, { type })
         const file = new File([blob], `recording-${Date.now()}.${extForType(type)}`, { type })
-        setPending({ url: URL.createObjectURL(file), file })
+        lastFileRef.current = file
+        setLocalUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file) })
+        save(file)
       }
       rec.start(1000)
       recRef.current = rec
@@ -493,55 +497,48 @@ function TestAudioAnswer({
     setRecording(false); setSeconds(0)
   }
 
-  function togglePlay() {
-    if (!audioUrl) return
-    if (playing) { audioRef.current?.pause(); setPlaying(false); return }
-    if (!audioRef.current) {
-      audioRef.current = new Audio(audioUrl)
-      audioRef.current.onended = () => setPlaying(false)
-    }
-    audioRef.current.play(); setPlaying(true)
-  }
-
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  const playable = localUrl ?? savedUrl
+
+  if (recording) {
+    return (
+      <div className="flex items-center gap-3">
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-red-600">
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> {fmt(seconds)}
+        </span>
+        <button onClick={stop} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-semibold hover:bg-red-600">
+          <Square className="w-3 h-3" /> Stop
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div>
-      {pending ? (
-        <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 space-y-2.5">
-          <p className="text-xs font-semibold text-amber-700">🎧 Listen back, then send it.</p>
-          <audio controls src={pending.url} className="w-full h-9" />
-          <div className="flex items-center gap-2">
-            <button onClick={sendPending} disabled={uploading} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 disabled:opacity-50">
-              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              {uploading ? 'Sending…' : 'Send'}
-            </button>
-            <button onClick={discardPending} disabled={uploading} className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-ink disabled:opacity-50">
-              <Trash2 className="w-3 h-3" /> Discard
+      {playable ? (
+        <div className="space-y-2">
+          <audio controls src={playable} className="w-full h-9" />
+          <div className="flex items-center gap-3 flex-wrap">
+            {saving ? (
+              <span className="text-xs text-muted inline-flex items-center gap-1.5">
+                <Loader2 className="w-3 h-3 animate-spin" /> Saving…
+              </span>
+            ) : error ? (
+              <button onClick={() => lastFileRef.current && save(lastFileRef.current)} className="text-xs font-semibold text-red-600 hover:underline">
+                Try saving again
+              </button>
+            ) : (
+              <span className="text-xs font-semibold text-green-600 inline-flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Saved
+              </span>
+            )}
+            <button onClick={start} disabled={saving} className="text-xs text-muted hover:text-ink inline-flex items-center gap-1 disabled:opacity-50">
+              <RotateCcw className="w-3 h-3" /> Record again
             </button>
           </div>
         </div>
-      ) : audioUrl ? (
-        <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={togglePlay} className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700">
-            {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
-          </button>
-          <span className="text-xs font-semibold text-green-600">✓ Recorded</span>
-          <button onClick={() => { setAudioUrl(null); audioRef.current = null; setPlaying(false); start() }} disabled={uploading} className="text-xs text-muted hover:text-ink inline-flex items-center gap-1">
-            <RotateCcw className="w-3 h-3" /> Re-record
-          </button>
-        </div>
-      ) : recording ? (
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-red-600">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> {fmt(seconds)}
-          </span>
-          <button onClick={stop} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-semibold hover:bg-red-600">
-            <Square className="w-3 h-3" /> Stop
-          </button>
-        </div>
       ) : (
-        <button onClick={start} disabled={uploading} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 disabled:opacity-50">
+        <button onClick={start} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700">
           <Mic className="w-3.5 h-3.5" /> Record answer
         </button>
       )}
