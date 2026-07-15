@@ -2,34 +2,22 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { TestQuestionType } from '@/lib/types'
+import {
+  buildTestPrompt,
+  stripTranslations,
+  testShape,
+  FOCUS_MAX,
+  ALL_SECTIONS,
+  SUPPORTED_TYPES,
+  type BuildTestOptions,
+  type GeneratedTest,
+  type TestScript,
+} from '@/lib/testPrompt'
+import { notifyStudentTestPublished, notifyTeacherOfSubmission } from '@/app/actions/notifications'
 
-interface GeneratedQuestion {
-  section?: string
-  type: TestQuestionType
-  prompt: string
-  points?: number
-  data?: any
-}
-
-interface GeneratedTest {
-  title: string
-  instructions: string
-  questions: GeneratedQuestion[]
-}
+export type { BuildTestOptions, TestScript }
 
 // ─── Teacher: build a test from selected lessons via OpenAI ──────────────────
-
-// Parts are long (a 8-12 sentence passage, 5-6 speaking answers), so the test
-// needs more room than the original 45 minutes. Noa can still edit it per test.
-const TEST_DURATION_MINUTES = 60
-
-export type TestScript = 'romaji' | 'hiragana' | 'kanji'
-
-export interface BuildTestOptions {
-  script: TestScript
-  sections: string[]   // any of 'speaking' | 'reading' | 'grammar'
-}
 
 export async function buildTest(input: {
   studentId: string
@@ -78,17 +66,19 @@ export async function buildTest(input: {
   const lessonNumbers = lessons.map((l: any) => l.lesson_number).filter((n: any) => n != null)
 
   // Normalise build options (script + which parts to include)
-  const allSections = ['speaking', 'reading', 'grammar']
+  const allSections = ALL_SECTIONS
   const script: TestScript = ['romaji', 'hiragana', 'kanji'].includes(input.options?.script as string)
     ? (input.options!.script)
     : 'hiragana'
   let sections = (input.options?.sections ?? allSections).filter(s => allSections.includes(s))
   if (sections.length === 0) sections = allSections
-  const options: BuildTestOptions = { script, sections }
+  const focus = (input.options?.focus ?? '').trim().slice(0, FOCUS_MAX)
+  const options: BuildTestOptions = { script, sections, ...(focus ? { focus } : {}) }
+  const shape = testShape(lessons.length)
 
   let generated: GeneratedTest
   try {
-    generated = await generateTestWithAI(student, lessons, options)
+    generated = await generateTestWithAI(student, lessons, options, lessonNumbers)
   } catch (e: any) {
     return { success: false, error: e?.message ?? 'AI generation failed.' }
   }
@@ -102,7 +92,7 @@ export async function buildTest(input: {
       title: generated.title || `Progress Test — Lessons ${lessonNumbers.join(', ')}`,
       instructions: generated.instructions || null,
       status: 'draft',
-      duration_minutes: TEST_DURATION_MINUTES,
+      duration_minutes: shape.durationMinutes,
       lesson_numbers: lessonNumbers,
       config: options,
     })
@@ -119,7 +109,12 @@ export async function buildTest(input: {
     section: validSections.includes(q.section ?? '') ? q.section : 'general',
     type: q.type,
     prompt: q.prompt,
-    data: q.data ?? {},
+    // Which lesson the question came from rides along in data (no column for
+    // it), so Noa can see the test really does span the lessons she picked.
+    data: {
+      ...(q.data ?? {}),
+      ...(lessonNumbers.includes(q.lesson_number as number) ? { lesson_number: q.lesson_number } : {}),
+    },
     points: q.points ?? 1,
     sort_order: i,
   }))
@@ -138,100 +133,12 @@ async function generateTestWithAI(
   student: { full_name: string; level: string; language: string },
   lessons: any[],
   options: BuildTestOptions,
+  lessonNumbers: number[],
 ): Promise<GeneratedTest> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) throw new Error('OPENAI_API_KEY is not configured.')
 
-  const material = lessons.map((l: any) => {
-    const vocab = (l.vocabulary_items ?? [])
-      .map((v: any) => `- ${v.word}${v.reading ? ` (${v.reading})` : ''}: ${v.definition ?? ''}${v.example_sentence ? ` — e.g. ${v.example_sentence}` : ''}`)
-      .join('\n')
-    const sections = (l.lesson_sections ?? [])
-      .map((s: any) => `  ${s.title ? s.title + ': ' : ''}${s.content ?? ''}`)
-      .join('\n')
-    return [
-      `## Lesson ${l.lesson_number}${l.title ? ` — ${l.title}` : ''}`,
-      l.lesson_summaries?.recap ? `Recap: ${l.lesson_summaries.recap}` : '',
-      sections ? `Content:\n${sections}` : '',
-      vocab ? `Vocabulary:\n${vocab}` : '',
-    ].filter(Boolean).join('\n')
-  }).join('\n\n')
-
-  const system = `You are an expert ${student.language} language examiner. You design fair, well-calibrated progress tests that evaluate a student across the specific lessons they have studied. You only test material that appears in the provided lesson content.`
-
-  const scriptInstruction = {
-    romaji: `SCRIPT — BEGINNER (hiragana + romaji): The student is a beginner still learning to read kana, so EVERY Japanese phrase must be shown in hiragana AND with a full romaji reading so they can read it. Never use kanji.
-- For "speak": put the hiragana in "prompt_jp" and its romaji reading in "prompt_romaji".
-- For "read_aloud": every sentence object has "jp" (hiragana) AND "romaji".
-- For "reading_passage": put the hiragana passage in "text", set "script" to "hiragana", and put the FULL romaji reading of the passage in "romaji".
-- For "multiple_choice": put the hiragana question in "question" and its romaji reading in "question_romaji".
-- For every "multiple_choice"/"fill_blank" option and answer that contains Japanese, write the hiragana followed by its romaji in parentheses, e.g. がくせい (gakusei).
-Always include romaji — never leave a Japanese phrase without its romaji reading.`,
-    hiragana: `SCRIPT: Write ALL Japanese in hiragana (use katakana only where a word is normally katakana). Do NOT use kanji and do NOT use rōmaji anywhere. For "reading_passage", set "script" to "hiragana".`,
-    kanji: `SCRIPT: Write Japanese using normal hiragana/katakana plus basic kanji. Immediately after each kanji word, give its hiragana reading in parentheses, e.g. 学校(がっこう). Do not use rōmaji. For "reading_passage", set "script" to "hiragana".`,
-  }[options.script]
-
-  const sectionSpecs: Record<string, string> = {
-    speaking: `"speaking": 5 to 6 substantial questions of type "speak" and/or "read_aloud". Make this part meaty — it should take the student 12-15 minutes.
-- Each "read_aloud" carries 5 to 7 full sentences (not words or fragments), long enough to test rhythm and connected speech.
-- Each "speak" asks for a real spoken answer of 3 to 5 sentences — describe your day, compare two things, explain why, tell a short story, role-play a conversation turn. Never a one-word answer.
-- Include at least two "read_aloud" and at least three "speak" questions.`,
-    reading: `"reading": a reading-comprehension block that should take the student 15-20 minutes.
-- Start with ONE "reading_passage" question containing a SUBSTANTIAL passage of 8 to 12 sentences (roughly 150-250 Japanese characters) — a connected story or description with a beginning, middle and end, not a list of unrelated sentences.
-- Then 5 to 6 "multiple_choice" comprehension questions. Each "question" MUST be a genuine question that the student answers by reading the passage (e.g. "メアリーさんは なんねんせいですか。" = what year student is Mary?, what time, who, how many, where, why). Do NOT just restate a sentence from the passage as the stem — it must be an actual question, ending in か or a question mark. The options are plausible answers to that question. Spread the questions across the whole passage, and make at least one require joining two facts together.
-- Then ONE "written" question: a writing task of 3 to 4 sentences responding to the passage.`,
-    grammar: `"grammar": 5 to 7 grammar questions of type "multiple_choice" and/or "fill_blank", progressing from easier to harder.`,
-  }
-  const partsList = options.sections
-    .map((s, i) => `PART ${i + 1} — ${sectionSpecs[s]}`)
-    .join('\n')
-  const sectionOrder = options.sections.join(', then ')
-
-  const user = `Build a ${student.language} progress test for a ${student.level} student named ${student.full_name}.
-
-The test is completable in about ${TEST_DURATION_MINUTES} minutes. Every question has a "section" field. Build ONLY these parts, in this order:
-${partsList}
-
-${scriptInstruction}
-
-NO ENGLISH TRANSLATIONS — this is a test, not a study sheet:
-- Never translate the Japanese for the student. No "translation" on the passage, no "en" on read_aloud sentences or fill_blank items, no "prompt_en" on speaking questions. Those fields no longer exist — do not emit them.
-- The task/prompt line and the reading options may be in English where they instruct rather than translate (e.g. "Read this passage aloud", "Answer in 3-4 sentences").
-- Instead, give every question a "hint": ONE short English nudge the student can choose to reveal if they get stuck. A hint points the way — the grammar pattern to use, where in the passage to look, the kind of answer expected. It must NEVER contain the translation or the answer itself.
-  Good hint: "Look at the second half of the passage — she says when she arrived." / "Use the ～てから pattern."
-  Bad hint: "This says 'Mary is a second-year student'." (translation) or "The answer is B." (gives it away)
-
-Rules:
-- Order the questions by section: ${sectionOrder}.
-- Only cover material from the lessons below. Progress from easier to harder.
-- Make each part as long as its spec asks — a short test is a failed test. Do not pad with filler: every question must test something real from the lessons.
-
-Return ONLY valid JSON (no markdown) matching exactly this shape:
-{
-  "title": string,
-  "instructions": string,          // short instructions for the student, mention it is a ${TEST_DURATION_MINUTES}-minute test and that hints are available if they get stuck
-  "questions": [
-    {
-      "section": "speaking" | "reading" | "grammar",
-      "type": "written" | "speak" | "read_aloud" | "reading_passage" | "multiple_choice" | "fill_blank",
-      "prompt": string,            // the question / task shown to the student
-      "points": number,            // 1-5, harder questions worth more (reading_passage = 0)
-      "data": {
-        // every type also takes "hint"?: string — a short English nudge, revealed only if the student asks. Never a translation, never the answer.
-        // "speak":           { "prompt_jp"?: string, "prompt_romaji"?: string, "hint"?: string }
-        // "read_aloud":      { "focus"?: string, "sentences": [ { "jp": string, "romaji"?: string } ], "hint"?: string }
-        // "reading_passage": { "text": string, "script": "romaji" | "hiragana", "romaji"?: string }
-        // "multiple_choice": { "question": string, "question_romaji"?: string, "options": [string, ...], "answer": number, "hint"?: string }  // answer = index of correct option; question must be a real question
-        //   for reading: a comprehension question about the passage; for grammar: a grammar/vocab question
-        // "fill_blank":      { "before": string, "after": string, "options": [string, ...], "answer": string, "hint"?: string }
-        // "written":         { "context"?: string, "reference_answer": string, "guidance"?: string, "hint"?: string }
-      }
-    }
-  ]
-}
-
-Lesson material:
-${material}`
+  const { system, user } = buildTestPrompt({ student, lessons, options, lessonNumbers })
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -270,10 +177,8 @@ ${material}`
     throw new Error('The AI did not return any questions. Try again.')
   }
 
-  // Keep only supported types
-  const supportedTypes = ['written', 'speak', 'read_aloud', 'reading_passage', 'multiple_choice', 'fill_blank']
   parsed.questions = parsed.questions.filter(
-    q => q && supportedTypes.includes(q.type) && typeof q.prompt === 'string',
+    q => q && SUPPORTED_TYPES.includes(q.type) && typeof q.prompt === 'string',
   )
   if (parsed.questions.length === 0) throw new Error('No usable questions were generated. Try again.')
 
@@ -282,26 +187,17 @@ ${material}`
   return parsed
 }
 
-// The prompt forbids English translations, but the model still slips one in now
-// and then. Drop them here so a translation can never reach the student.
-function stripTranslations(data: any): any {
-  if (!data || typeof data !== 'object') return data ?? {}
-  const { translation, prompt_en, en, ...rest } = data
-  if (Array.isArray(rest.sentences)) {
-    rest.sentences = rest.sentences.map((s: any) => {
-      const { en: _en, ...sentence } = s ?? {}
-      return sentence
-    })
-  }
-  return rest
-}
-
 // ─── Teacher: manage a test ──────────────────────────────────────────────────
 
 export async function setTestStatus(testId: string, status: 'draft' | 'published'): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Not authenticated' }
+
+  // Read the old status first so the student is only emailed when the test
+  // actually goes live, not every time Noa flicks the toggle back and forth.
+  const { data: before } = await supabase
+    .from('tests').select('status').eq('id', testId).eq('teacher_id', user.id).single()
 
   const { data: test, error } = await supabase
     .from('tests')
@@ -312,6 +208,11 @@ export async function setTestStatus(testId: string, status: 'draft' | 'published
     .single()
 
   if (error) return { success: false, error: error.message }
+
+  if (status === 'published' && before?.status !== 'published') {
+    // Not allowed to fail the publish itself.
+    await notifyStudentTestPublished(testId).catch(() => {})
+  }
   if (test?.student_id) revalidatePath(`/teacher/students/${test.student_id}`)
   revalidatePath(`/teacher/tests/${testId}`)
   return { success: true }
@@ -527,6 +428,9 @@ export async function submitTest(testId: string): Promise<{ success: boolean; er
     .eq('test_id', testId)
     .eq('student_id', student.id)
   if (error) return { success: false, error: error.message }
+
+  // Tell Noa. Never let a mail failure look like a failed submission.
+  await notifyTeacherOfSubmission({ kind: 'test', testId }).catch(() => {})
 
   revalidatePath('/student/dashboard')
   revalidatePath(`/student/tests/${testId}`)

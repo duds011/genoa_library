@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Paperclip, Upload, X } from 'lucide-react'
+import { notifyTeacherOfSubmission } from '@/app/actions/notifications'
 
 interface Submission {
   id: string
@@ -47,7 +48,11 @@ export default function HomeworkSubmitSection({ lessonId, studentId, initialSubm
         .select()
         .single()
 
-      if (data) setSubmissions(prev => [...prev, data as Submission])
+      if (data) {
+        setSubmissions(prev => [...prev, data as Submission])
+        // Tell Noa. Fire and forget — the file is already saved either way.
+        notifyTeacherOfSubmission({ kind: 'homework', lessonId }).catch(() => {})
+      }
     } finally {
       setUploading(false)
     }

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { notifyStudentOfSpeakingFeedback } from '@/app/actions/notifications'
 
 export async function sendAudioFeedback(
   submissionId: string,
@@ -42,6 +43,10 @@ export async function sendAudioFeedback(
     .eq('id', submissionId)
 
   if (error) return { success: false, error: error.message }
+
+  // Tell the student it's there. Not allowed to fail the save.
+  await notifyStudentOfSpeakingFeedback(submissionId).catch(() => {})
+
   return { success: true }
 }
 

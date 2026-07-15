@@ -37,8 +37,15 @@ export default function BuildTestButton({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [script, setScript] = useState<TestScript>('hiragana')
   const [sections, setSections] = useState<Set<string>>(new Set(['speaking', 'reading', 'grammar']))
+  const [focus, setFocus] = useState('')
   const [building, setBuilding] = useState(false)
   const [error, setError] = useState('')
+
+  // Mirrors testShape() in app/actions/tests.ts so the modal can tell Noa how
+  // big the test will be before she builds it.
+  const n = Math.max(1, selected.size)
+  const estimatedMinutes = Math.min(Math.max(30 + 10 * n, 45), 90)
+  const estimatedPerPart = Math.min(Math.max(3 + n, 4), 8)
 
   function toggleSection(v: string) {
     setSections(prev => {
@@ -69,7 +76,7 @@ export default function BuildTestButton({
     const res = await buildTest({
       studentId,
       lessonIds: Array.from(selected),
-      options: { script, sections: Array.from(sections) },
+      options: { script, sections: Array.from(sections), focus: focus.trim() },
     })
     setBuilding(false)
     if (!res.success || !res.testId) {
@@ -102,9 +109,26 @@ export default function BuildTestButton({
               </button>
             </div>
             <p className="text-xs text-muted mb-4">
-              Customize the 45-minute test for this student, then pick the lessons it should cover.
+              Pick the lessons it should cover — the more you pick, the longer the test.
               You review before it&apos;s shared.
             </p>
+
+            {/* Noa's steer */}
+            <div className="mb-4">
+              <p className="text-xs font-bold text-ink uppercase tracking-wide mb-1.5">
+                What should this test focus on? <span className="font-semibold text-muted normal-case">(optional)</span>
+              </p>
+              <textarea
+                value={focus}
+                onChange={e => setFocus(e.target.value.slice(0, 500))}
+                rows={3}
+                placeholder="e.g. He wants to be able to order food over the phone — push him on polite requests and numbers."
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+              />
+              <p className="text-[11px] text-muted mt-1">
+                The AI still builds the test from the lessons below — this just steers what it picks out of them.
+              </p>
+            </div>
 
             {/* Script */}
             <div className="mb-4">
@@ -178,6 +202,14 @@ export default function BuildTestButton({
                 </label>
               ))}
             </div>
+
+            {selected.size > 0 && (
+              <p className="text-xs text-muted mb-3 rounded-lg bg-brand-50 border border-indigo-100 px-3 py-2">
+                <strong className="text-brand-700">{selected.size} lesson{selected.size !== 1 ? 's' : ''}</strong> →
+                roughly <strong className="text-brand-700">{estimatedPerPart} questions per part</strong>, about{' '}
+                <strong className="text-brand-700">{estimatedMinutes} minutes</strong>. Every lesson you pick gets covered.
+              </p>
+            )}
 
             {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
 

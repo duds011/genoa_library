@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Loader2, Clock, FileText, Sparkles, Save, CheckCircle2, Pencil, Lightbulb } from 'lucide-react'
+import { Trash2, Loader2, Clock, FileText, Sparkles, Save, CheckCircle2, Pencil, Lightbulb, Mail } from 'lucide-react'
 import { setTestStatus, deleteTest, deleteTestQuestion, gradeTestAnswer, updateTest } from '@/app/actions/tests'
+import { sendTestResults } from '@/app/actions/notifications'
 import type { TestQuestion, TestSubmission } from '@/lib/types'
 import { groupBySection, testScore } from '@/lib/utils'
 import QuestionEditor from './QuestionEditor'
@@ -23,7 +24,7 @@ export default function TestReview({
   submissions,
   submitted,
 }: {
-  test: { id: string; title: string; instructions?: string | null; status: string; duration_minutes: number; lesson_numbers: number[]; student_id: string }
+  test: { id: string; title: string; instructions?: string | null; status: string; duration_minutes: number; lesson_numbers: number[]; student_id: string; config?: { focus?: string } | null }
   questions: TestQuestion[]
   submissions: TestSubmission[]
   submitted: boolean
@@ -159,7 +160,16 @@ export default function TestReview({
           </button>
         </div>
 
-        {submitted && <ScoreSummary questions={ordered} submissions={submissions} />}
+        {test.config?.focus && (
+          <div className="mt-3 rounded-xl border border-indigo-100 bg-brand-50 px-4 py-2.5">
+            <p className="text-[10px] font-bold text-brand-600 uppercase tracking-widest mb-0.5">You asked the AI to focus on</p>
+            <p className="text-sm text-ink whitespace-pre-line">{test.config.focus}</p>
+          </div>
+        )}
+
+        <LessonCoverage questions={ordered} lessonNumbers={test.lesson_numbers ?? []} />
+
+        {submitted && <ScoreSummary testId={test.id} questions={ordered} submissions={submissions} />}
       </div>
 
       {/* Questions grouped by part */}
@@ -183,6 +193,11 @@ export default function TestReview({
                         {TYPE_LABEL[q.type] ?? q.type}
                       </span>
                       {!isPassage && <span className="text-[11px] text-muted">{q.points} pt{q.points !== 1 ? 's' : ''}</span>}
+                      {q.data?.lesson_number != null && (
+                        <span className="text-[11px] font-semibold text-muted bg-gray-100 rounded-full px-2 py-0.5">
+                          Lesson {q.data.lesson_number}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button onClick={() => setEditingId(editingId === q.id ? null : q.id)} disabled={pending} className="text-gray-400 hover:text-brand-600" title="Edit question">
@@ -226,14 +241,67 @@ export default function TestReview({
   )
 }
 
+// How many questions came out of each lesson Noa picked. The AI is told to
+// cover all of them, so a lesson showing 0 is worth her knowing about before
+// she publishes — that is the whole point of choosing the lessons.
+function LessonCoverage({ questions, lessonNumbers }: { questions: TestQuestion[]; lessonNumbers: number[] }) {
+  if (lessonNumbers.length === 0) return null
+
+  const counts = lessonNumbers.map(n => ({
+    lesson: n,
+    count: questions.filter(q => q.data?.lesson_number === n && q.type !== 'reading_passage').length,
+  }))
+  // Older tests predate the tagging, so don't cry wolf when nothing is tagged.
+  if (counts.every(c => c.count === 0)) return null
+
+  const missing = counts.filter(c => c.count === 0)
+
+  return (
+    <div className="mt-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3">
+      <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5">Lesson coverage</p>
+      <div className="flex flex-wrap gap-1.5">
+        {counts.map(c => (
+          <span
+            key={c.lesson}
+            className={`text-xs font-semibold rounded-lg px-2.5 py-1 border ${
+              c.count === 0
+                ? 'text-orange-700 bg-orange-50 border-orange-200'
+                : 'text-ink bg-white border-gray-200'
+            }`}
+          >
+            Lesson {c.lesson}: {c.count === 0 ? 'nothing' : `${c.count} question${c.count !== 1 ? 's' : ''}`}
+          </span>
+        ))}
+      </div>
+      {missing.length > 0 && (
+        <p className="text-[11px] text-orange-700 mt-2">
+          Nothing came from lesson{missing.length !== 1 ? 's' : ''} {missing.map(m => m.lesson).join(', ')} — rebuild if that matters.
+        </p>
+      )}
+    </div>
+  )
+}
+
 // What the student scored, broken down by part. Choice questions are graded
 // automatically on submit; speaking/written wait on Noa, so the total is marked
 // provisional until she has graded everything the student answered.
-function ScoreSummary({ questions, submissions }: { questions: TestQuestion[]; submissions: TestSubmission[] }) {
+function ScoreSummary({ testId, questions, submissions }: { testId: string; questions: TestQuestion[]; submissions: TestSubmission[] }) {
   const total = testScore(questions, submissions)
   const parts = groupBySection(questions)
     .map(section => ({ ...section, ...testScore(section.items, submissions) }))
     .filter(section => section.maxScore > 0)
+
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [sendError, setSendError] = useState('')
+
+  async function send() {
+    setSending(true); setSendError('')
+    const res = await sendTestResults(testId)
+    setSending(false)
+    if (!res.ok) { setSendError(res.error ?? 'Could not send the email.'); return }
+    setSent(true)
+  }
 
   return (
     <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3.5">
@@ -266,6 +334,29 @@ function ScoreSummary({ questions, submissions }: { questions: TestQuestion[]; s
           ))}
         </div>
       )}
+
+      {/* Results go out only when she says so — she grades one answer at a time,
+          so anything automatic would email the student halfway through. */}
+      <div className="mt-3 flex items-center gap-2 flex-wrap border-t border-emerald-100 pt-3">
+        {sent ? (
+          <span className="text-xs font-semibold text-emerald-700 inline-flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Results emailed to your student
+          </span>
+        ) : (
+          <>
+            <button onClick={send} disabled={sending} className="btn-primary text-xs disabled:opacity-50">
+              {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+              {sending ? 'Sending…' : 'Send results to student'}
+            </button>
+            <span className="text-[11px] text-muted">
+              {total.awaiting > 0
+                ? `${total.awaiting} answer${total.awaiting !== 1 ? 's' : ''} still ungraded — they'd see ${total.score}/${total.maxScore}.`
+                : 'They get their score and your feedback by email.'}
+            </span>
+          </>
+        )}
+        {sendError && <span className="text-[11px] text-red-500">{sendError}</span>}
+      </div>
     </div>
   )
 }

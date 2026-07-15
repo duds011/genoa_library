@@ -15,7 +15,7 @@ export default async function TestReviewPage({
   const { data: test } = await supabase
     .from('tests')
     .select(`
-      id, title, instructions, status, duration_minutes, lesson_numbers, student_id,
+      id, title, instructions, status, duration_minutes, lesson_numbers, student_id, config,
       students ( full_name ),
       test_questions ( * )
     `)

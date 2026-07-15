@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Mic, Upload, X, Play, Pause, Square, Send, Trash2 } from 'lucide-react'
+import { notifyTeacherOfSubmission } from '@/app/actions/notifications'
 
 interface Submission {
   id: string
@@ -100,6 +101,8 @@ export default function StudentAudioSubmit({ lessonId, studentId, initialSubmiss
       if (data) {
         setSubmissions(prev => [...prev, data as Submission])
         discardPending()
+        // Tell Noa. Fire and forget — the recording is already saved.
+        notifyTeacherOfSubmission({ kind: 'audio', lessonId }).catch(() => {})
       }
     } catch (e: any) {
       setError(e?.message ?? 'Something went wrong sending your recording.')
