@@ -201,9 +201,12 @@ function QuestionBody({
 }) {
   if (q.type === 'reading_passage') {
     return (
-      <div className="rounded-lg px-4 py-3 border border-gray-100 bg-[#f8f7ff]">
-        <p className="text-base text-ink leading-relaxed whitespace-pre-line">{q.data?.text}</p>
-        {q.data?.romaji && <p className="text-sm text-brand-600 italic leading-relaxed whitespace-pre-line mt-1">{q.data.romaji}</p>}
+      <div>
+        <QuestionImage q={q} />
+        <div className="rounded-lg px-4 py-3 border border-gray-100 bg-[#f8f7ff]">
+          <p className="text-base text-ink leading-relaxed whitespace-pre-line">{q.data?.text}</p>
+          {q.data?.romaji && <p className="text-sm text-brand-600 italic leading-relaxed whitespace-pre-line mt-1">{q.data.romaji}</p>}
+        </div>
       </div>
     )
   }
@@ -247,9 +250,20 @@ function QuestionBody({
 
   return (
     <>
+      <QuestionImage q={q} />
       {body}
       <Hint text={q.data?.hint} />
     </>
+  )
+}
+
+// Only illustrated questions have one. A picture that failed to generate is
+// simply absent — the question still reads on its own.
+function QuestionImage({ q }: { q: TestQuestion }) {
+  if (q.image_status !== 'ready' || !q.image_url) return null
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={q.image_url} alt="" className="rounded-xl border border-gray-100 w-full max-w-md mb-3" />
   )
 }
 

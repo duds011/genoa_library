@@ -130,6 +130,11 @@ export default async function StudentTestPage({
                       )}
                     </div>
 
+                    {q.image_status === 'ready' && q.image_url && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={q.image_url} alt="" className="rounded-xl border border-gray-100 w-full max-w-md mb-3" />
+                    )}
+
                     {isPassage ? (
                       <div className="rounded-lg bg-[#f8f7ff] border border-gray-100 px-4 py-3">
                         <p className="text-base text-ink leading-relaxed whitespace-pre-line">{q.data?.text}</p>

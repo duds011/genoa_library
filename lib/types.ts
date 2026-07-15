@@ -103,6 +103,11 @@ export interface TestQuestion {
   points: number
   sort_order: number
   created_at: string
+  // Illustrated questions (reading passage + picture-description speaking).
+  // The picture is drawn in the background after the draft exists.
+  image_prompt?: string | null
+  image_url?: string | null
+  image_status?: 'none' | 'pending' | 'ready' | 'failed'
 }
 
 export interface TestSubmission {
