@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Clock, Loader2, Mic, Square, Send, Trash2, RotateCcw, Play, Pause, Sparkles, CheckCircle2 } from 'lucide-react'
+import { Clock, Loader2, Mic, Square, Send, Trash2, RotateCcw, Play, Pause, Sparkles, CheckCircle2, Lightbulb } from 'lucide-react'
 import { startTestAttempt, saveWrittenAnswer, saveChoiceAnswer, submitTest } from '@/app/actions/tests'
 import type { TestQuestion, TestSubmission } from '@/lib/types'
 import { groupBySection } from '@/lib/utils'
@@ -202,44 +202,75 @@ function QuestionBody({
       <div className="rounded-lg px-4 py-3 border border-gray-100 bg-[#f8f7ff]">
         <p className="text-base text-ink leading-relaxed whitespace-pre-line">{q.data?.text}</p>
         {q.data?.romaji && <p className="text-sm text-brand-600 italic leading-relaxed whitespace-pre-line mt-1">{q.data.romaji}</p>}
-        {q.data?.translation && <p className="text-xs text-muted mt-2 whitespace-pre-line">{q.data.translation}</p>}
       </div>
     )
   }
-  if (q.type === 'multiple_choice') {
-    return <ChoiceAnswer testId={testId} questionId={q.id} prompt={q.prompt} data={q.data} initial={initial?.answer_text ?? ''} />
-  }
-  if (q.type === 'fill_blank') {
-    return <FillBlankAnswer testId={testId} questionId={q.id} data={q.data} initial={initial?.answer_text ?? ''} />
-  }
-  if (q.type === 'written') {
-    return <WrittenAnswer testId={testId} questionId={q.id} data={q.data} initial={initial?.answer_text ?? ''} />
-  }
-  // speak / read_aloud
-  return (
-    <div>
-      {q.type === 'read_aloud' && (
-        <div className="mb-3">
-          {q.data?.focus && <p className="text-xs text-muted mb-1.5">Focus: {q.data.focus}</p>}
-          <div className="space-y-1.5">
-            {(q.data?.sentences ?? []).map((s: any, j: number) => (
-              <div key={j} className="bg-white rounded-lg px-3 py-2 border border-gray-100">
-                <p className="text-base text-ink">{s.jp}</p>
-                {s.romaji && <p className="text-sm text-brand-600 italic mt-0.5">{s.romaji}</p>}
-                {s.en && <p className="text-xs text-muted mt-0.5">{s.en}</p>}
-              </div>
-            ))}
+
+  const body = (() => {
+    if (q.type === 'multiple_choice') {
+      return <ChoiceAnswer testId={testId} questionId={q.id} prompt={q.prompt} data={q.data} initial={initial?.answer_text ?? ''} />
+    }
+    if (q.type === 'fill_blank') {
+      return <FillBlankAnswer testId={testId} questionId={q.id} data={q.data} initial={initial?.answer_text ?? ''} />
+    }
+    if (q.type === 'written') {
+      return <WrittenAnswer testId={testId} questionId={q.id} data={q.data} initial={initial?.answer_text ?? ''} />
+    }
+    // speak / read_aloud
+    return (
+      <div>
+        {q.type === 'read_aloud' && (
+          <div className="mb-3">
+            {q.data?.focus && <p className="text-xs text-muted mb-1.5">Focus: {q.data.focus}</p>}
+            <div className="space-y-1.5">
+              {(q.data?.sentences ?? []).map((s: any, j: number) => (
+                <div key={j} className="bg-white rounded-lg px-3 py-2 border border-gray-100">
+                  <p className="text-base text-ink">{s.jp}</p>
+                  {s.romaji && <p className="text-sm text-brand-600 italic mt-0.5">{s.romaji}</p>}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-      {q.type === 'speak' && (
-        <div className="mb-3 bg-[#f8f7ff] rounded-lg px-3 py-2.5 border border-gray-100">
-          {q.data?.prompt_jp && <p className="text-base text-ink">{q.data.prompt_jp}</p>}
-          {q.data?.prompt_romaji && <p className="text-sm text-brand-600 italic mt-0.5">{q.data.prompt_romaji}</p>}
-          {q.data?.hint && <p className="text-[11px] text-brand-500 mt-1.5">💡 {q.data.hint}</p>}
-        </div>
-      )}
-      <TestAudioAnswer testId={testId} questionId={q.id} studentId={studentId} initial={initial} />
+        )}
+        {q.type === 'speak' && (
+          <div className="mb-3 bg-[#f8f7ff] rounded-lg px-3 py-2.5 border border-gray-100">
+            {q.data?.prompt_jp && <p className="text-base text-ink">{q.data.prompt_jp}</p>}
+            {q.data?.prompt_romaji && <p className="text-sm text-brand-600 italic mt-0.5">{q.data.prompt_romaji}</p>}
+          </div>
+        )}
+        <TestAudioAnswer testId={testId} questionId={q.id} studentId={studentId} initial={initial} />
+      </div>
+    )
+  })()
+
+  return (
+    <>
+      {body}
+      <Hint text={q.data?.hint} />
+    </>
+  )
+}
+
+// A nudge the student chooses to reveal — hidden until they ask for it, so it
+// doesn't do the work for them.
+function Hint({ text }: { text?: string }) {
+  const [shown, setShown] = useState(false)
+  if (!text) return null
+
+  if (!shown) {
+    return (
+      <button
+        onClick={() => setShown(true)}
+        className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-brand-600"
+      >
+        <Lightbulb className="w-3.5 h-3.5" /> Need a hint?
+      </button>
+    )
+  }
+  return (
+    <div className="mt-2.5 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+      <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+      <p className="text-xs text-amber-800">{text}</p>
     </div>
   )
 }
@@ -350,8 +381,7 @@ function FillBlankAnswer({
         </span>
         {data?.after}
       </div>
-      {data?.en && <p className="text-xs text-muted mb-2">{data.en}</p>}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 mt-2">
         {opts.map((o, i) => (
           <button
             key={i}

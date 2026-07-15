@@ -66,6 +66,32 @@ export function groupBySection<T extends { section?: string; sort_order: number 
     .filter(s => s.items.length > 0)
 }
 
+// Roll a student's answers up into one test score. Reading passages are display
+// -only so they never count toward the total. `awaiting` is the number of
+// answered questions the teacher still has to grade by hand (speaking/written);
+// until it hits zero, `score` is only the part graded so far.
+export function testScore(
+  questions: { id: string; type: string; points?: number | null }[],
+  submissions: { question_id: string; score?: number | null }[],
+): { score: number; maxScore: number; percent: number; graded: number; awaiting: number; gradable: number } {
+  const gradable = questions.filter(q => q.type !== 'reading_passage')
+  const maxScore = gradable.reduce((sum, q) => sum + (q.points ?? 1), 0)
+
+  const gradableIds = new Set(gradable.map(q => q.id))
+  const answers = submissions.filter(s => gradableIds.has(s.question_id))
+  const graded = answers.filter(s => s.score != null)
+  const score = graded.reduce((sum, s) => sum + Number(s.score), 0)
+
+  return {
+    score,
+    maxScore,
+    percent: maxScore > 0 ? Math.round((score / maxScore) * 100) : 0,
+    graded: graded.length,
+    awaiting: answers.length - graded.length,
+    gradable: gradable.length,
+  }
+}
+
 export function getLevelEmoji(lessonCount: number): string {
   if (lessonCount < 5) return '🌱'
   if (lessonCount < 10) return '🌸'

@@ -2,10 +2,10 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Loader2, Clock, FileText, Sparkles, Save, CheckCircle2, Pencil } from 'lucide-react'
+import { Trash2, Loader2, Clock, FileText, Sparkles, Save, CheckCircle2, Pencil, Lightbulb } from 'lucide-react'
 import { setTestStatus, deleteTest, deleteTestQuestion, gradeTestAnswer, updateTest } from '@/app/actions/tests'
 import type { TestQuestion, TestSubmission } from '@/lib/types'
-import { groupBySection } from '@/lib/utils'
+import { groupBySection, testScore } from '@/lib/utils'
 import QuestionEditor from './QuestionEditor'
 
 const TYPE_LABEL: Record<string, string> = {
@@ -159,11 +159,7 @@ export default function TestReview({
           </button>
         </div>
 
-        {submitted && (
-          <div className="mt-3 rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-2.5 text-sm font-semibold text-emerald-700">
-            ✓ Student has submitted this test — grade their answers below.
-          </div>
-        )}
+        {submitted && <ScoreSummary questions={ordered} submissions={submissions} />}
       </div>
 
       {/* Questions grouped by part */}
@@ -209,6 +205,13 @@ export default function TestReview({
                       {q.type !== 'multiple_choice' && <p className="text-sm font-semibold text-ink">{q.prompt}</p>}
                       <QuestionPreview q={q} />
 
+                      {q.data?.hint && (
+                        <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 mt-2 inline-flex items-start gap-1.5">
+                          <Lightbulb className="w-3 h-3 shrink-0 mt-0.5" />
+                          <span>Hint (the student only sees this if they ask): {q.data.hint}</span>
+                        </p>
+                      )}
+
                       {/* Student's answer + grading (not for display-only passages) */}
                       {!isPassage && <AnswerGrader q={q} submission={subByQuestion.get(q.id)} points={q.points} />}
                     </>
@@ -223,6 +226,50 @@ export default function TestReview({
   )
 }
 
+// What the student scored, broken down by part. Choice questions are graded
+// automatically on submit; speaking/written wait on Noa, so the total is marked
+// provisional until she has graded everything the student answered.
+function ScoreSummary({ questions, submissions }: { questions: TestQuestion[]; submissions: TestSubmission[] }) {
+  const total = testScore(questions, submissions)
+  const parts = groupBySection(questions)
+    .map(section => ({ ...section, ...testScore(section.items, submissions) }))
+    .filter(section => section.maxScore > 0)
+
+  return (
+    <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3.5">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Student score</p>
+          <p className="text-2xl font-bold text-emerald-700 mt-0.5 tabular-nums">
+            {total.score} <span className="text-base font-semibold text-emerald-600/70">/ {total.maxScore}</span>
+            <span className="text-base font-semibold text-emerald-600/70 ml-2">{total.percent}%</span>
+          </p>
+        </div>
+        {total.awaiting > 0 ? (
+          <span className="text-xs font-semibold text-orange-700 bg-orange-100 border border-orange-200 rounded-full px-3 py-1">
+            Provisional — {total.awaiting} answer{total.awaiting !== 1 ? 's' : ''} still to grade below
+          </span>
+        ) : (
+          <span className="text-xs font-semibold text-emerald-700 bg-white border border-emerald-200 rounded-full px-3 py-1">
+            ✓ Fully graded
+          </span>
+        )}
+      </div>
+
+      {parts.length > 1 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {parts.map(p => (
+            <span key={p.key} className="text-xs font-semibold text-emerald-800 bg-white/70 border border-emerald-100 rounded-lg px-2.5 py-1">
+              {p.title}: <span className="tabular-nums">{p.score}/{p.maxScore}</span>
+              {p.awaiting > 0 && <span className="text-orange-600 font-normal"> ({p.awaiting} to grade)</span>}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function QuestionPreview({ q }: { q: TestQuestion }) {
   if (q.type === 'reading_passage') {
     return (
@@ -230,7 +277,6 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
         <span className="text-[10px] font-bold uppercase tracking-wide text-muted">{q.data?.script ?? 'text'}</span>
         <p className="text-base text-ink leading-relaxed whitespace-pre-line mt-1">{q.data?.text}</p>
         {q.data?.romaji && <p className="text-sm text-brand-600 italic leading-relaxed whitespace-pre-line mt-1">{q.data.romaji}</p>}
-        {q.data?.translation && <p className="text-xs text-muted mt-2 whitespace-pre-line">{q.data.translation}</p>}
       </div>
     )
   }
@@ -256,7 +302,6 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
         <p className="text-sm text-ink">
           {q.data?.before}<span className="font-bold text-green-700"> {q.data?.answer} </span>{q.data?.after}
         </p>
-        {q.data?.en && <p className="text-xs text-muted mt-0.5">{q.data.en}</p>}
         <p className="text-[11px] text-muted mt-1">Options: {(q.data?.options ?? []).join(' · ')}</p>
       </div>
     )
@@ -270,7 +315,6 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
             <li key={i} className="text-sm text-ink">
               {s.jp}
               {s.romaji && <span className="text-brand-600 italic text-xs"> · {s.romaji}</span>}
-              <span className="text-muted text-xs"> — {s.en}</span>
             </li>
           ))}
         </ul>
@@ -282,7 +326,6 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
       <div className="mt-2">
         {q.data?.prompt_jp && <p className="text-sm text-ink">{q.data.prompt_jp}</p>}
         {q.data?.prompt_romaji && <p className="text-xs text-brand-600 italic">{q.data.prompt_romaji}</p>}
-        {q.data?.hint && <p className="text-[11px] text-brand-500 mt-1">💡 {q.data.hint}</p>}
       </div>
     )
   }
@@ -299,6 +342,7 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
 }
 
 function AnswerGrader({ q, submission, points }: { q: TestQuestion; submission?: TestSubmission; points: number }) {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [score, setScore] = useState<string>(submission?.score != null ? String(submission.score) : '')
   const [feedback, setFeedback] = useState(submission?.teacher_feedback ?? '')
@@ -332,6 +376,7 @@ function AnswerGrader({ q, submission, points }: { q: TestQuestion; submission?:
         feedback,
       })
       setSaved(true)
+      router.refresh()   // keep the score summary at the top in step with this grade
     })
   }
 

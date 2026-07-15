@@ -20,6 +20,10 @@ interface GeneratedTest {
 
 // ─── Teacher: build a test from selected lessons via OpenAI ──────────────────
 
+// Parts are long (a 8-12 sentence passage, 5-6 speaking answers), so the test
+// needs more room than the original 45 minutes. Noa can still edit it per test.
+const TEST_DURATION_MINUTES = 60
+
 export type TestScript = 'romaji' | 'hiragana' | 'kanji'
 
 export interface BuildTestOptions {
@@ -98,7 +102,7 @@ export async function buildTest(input: {
       title: generated.title || `Progress Test — Lessons ${lessonNumbers.join(', ')}`,
       instructions: generated.instructions || null,
       status: 'draft',
-      duration_minutes: 45,
+      duration_minutes: TEST_DURATION_MINUTES,
       lesson_numbers: lessonNumbers,
       config: options,
     })
@@ -161,16 +165,22 @@ async function generateTestWithAI(
 - For "read_aloud": every sentence object has "jp" (hiragana) AND "romaji".
 - For "reading_passage": put the hiragana passage in "text", set "script" to "hiragana", and put the FULL romaji reading of the passage in "romaji".
 - For "multiple_choice": put the hiragana question in "question" and its romaji reading in "question_romaji".
-- For "hint" text, and for every "multiple_choice"/"fill_blank" option and answer that contains Japanese, write the hiragana followed by its romaji in parentheses, e.g. がくせい (gakusei).
+- For every "multiple_choice"/"fill_blank" option and answer that contains Japanese, write the hiragana followed by its romaji in parentheses, e.g. がくせい (gakusei).
 Always include romaji — never leave a Japanese phrase without its romaji reading.`,
     hiragana: `SCRIPT: Write ALL Japanese in hiragana (use katakana only where a word is normally katakana). Do NOT use kanji and do NOT use rōmaji anywhere. For "reading_passage", set "script" to "hiragana".`,
     kanji: `SCRIPT: Write Japanese using normal hiragana/katakana plus basic kanji. Immediately after each kanji word, give its hiragana reading in parentheses, e.g. 学校(がっこう). Do not use rōmaji. For "reading_passage", set "script" to "hiragana".`,
   }[options.script]
 
   const sectionSpecs: Record<string, string> = {
-    speaking: `"speaking": 3 to 4 questions of type "speak" and/or "read_aloud".`,
-    reading: `"reading": a reading-comprehension block. Start with ONE "reading_passage" question containing a short passage, then 3 to 4 "multiple_choice" comprehension questions. Each "question" MUST be a genuine question that the student answers by reading the passage (e.g. "メアリーさんは なんねんせいですか。" = what year student is Mary?, what time, who, how many, where). Do NOT just restate a sentence from the passage as the stem — it must be an actual question, ending in か or a question mark. The options are plausible answers to that question. You may also add one "written" question here (a short writing task).`,
-    grammar: `"grammar": 3 to 5 grammar questions of type "multiple_choice" and/or "fill_blank".`,
+    speaking: `"speaking": 5 to 6 substantial questions of type "speak" and/or "read_aloud". Make this part meaty — it should take the student 12-15 minutes.
+- Each "read_aloud" carries 5 to 7 full sentences (not words or fragments), long enough to test rhythm and connected speech.
+- Each "speak" asks for a real spoken answer of 3 to 5 sentences — describe your day, compare two things, explain why, tell a short story, role-play a conversation turn. Never a one-word answer.
+- Include at least two "read_aloud" and at least three "speak" questions.`,
+    reading: `"reading": a reading-comprehension block that should take the student 15-20 minutes.
+- Start with ONE "reading_passage" question containing a SUBSTANTIAL passage of 8 to 12 sentences (roughly 150-250 Japanese characters) — a connected story or description with a beginning, middle and end, not a list of unrelated sentences.
+- Then 5 to 6 "multiple_choice" comprehension questions. Each "question" MUST be a genuine question that the student answers by reading the passage (e.g. "メアリーさんは なんねんせいですか。" = what year student is Mary?, what time, who, how many, where, why). Do NOT just restate a sentence from the passage as the stem — it must be an actual question, ending in か or a question mark. The options are plausible answers to that question. Spread the questions across the whole passage, and make at least one require joining two facts together.
+- Then ONE "written" question: a writing task of 3 to 4 sentences responding to the passage.`,
+    grammar: `"grammar": 5 to 7 grammar questions of type "multiple_choice" and/or "fill_blank", progressing from easier to harder.`,
   }
   const partsList = options.sections
     .map((s, i) => `PART ${i + 1} — ${sectionSpecs[s]}`)
@@ -179,20 +189,27 @@ Always include romaji — never leave a Japanese phrase without its romaji readi
 
   const user = `Build a ${student.language} progress test for a ${student.level} student named ${student.full_name}.
 
-The test is completable in about 45 minutes. Every question has a "section" field. Build ONLY these parts, in this order:
+The test is completable in about ${TEST_DURATION_MINUTES} minutes. Every question has a "section" field. Build ONLY these parts, in this order:
 ${partsList}
 
 ${scriptInstruction}
 
+NO ENGLISH TRANSLATIONS — this is a test, not a study sheet:
+- Never translate the Japanese for the student. No "translation" on the passage, no "en" on read_aloud sentences or fill_blank items, no "prompt_en" on speaking questions. Those fields no longer exist — do not emit them.
+- The task/prompt line and the reading options may be in English where they instruct rather than translate (e.g. "Read this passage aloud", "Answer in 3-4 sentences").
+- Instead, give every question a "hint": ONE short English nudge the student can choose to reveal if they get stuck. A hint points the way — the grammar pattern to use, where in the passage to look, the kind of answer expected. It must NEVER contain the translation or the answer itself.
+  Good hint: "Look at the second half of the passage — she says when she arrived." / "Use the ～てから pattern."
+  Bad hint: "This says 'Mary is a second-year student'." (translation) or "The answer is B." (gives it away)
+
 Rules:
 - Order the questions by section: ${sectionOrder}.
 - Only cover material from the lessons below. Progress from easier to harder.
-- Aim for 4 to 6 questions per part.
+- Make each part as long as its spec asks — a short test is a failed test. Do not pad with filler: every question must test something real from the lessons.
 
 Return ONLY valid JSON (no markdown) matching exactly this shape:
 {
   "title": string,
-  "instructions": string,          // short instructions for the student, mention it is a 45-minute, 3-part test
+  "instructions": string,          // short instructions for the student, mention it is a ${TEST_DURATION_MINUTES}-minute test and that hints are available if they get stuck
   "questions": [
     {
       "section": "speaking" | "reading" | "grammar",
@@ -200,13 +217,14 @@ Return ONLY valid JSON (no markdown) matching exactly this shape:
       "prompt": string,            // the question / task shown to the student
       "points": number,            // 1-5, harder questions worth more (reading_passage = 0)
       "data": {
-        // "speak":           { "prompt_jp"?: string, "prompt_romaji"?: string, "prompt_en"?: string, "hint"?: string }
-        // "read_aloud":      { "focus"?: string, "sentences": [ { "jp": string, "romaji"?: string, "en": string } ] }
-        // "reading_passage": { "text": string, "script": "romaji" | "hiragana", "romaji"?: string, "translation"?: string }
-        // "multiple_choice": { "question": string, "question_romaji"?: string, "options": [string, ...], "answer": number }  // answer = index of correct option; question must be a real question
+        // every type also takes "hint"?: string — a short English nudge, revealed only if the student asks. Never a translation, never the answer.
+        // "speak":           { "prompt_jp"?: string, "prompt_romaji"?: string, "hint"?: string }
+        // "read_aloud":      { "focus"?: string, "sentences": [ { "jp": string, "romaji"?: string } ], "hint"?: string }
+        // "reading_passage": { "text": string, "script": "romaji" | "hiragana", "romaji"?: string }
+        // "multiple_choice": { "question": string, "question_romaji"?: string, "options": [string, ...], "answer": number, "hint"?: string }  // answer = index of correct option; question must be a real question
         //   for reading: a comprehension question about the passage; for grammar: a grammar/vocab question
-        // "fill_blank":      { "before": string, "after": string, "options": [string, ...], "answer": string, "en"?: string }
-        // "written":         { "context"?: string, "reference_answer": string, "guidance"?: string }
+        // "fill_blank":      { "before": string, "after": string, "options": [string, ...], "answer": string, "hint"?: string }
+        // "written":         { "context"?: string, "reference_answer": string, "guidance"?: string, "hint"?: string }
       }
     }
   ]
@@ -259,7 +277,23 @@ ${material}`
   )
   if (parsed.questions.length === 0) throw new Error('No usable questions were generated. Try again.')
 
+  parsed.questions.forEach(q => { q.data = stripTranslations(q.data) })
+
   return parsed
+}
+
+// The prompt forbids English translations, but the model still slips one in now
+// and then. Drop them here so a translation can never reach the student.
+function stripTranslations(data: any): any {
+  if (!data || typeof data !== 'object') return data ?? {}
+  const { translation, prompt_en, en, ...rest } = data
+  if (Array.isArray(rest.sentences)) {
+    rest.sentences = rest.sentences.map((s: any) => {
+      const { en: _en, ...sentence } = s ?? {}
+      return sentence
+    })
+  }
+  return rest
 }
 
 // ─── Teacher: manage a test ──────────────────────────────────────────────────

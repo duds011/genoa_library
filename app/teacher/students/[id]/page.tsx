@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { formatDateShort, getLevelLabel, ordinal } from '@/lib/utils'
+import { formatDateShort, getLevelLabel, ordinal, testScore } from '@/lib/utils'
 import StudentProgressChart from '@/components/teacher/StudentProgressChart'
 import VocabLevelBreakdown from '@/components/student/VocabLevelBreakdown'
 import ResetPasswordButton from '@/components/teacher/ResetPasswordButton'
@@ -42,12 +42,33 @@ export default async function StudentDetailPage({
   const published = (lessons || []).filter((l: any) => l.status === 'published')
   const drafts    = (lessons || []).filter((l: any) => l.status === 'draft')
 
-  // Tests built for this student
+  // Tests built for this student, with enough to show the score on each card
   const { data: tests } = await supabase
     .from('tests')
-    .select('id, title, status, duration_minutes, lesson_numbers, created_at')
+    .select('id, title, status, duration_minutes, lesson_numbers, created_at, test_questions ( id, type, points )')
     .eq('student_id', params.id)
     .order('created_at', { ascending: false })
+
+  const testIds = (tests || []).map((t: any) => t.id)
+  const testResults = new Map<string, { submitted: boolean } & ReturnType<typeof testScore>>()
+  if (testIds.length > 0) {
+    const [{ data: attempts }, { data: testSubs }] = await Promise.all([
+      supabase.from('test_attempts').select('test_id, submitted_at').in('test_id', testIds),
+      supabase.from('test_submissions').select('test_id, question_id, score').in('test_id', testIds),
+    ])
+    const submittedIds = new Set(
+      (attempts ?? []).filter((a: any) => a.submitted_at).map((a: any) => a.test_id),
+    )
+    for (const t of tests || []) {
+      testResults.set((t as any).id, {
+        submitted: submittedIds.has((t as any).id),
+        ...testScore(
+          ((t as any).test_questions ?? []),
+          (testSubs ?? []).filter((s: any) => s.test_id === (t as any).id),
+        ),
+      })
+    }
+  }
 
   // Find which lessons have unreviewed homework or audio submissions
   const lessonIds = (lessons || []).map((l: any) => l.id)
@@ -238,21 +259,40 @@ export default async function StudentDetailPage({
             <h2 className="section-title">Tests</h2>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
-            {(tests || []).map((t: any) => (
-              <Link key={t.id} href={`/teacher/tests/${t.id}`} className="card p-5 hover:border-brand-200 hover:shadow-md transition-all">
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-[10px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 ${t.status === 'published' ? 'text-green-600 bg-green-50 border border-green-100' : 'text-orange-600 bg-orange-50 border border-orange-100'}`}>
-                    {t.status === 'published' ? 'Published' : 'Draft'}
+            {(tests || []).map((t: any) => {
+              const result = testResults.get(t.id)
+              return (
+                <Link key={t.id} href={`/teacher/tests/${t.id}`} className="card p-5 hover:border-brand-200 hover:shadow-md transition-all">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-[10px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 ${t.status === 'published' ? 'text-green-600 bg-green-50 border border-green-100' : 'text-orange-600 bg-orange-50 border border-orange-100'}`}>
+                      {t.status === 'published' ? 'Published' : 'Draft'}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs text-muted"><Clock className="w-3.5 h-3.5" /> {t.duration_minutes} min</span>
+                  </div>
+                  <p className="font-semibold text-ink">{t.title}</p>
+                  {t.lesson_numbers?.length > 0 && (
+                    <p className="text-xs text-muted mt-0.5">Covers lessons {t.lesson_numbers.join(', ')}</p>
+                  )}
+
+                  {result?.submitted && (
+                    <div className="mt-3 flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1 tabular-nums">
+                        {result.score}/{result.maxScore} · {result.percent}%
+                      </span>
+                      {result.awaiting > 0 && (
+                        <span className="text-[11px] font-semibold text-orange-700 bg-orange-50 border border-orange-100 rounded-full px-2 py-0.5">
+                          {result.awaiting} to grade
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <span className="btn-ghost text-xs mt-3 -ml-1 inline-flex">
+                    {result?.submitted ? (result.awaiting > 0 ? 'Grade answers →' : 'See answers →') : 'Review & grade →'}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-xs text-muted"><Clock className="w-3.5 h-3.5" /> {t.duration_minutes} min</span>
-                </div>
-                <p className="font-semibold text-ink">{t.title}</p>
-                {t.lesson_numbers?.length > 0 && (
-                  <p className="text-xs text-muted mt-0.5">Covers lessons {t.lesson_numbers.join(', ')}</p>
-                )}
-                <span className="btn-ghost text-xs mt-3 -ml-1 inline-flex">Review & grade →</span>
-              </Link>
-            ))}
+                </Link>
+              )
+            })}
           </div>
         </section>
       )}

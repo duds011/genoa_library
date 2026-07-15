@@ -49,7 +49,9 @@ export default function QuestionEditor({
         <>
           <Field label="Japanese (prompt_jp)"><input value={data.prompt_jp ?? ''} onChange={e => set('prompt_jp', e.target.value)} className={inputCls} /></Field>
           <Field label="Romaji (prompt_romaji)"><input value={data.prompt_romaji ?? ''} onChange={e => set('prompt_romaji', e.target.value)} className={inputCls} /></Field>
-          <Field label="Hint"><input value={data.hint ?? ''} onChange={e => set('hint', e.target.value)} className={inputCls} /></Field>
+          <Field label="Hint — shown only if the student asks for it">
+            <input value={data.hint ?? ''} onChange={e => set('hint', e.target.value)} placeholder="A nudge, not the answer or a translation" className={inputCls} />
+          </Field>
         </>
       )}
 
@@ -62,9 +64,8 @@ export default function QuestionEditor({
 
       {q.type === 'reading_passage' && (
         <>
-          <Field label="Passage (Japanese)"><textarea value={data.text ?? ''} onChange={e => set('text', e.target.value)} rows={3} className={inputCls} /></Field>
-          <Field label="Romaji reading"><textarea value={data.romaji ?? ''} onChange={e => set('romaji', e.target.value)} rows={2} className={inputCls} /></Field>
-          <Field label="English translation"><textarea value={data.translation ?? ''} onChange={e => set('translation', e.target.value)} rows={2} className={inputCls} /></Field>
+          <Field label="Passage (Japanese)"><textarea value={data.text ?? ''} onChange={e => set('text', e.target.value)} rows={6} className={inputCls} /></Field>
+          <Field label="Romaji reading"><textarea value={data.romaji ?? ''} onChange={e => set('romaji', e.target.value)} rows={4} className={inputCls} /></Field>
         </>
       )}
 
@@ -86,7 +87,6 @@ export default function QuestionEditor({
             <Field label="Text before blank"><input value={data.before ?? ''} onChange={e => set('before', e.target.value)} className={inputCls} /></Field>
             <Field label="Text after blank"><input value={data.after ?? ''} onChange={e => set('after', e.target.value)} className={inputCls} /></Field>
           </div>
-          <Field label="English"><input value={data.en ?? ''} onChange={e => set('en', e.target.value)} className={inputCls} /></Field>
           <FillOptionsEditor
             options={data.options ?? []}
             answer={data.answer ?? ''}
@@ -101,6 +101,12 @@ export default function QuestionEditor({
           <Field label="Model answer (for your grading)"><textarea value={data.reference_answer ?? ''} onChange={e => set('reference_answer', e.target.value)} rows={2} className={inputCls} /></Field>
           <Field label="Grading note (optional)"><input value={data.guidance ?? ''} onChange={e => set('guidance', e.target.value)} className={inputCls} /></Field>
         </>
+      )}
+
+      {q.type !== 'reading_passage' && q.type !== 'speak' && (
+        <Field label="Hint — shown only if the student asks for it">
+          <input value={data.hint ?? ''} onChange={e => set('hint', e.target.value)} placeholder="A nudge, not the answer or a translation" className={inputCls} />
+        </Field>
       )}
 
       {error && <p className="text-xs text-red-500">{error}</p>}
@@ -200,7 +206,7 @@ function FillOptionsEditor({
 function SentencesEditor({
   sentences, onChange,
 }: {
-  sentences: { jp?: string; romaji?: string; en?: string }[]
+  sentences: { jp?: string; romaji?: string }[]
   onChange: (s: any[]) => void
 }) {
   function edit(i: number, field: string, val: string) {
@@ -208,7 +214,7 @@ function SentencesEditor({
     onChange(next)
   }
   function remove(i: number) { onChange(sentences.filter((_, j) => j !== i)) }
-  function add() { onChange([...sentences, { jp: '', romaji: '', en: '' }]) }
+  function add() { onChange([...sentences, { jp: '', romaji: '' }]) }
 
   return (
     <div>
@@ -222,7 +228,6 @@ function SentencesEditor({
             </div>
             <input value={s.jp ?? ''} onChange={e => edit(i, 'jp', e.target.value)} placeholder="Japanese" className={inputCls} />
             <input value={s.romaji ?? ''} onChange={e => edit(i, 'romaji', e.target.value)} placeholder="Romaji" className={inputCls} />
-            <input value={s.en ?? ''} onChange={e => edit(i, 'en', e.target.value)} placeholder="English" className={inputCls} />
           </div>
         ))}
       </div>
