@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { formatDateShort, getLevelLabel, ordinal } from '@/lib/utils'
 import ProgressCharts from '@/components/student/ProgressCharts'
 import VocabLevelBreakdown, { JLPT_COLORS } from '@/components/student/VocabLevelBreakdown'
+import StudentTour from '@/components/student/StudentTour'
 
 const MILESTONES = [1, 5, 10, 25, 50]
 const MILESTONE_EMOJIS = ['🌱', '🌸', '🌿', '⭐', '🏆']
@@ -97,6 +98,10 @@ export default async function StudentDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* First login only — Noa's new students get a walkthrough of the portal.
+          Null tour_completed_at means they have never finished it. */}
+      <StudentTour show={student.tour_completed_at == null} />
+
       {/* Header */}
       <div className="card p-6" style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f6f5ff 100%)' }}>
         <div className="flex items-center gap-2 px-3 py-1 bg-brand-50 rounded-full w-fit mb-1">
@@ -116,7 +121,7 @@ export default async function StudentDashboard() {
       </div>
 
       {/* Progress stats */}
-      <div>
+      <div data-tour="stats">
         <h2 className="text-sm font-bold text-ink mb-3 uppercase tracking-wide">Your Progress</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="stat-card">
@@ -153,7 +158,7 @@ export default async function StudentDashboard() {
       </div>
 
       {/* Milestone progress — directly under stats */}
-      <div className="card p-5">
+      <div className="card p-5" data-tour="milestones">
         <div className="relative px-3" style={{ paddingTop: '2.5rem', paddingBottom: '1.75rem' }}>
           <div className="relative h-1.5 bg-gray-200 rounded-full">
             <div
@@ -186,7 +191,7 @@ export default async function StudentDashboard() {
 
       {/* Words learned + JLPT badges inline */}
       {totalVocab > 0 && (
-        <div className="card px-5 py-4 flex items-center gap-3 flex-wrap">
+        <div className="card px-5 py-4 flex items-center gap-3 flex-wrap" data-tour="vocab">
           <span className="text-xl">📚</span>
           <span className="font-bold text-ink">{totalVocab} vocabulary items covered</span>
           <div className="flex items-center gap-2 flex-wrap">
@@ -241,7 +246,7 @@ export default async function StudentDashboard() {
         <section>
           <h2 className="text-sm font-bold text-ink mb-3 uppercase tracking-wide">Your Tests</h2>
           <div className="grid sm:grid-cols-2 gap-4">
-            {(tests || []).map((t: any) => {
+            {(tests || []).map((t: any, i: number) => {
               const attempt = Array.isArray(t.test_attempts) ? t.test_attempts[0] : t.test_attempts
               const submitted = !!attempt?.submitted_at
               const inProgress = !!attempt?.started_at && !submitted
@@ -249,6 +254,7 @@ export default async function StudentDashboard() {
                 <Link
                   key={t.id}
                   href={`/student/tests/${t.id}`}
+                  data-tour={i === 0 ? 'tests' : undefined}
                   className="card p-5 flex flex-col gap-3 hover:border-brand-200 hover:shadow-md transition-all"
                   style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f6f5ff 100%)' }}
                 >
@@ -281,10 +287,11 @@ export default async function StudentDashboard() {
       {/* Lessons */}
       <section>
         <div className="grid sm:grid-cols-2 gap-4">
-          {(lessons || []).map((lesson: any) => (
+          {(lessons || []).map((lesson: any, i: number) => (
             <Link
               key={lesson.id}
               href={`/student/lessons/${lesson.id}`}
+              data-tour={i === 0 ? 'lessons' : undefined}
               className="card p-5 flex flex-col gap-3 hover:border-brand-200 hover:shadow-md transition-all"
             >
               <div className="flex items-center justify-between gap-2">
@@ -311,7 +318,7 @@ export default async function StudentDashboard() {
           ))}
 
           {lessonCount === 0 && (
-            <div className="col-span-2 card p-12 text-center">
+            <div className="col-span-2 card p-12 text-center" data-tour="lessons">
               <p className="text-4xl mb-3">📖</p>
               <p className="font-semibold text-ink">No lessons yet</p>
               <p className="text-sm text-muted mt-1">Your lessons will appear here once published by your teacher.</p>
