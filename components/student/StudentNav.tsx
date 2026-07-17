@@ -4,8 +4,10 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { BookOpen, LogOut } from 'lucide-react'
 import Link from 'next/link'
+import NotificationBell from './NotificationBell'
+import type { EmailPrefs } from '@/lib/notificationPrefs'
 
-export default function StudentNav({ studentName }: { studentName: string }) {
+export default function StudentNav({ studentName, emailPrefs }: { studentName: string; emailPrefs: EmailPrefs }) {
   const router = useRouter()
   const pathname = usePathname()
 
@@ -41,6 +43,7 @@ export default function StudentNav({ studentName }: { studentName: string }) {
             </Link>
           </nav>
           <span className="text-xs text-muted hidden sm:block">{studentName}</span>
+          <NotificationBell initial={emailPrefs} />
           <button onClick={handleSignOut} className="btn-ghost text-xs">
             <LogOut className="w-3.5 h-3.5" />
             Sign out

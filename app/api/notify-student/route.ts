@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { studentEmailAllows } from '@/lib/notificationPrefs'
 import { formatDateShort } from '@/lib/utils'
 
 const clean = (s?: string) => (s ?? '').replace(/^﻿/, '').trim()
@@ -26,6 +27,10 @@ export async function POST(req: NextRequest) {
 
   if (!student?.email) {
     return NextResponse.json({ error: 'Student email not found' }, { status: 404 })
+  }
+
+  if (!(await studentEmailAllows(admin, studentId, 'recap'))) {
+    return NextResponse.json({ ok: true, skipped: true })
   }
 
   const lessonDate = lesson?.lesson_date ? formatDateShort(lesson.lesson_date) : ''

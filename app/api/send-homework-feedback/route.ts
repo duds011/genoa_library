@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { studentEmailAllows } from '@/lib/notificationPrefs'
 
 const clean = (s?: string) => (s ?? '').replace(/^﻿/, '').trim()
 const resend = new Resend(clean(process.env.RESEND_API_KEY))
@@ -29,6 +30,12 @@ export async function POST(req: NextRequest) {
   ])
 
   if (!student?.email) return NextResponse.json({ error: 'Student email not found' }, { status: 404 })
+
+  // Feedback is already saved above; if they've opted out of the email we just
+  // don't send it. They still see it in the portal.
+  if (!(await studentEmailAllows(admin, studentId, 'homework_feedback'))) {
+    return NextResponse.json({ ok: true, skipped: true })
+  }
 
   const firstName = student.full_name.split(' ')[0]
   const lessonNum  = lesson?.lesson_number ?? ''

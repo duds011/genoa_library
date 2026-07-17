@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { appUrl, emailShell, escapeHtml, sendEmail } from '@/lib/email'
+import { studentEmailAllows } from '@/lib/notificationPrefs'
 
 type SubmissionKind = 'homework' | 'audio' | 'test'
 
@@ -99,7 +100,7 @@ export async function notifyTeacherOfSubmission(input: {
  * Noa → student, when she shares a test. Called from setTestStatus only on the
  * draft → published transition, so re-publishing an already-live test is silent.
  */
-export async function notifyStudentTestPublished(testId: string): Promise<{ ok: boolean; error?: string }> {
+export async function notifyStudentTestPublished(testId: string): Promise<{ ok: boolean; error?: string; skipped?: boolean }> {
   const admin = createAdminClient()
 
   const { data: test } = await admin
@@ -112,6 +113,10 @@ export async function notifyStudentTestPublished(testId: string): Promise<{ ok: 
   const { data: student } = await admin
     .from('students').select('full_name, email').eq('id', test.student_id).single()
   if (!student?.email) return { ok: false, error: 'Student email not found' }
+
+  if (!(await studentEmailAllows(admin, test.student_id, 'tests'))) {
+    return { ok: true, skipped: true }
+  }
 
   const firstName = escapeHtml(student.full_name.split(' ')[0])
   const lessons = test.lesson_numbers?.length ? ` • Lessons ${test.lesson_numbers.join(', ')}` : ''
@@ -136,7 +141,7 @@ export async function notifyStudentTestPublished(testId: string): Promise<{ ok: 
  * Noa → student, when she leaves feedback on a speaking recording. Until now
  * that feedback was saved silently and the student was never told it existed.
  */
-export async function notifyStudentOfSpeakingFeedback(submissionId: string): Promise<{ ok: boolean; error?: string }> {
+export async function notifyStudentOfSpeakingFeedback(submissionId: string): Promise<{ ok: boolean; error?: string; skipped?: boolean }> {
   const admin = createAdminClient()
 
   const { data: sub } = await admin
@@ -151,6 +156,10 @@ export async function notifyStudentOfSpeakingFeedback(submissionId: string): Pro
     admin.from('lessons').select('lesson_number').eq('id', sub.lesson_id).single(),
   ])
   if (!student?.email) return { ok: false, error: 'Student email not found' }
+
+  if (!(await studentEmailAllows(admin, sub.student_id, 'speaking_feedback'))) {
+    return { ok: true, skipped: true }
+  }
 
   const firstName = escapeHtml(student.full_name.split(' ')[0])
 
@@ -194,6 +203,12 @@ export async function sendTestResults(testId: string): Promise<{ ok: boolean; er
     admin.from('test_submissions').select('question_id, score').eq('test_id', testId),
   ])
   if (!student?.email) return { ok: false, error: 'Student email not found' }
+
+  // She clicked "send" on purpose, so if they've opted out tell her plainly
+  // rather than reporting a success that never left the building.
+  if (!(await studentEmailAllows(admin, test.student_id, 'tests'))) {
+    return { ok: false, error: 'This student turned off test emails, so nothing was sent.' }
+  }
 
   const gradable = (questions ?? []).filter(q => q.type !== 'reading_passage')
   const maxScore = gradable.reduce((sum, q) => sum + (q.points ?? 1), 0)
