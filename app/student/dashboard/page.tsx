@@ -3,13 +3,15 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getLevelLabel } from '@/lib/utils'
 import ProgressCharts from '@/components/student/ProgressCharts'
-import StudentVocabularyProfile from '@/components/student/StudentVocabularyProfile'
+import VocabLevelBreakdown, { JLPT_COLORS } from '@/components/student/VocabLevelBreakdown'
 import StudentTour from '@/components/student/StudentTour'
 import JapaneseLearningMapCard from '@/components/student/JapaneseLearningMapCard'
 import { buildJapaneseLearningMap } from '@/lib/japaneseLearningMap'
 
 const MILESTONES = [1, 5, 10, 25, 50]
 const MILESTONE_EMOJIS = ['🌱', '🌸', '🌿', '⭐', '🏆']
+const JLPT_LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1']
+
 export default async function StudentDashboard() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -38,7 +40,7 @@ export default async function StudentDashboard() {
     .select(`
       id, lesson_number, lesson_date, title,
       lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution, vocab_total_count ),
-      vocabulary_items ( id, word, reading, definition, example_sentence, jlpt_level ),
+      vocabulary_items ( id, word, jlpt_level ),
       homework_items ( id, completed )
     `)
     .eq('student_id', student.id)
@@ -82,30 +84,16 @@ export default async function StudentDashboard() {
     }
   }
   const totalVocab = Object.values(vocabDistribution).reduce((sum, n) => sum + n, 0)
-  const vocabByWord = new Map<string, any>()
-  for (const lesson of lessons || []) {
-    for (const item of (lesson as any).vocabulary_items || []) {
-      const word = String(item.word ?? '').trim()
-      const level = String(item.jlpt_level ?? '').trim()
-      if (!word || !level) continue
-
-      const key = `${word.toLowerCase()}|${String(item.reading ?? '').trim().toLowerCase()}|${level}`
-      const lessonRef = {
-        id: lesson.id,
-        number: lesson.lesson_number ?? 0,
-        title: lesson.title || `Lesson ${lesson.lesson_number ?? ''}`.trim(),
-      }
-      const existing = vocabByWord.get(key)
-      if (existing) {
-        if (!existing.lessons.some((source: any) => source.id === lesson.id)) {
-          existing.lessons.push(lessonRef)
-        }
-      } else {
-        vocabByWord.set(key, { ...item, word, jlpt_level: level, lessons: [lessonRef] })
-      }
-    }
-  }
-  const allVocab = Array.from(vocabByWord.values())
+  // Keep allVocab for lessons that predate the distribution field (fallback)
+  const allVocabRaw = (lessons || []).flatMap((l: any) => l.vocabulary_items || [])
+  const seenWords = new Set<string>()
+  const allVocab = allVocabRaw.filter((v: any) => {
+    if (!v.jlpt_level) return false
+    const key = (v.word ?? '').trim().toLowerCase()
+    if (!key || seenWords.has(key)) return false
+    seenWords.add(key)
+    return true
+  })
   const hasDistribution = totalVocab > 0
   const firstScore = scores[scores.length - 1]
   const scoreDelta = latestScore && firstScore
@@ -114,6 +102,13 @@ export default async function StudentDashboard() {
   const nextMilestone = MILESTONES.find(m => m > lessonCount) ?? 50
   const levelLabel = getLevelLabel(lessonCount)
 
+  // JLPT counts for inline badges — use distribution if available, fall back to 10-word items
+  const jlptCounts = JLPT_LEVELS.map(level => ({
+    level,
+    count: hasDistribution
+      ? (vocabDistribution[level] ?? 0)
+      : allVocab.filter((v: any) => v.jlpt_level === level).length,
+  })).filter(c => c.count > 0)
   const learningMap = buildJapaneseLearningMap((learningLessons || []) as any)
 
   return (
@@ -224,18 +219,34 @@ export default async function StudentDashboard() {
         </p>
       </div>
 
-      {/* Interactive vocabulary profile and lesson-source popup */}
-      {(totalVocab > 0 || allVocab.length > 0) && (
-        <StudentVocabularyProfile
-          distribution={hasDistribution ? vocabDistribution : Object.fromEntries(
-            ['N5', 'N4', 'N3', 'N2', 'N1'].map(level => [
-              level,
-              allVocab.filter((item: any) => item.jlpt_level === level).length,
-            ])
-          )}
-          totalCount={hasDistribution ? totalVocab : allVocab.length}
-          vocab={allVocab}
-        />
+      {/* Words learned + JLPT badges inline */}
+      {totalVocab > 0 && (
+        <div className="card px-4 py-3 flex items-center gap-2 flex-wrap" data-tour="vocab">
+          <span className="text-lg">📚</span>
+          <span className="font-semibold text-sm text-ink">{totalVocab} vocabulary items covered</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {jlptCounts.map(({ level, count }) => (
+              <span
+                key={level}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold"
+                style={{
+                  background: (JLPT_COLORS[level] ?? '#818cf8') + '18',
+                  color: JLPT_COLORS[level] ?? '#818cf8',
+                  border: `1px solid ${(JLPT_COLORS[level] ?? '#818cf8')}35`,
+                }}
+              >
+                {level} {count}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Vocab level bar */}
+      {totalVocab > 0 && (
+        hasDistribution
+          ? <VocabLevelBreakdown distribution={vocabDistribution} totalCount={totalVocab} />
+          : <VocabLevelBreakdown vocab={allVocab} />
       )}
 
       <JapaneseLearningMapCard categories={learningMap} />
