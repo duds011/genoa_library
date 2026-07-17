@@ -18,7 +18,7 @@ export default function JapaneseLearningMapCard({ categories }: Props) {
 
   return (
     <>
-      <section className="card overflow-hidden" style={{ border: '1px solid rgba(79,70,229,0.10)' }}>
+      <section className="card overflow-hidden" data-tour="learning-map" style={{ border: '1px solid rgba(79,70,229,0.10)' }}>
         <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-3 py-2">
           <div>
             <p className="text-[10px] font-medium text-muted uppercase tracking-widest">

@@ -33,8 +33,7 @@ export default async function StudentDashboard() {
     )
   }
 
-  const isNoelPrototype = student.email === 'xtremenoel@gmail.com' || student.full_name === 'Noel Segarra'
-  const displayName = student.full_name || user.email
+  const displayName = (student.full_name || user.email || 'student').trim().split(/\s+/)[0]
 
   const { data: lessons } = await supabase
     .from('lessons')
@@ -48,17 +47,15 @@ export default async function StudentDashboard() {
     .eq('status', 'published')
     .order('lesson_number', { ascending: false })
 
-  const { data: learningLessons } = isNoelPrototype
-    ? await supabase
-      .from('lessons')
-      .select(`
-        id, lesson_number, title,
-        lesson_sections ( title, content )
-      `)
-      .eq('student_id', student.id)
-      .eq('status', 'published')
-      .order('lesson_number', { ascending: true })
-    : { data: [] }
+  const { data: learningLessons } = await supabase
+    .from('lessons')
+    .select(`
+      id, lesson_number, title,
+      lesson_sections ( title, content )
+    `)
+    .eq('student_id', student.id)
+    .eq('status', 'published')
+    .order('lesson_number', { ascending: true })
 
   // Published tests + this student's attempt state
   const { data: tests } = await supabase
@@ -112,7 +109,7 @@ export default async function StudentDashboard() {
       ? (vocabDistribution[level] ?? 0)
       : allVocab.filter((v: any) => v.jlpt_level === level).length,
   })).filter(c => c.count > 0)
-  const learningMap = isNoelPrototype ? buildJapaneseLearningMap((learningLessons || []) as any) : []
+  const learningMap = buildJapaneseLearningMap((learningLessons || []) as any)
 
   return (
     <div className="space-y-6">
@@ -141,7 +138,7 @@ export default async function StudentDashboard() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Link href="/student/lessons" className="btn-primary px-4 py-2 text-xs">
+            <Link href="/student/lessons" className="btn-primary px-4 py-2 text-xs" data-tour="lessons-link">
               View lessons
             </Link>
             {(tests?.length ?? 0) > 0 && (
@@ -252,7 +249,7 @@ export default async function StudentDashboard() {
           : <VocabLevelBreakdown vocab={allVocab} />
       )}
 
-      {isNoelPrototype && <JapaneseLearningMapCard categories={learningMap} />}
+      <JapaneseLearningMapCard categories={learningMap} />
 
       {/* Collapsible progress charts */}
       {lessonCount >= 2 && (

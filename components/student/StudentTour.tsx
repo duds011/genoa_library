@@ -20,7 +20,7 @@ const STEPS: Step[] = [
   {
     emoji: '👋',
     title: 'Welcome to your library',
-    body: "Everything from your lessons with Noa lives here — recaps, vocabulary, homework and tests. Here's a quick tour, it takes about 30 seconds.",
+    body: "Everything from your lessons with Noa lives here — progress, vocabulary, grammar, homework and tests. Here's a quick tour, it takes about 30 seconds.",
   },
   {
     target: 'stats',
@@ -41,18 +41,22 @@ const STEPS: Step[] = [
     body: 'Every word from your lessons, grouped by JLPT level. N5 is the most common, everyday Japanese; N1 is the most advanced. This grows on its own as you study.',
   },
   {
+    target: 'learning-map',
+    emoji: '🧭',
+    title: 'Your grammar map',
+    body: 'This table shows the grammar and expressions you have covered by category. Tap a row to open the list, see the romaji, and jump back to the lesson where it appeared.',
+  },
+  {
     target: 'tests',
     emoji: '📝',
     title: 'Tests from Noa',
     body: "When Noa sends you a test it appears here. It is timed, and it is built from your own lessons — speaking, reading and grammar. If you get stuck, tap “Need a hint?” for a nudge.",
   },
   {
-    target: 'lessons',
+    target: 'lessons-link',
     emoji: '📖',
     title: 'Your lessons',
-    // Anchors to the first lesson card, or to the empty state if Noa hasn't
-    // published one yet — so this has to read sensibly either way.
-    body: 'Your lessons live here, newest first. Each one opens into what you covered, the vocabulary from it, your homework, and a recorder to practise speaking out loud.',
+    body: 'Tap here to open your full lesson list. Each lesson shows what you covered, the vocabulary from it, your homework, and a recorder to practise speaking out loud.',
   },
   {
     emoji: '🎉',
