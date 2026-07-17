@@ -40,7 +40,7 @@ export default async function StudentDashboard() {
     .select(`
       id, lesson_number, lesson_date, title,
       lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution, vocab_total_count ),
-      vocabulary_items ( id, word, reading, definition, example_sentence, jlpt_level ),
+      vocabulary_items ( id, word, jlpt_level ),
       homework_items ( id, completed )
     `)
     .eq('student_id', student.id)
@@ -85,41 +85,14 @@ export default async function StudentDashboard() {
   }
   const totalVocab = Object.values(vocabDistribution).reduce((sum, n) => sum + n, 0)
   // Keep allVocab for lessons that predate the distribution field (fallback)
-  const allVocabRaw = (lessons || []).flatMap((lesson: any) =>
-    (lesson.vocabulary_items || []).map((vocab: any) => ({
-      ...vocab,
-      lesson: {
-        id: lesson.id,
-        number: lesson.lesson_number ?? 0,
-        title: lesson.title || `Lesson ${lesson.lesson_number ?? ''}`.trim(),
-      },
-    }))
-  )
-  const vocabByWord = new Map<string, any>()
-  for (const vocab of allVocabRaw) {
-    if (!vocab.jlpt_level) continue
-    const key = [
-      (vocab.word ?? '').trim().toLowerCase(),
-      (vocab.reading ?? '').trim().toLowerCase(),
-      vocab.jlpt_level,
-    ].join('|')
-    if (!key.trim() || key.startsWith('|')) continue
-
-    const existing = vocabByWord.get(key)
-    if (existing) {
-      if (!existing.lessons.some((lesson: any) => lesson.id === vocab.lesson.id)) {
-        existing.lessons.push(vocab.lesson)
-      }
-    } else {
-      vocabByWord.set(key, {
-        ...vocab,
-        lessons: [vocab.lesson],
-      })
-    }
-  }
-  const allVocab = Array.from(vocabByWord.values()).filter((v: any) => {
+  const allVocabRaw = (lessons || []).flatMap((l: any) => l.vocabulary_items || [])
+  const seenWords = new Set<string>()
+  const allVocab = allVocabRaw.filter((v: any) => {
     if (!v.jlpt_level) return false
-    return Boolean((v.word ?? '').trim())
+    const key = (v.word ?? '').trim().toLowerCase()
+    if (!key || seenWords.has(key)) return false
+    seenWords.add(key)
+    return true
   })
   const hasDistribution = totalVocab > 0
   const firstScore = scores[scores.length - 1]
@@ -272,7 +245,7 @@ export default async function StudentDashboard() {
       {/* Vocab level bar */}
       {totalVocab > 0 && (
         hasDistribution
-          ? <VocabLevelBreakdown distribution={vocabDistribution} totalCount={totalVocab} vocab={allVocab} isPartial={allVocab.length < totalVocab} />
+          ? <VocabLevelBreakdown distribution={vocabDistribution} totalCount={totalVocab} />
           : <VocabLevelBreakdown vocab={allVocab} />
       )}
 
