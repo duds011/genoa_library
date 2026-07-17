@@ -38,7 +38,7 @@ const STEPS: Step[] = [
     target: 'vocab',
     emoji: '📚',
     title: 'Your vocabulary',
-    body: 'Every word from your lessons, grouped by JLPT level. N5 is the most common, everyday Japanese; N1 is the most advanced. This grows on its own as you study.',
+    body: 'Your lesson vocabulary is grouped by JLPT level. Tap a level to see the saved words, romaji, and the lesson where each word was covered. This grows on its own as you study.',
   },
   {
     target: 'learning-map',

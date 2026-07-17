@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { formatDateShort } from '@/lib/utils'
 import { ArrowLeft, CheckCircle, Circle } from 'lucide-react'
 import SectionContent from '@/components/student/SectionContent'
-import VocabLevelBreakdown, { JLPT_COLORS, JLPT_LABELS } from '@/components/student/VocabLevelBreakdown'
+import { JLPT_COLORS, JLPT_LABELS } from '@/lib/jlpt'
 import HomeworkSubmitSection from '@/components/student/HomeworkSubmitSection'
 import StudentAudioSubmit from '@/components/student/StudentAudioSubmit'
 import LessonTabs from '@/components/student/LessonTabs'
@@ -155,7 +155,7 @@ export default async function StudentLessonPage({
       {/* Teacher's Audio Review */}
       {voiceUrl && (
         <div className="card p-6" style={{ border: '1px solid rgba(79,70,229,0.12)' }}>
-          <h2 className="section-title mb-1">🎙️ Noa's Audio Review</h2>
+          <h2 className="section-title mb-1">🎙️ Noa&apos;s Audio Review</h2>
           <audio controls className="w-full" src={voiceUrl} />
         </div>
       )}
@@ -163,7 +163,7 @@ export default async function StudentLessonPage({
       {/* Teacher's Note */}
       {summary?.teacher_note && (
         <div className="card p-6" style={{ background: 'linear-gradient(180deg,#ffffff,#f7f4ff)', border: '1px solid rgba(79,70,229,0.12)' }}>
-          <h2 className="section-title mb-3">🌟 Noa's Note</h2>
+          <h2 className="section-title mb-3">🌟 Noa&apos;s Note</h2>
           <p className="text-sm text-ink/85 leading-relaxed">{summary.teacher_note}</p>
         </div>
       )}
