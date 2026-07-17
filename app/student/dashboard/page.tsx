@@ -34,6 +34,7 @@ export default async function StudentDashboard() {
   }
 
   const isNoelPrototype = student.email === 'xtremenoel@gmail.com' || student.full_name === 'Noel Segarra'
+  const displayName = student.full_name || user.email
 
   const { data: lessons } = await supabase
     .from('lessons')
@@ -135,7 +136,7 @@ export default async function StudentDashboard() {
               GENOA Library
             </h1>
             <p className="text-sm text-muted mt-0.5">
-              Welcome, <strong className="text-ink">{user.email}</strong>.
+              Welcome, <strong className="text-ink">{displayName}</strong>.
             </p>
           </div>
 
