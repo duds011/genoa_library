@@ -39,8 +39,8 @@ export default function VocabLevelBreakdown({
 
   if (labeled === 0) {
     return (
-      <div className="card p-5">
-        <h2 className="text-xs font-bold text-muted uppercase tracking-widest mb-2">
+      <div className="card p-4">
+        <h2 className="text-[11px] font-bold text-muted uppercase tracking-widest mb-1.5">
           Vocabulary Profile
         </h2>
         <p className="text-sm text-muted">No vocabulary items detected for this lesson.</p>
@@ -49,9 +49,9 @@ export default function VocabLevelBreakdown({
   }
 
   return (
-    <div className="card p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-bold text-muted uppercase tracking-widest">
+    <div className="card p-4">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-[11px] font-bold text-muted uppercase tracking-widest">
           Vocabulary Profile
         </h2>
         <span className="text-xs text-muted font-medium">
@@ -60,11 +60,11 @@ export default function VocabLevelBreakdown({
       </div>
 
       {/* Segmented bar */}
-      <div className="flex rounded-xl overflow-hidden mb-3" style={{ height: '30px' }}>
+      <div className="flex rounded-xl overflow-hidden mb-2" style={{ height: '22px' }}>
         {counts.map(({ level, bar, barText, count }) => (
           <div
             key={level}
-            className="flex items-center justify-center text-xs font-bold transition-all overflow-hidden"
+            className="flex items-center justify-center text-[11px] font-bold transition-all overflow-hidden"
             style={{
               width: `${(count / labeled) * 100}%`,
               background: bar,
@@ -80,11 +80,11 @@ export default function VocabLevelBreakdown({
       </div>
 
       {/* Badge legend */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {counts.map(({ level, label, badge, badgeText, count }) => (
           <span
             key={level}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold"
             style={{ background: badge, color: badgeText }}
           >
             <strong>{count}</strong>

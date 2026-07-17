@@ -1,11 +1,13 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { BookOpen, LogOut } from 'lucide-react'
+import Link from 'next/link'
 
 export default function StudentNav({ studentName }: { studentName: string }) {
   const router = useRouter()
+  const pathname = usePathname()
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -24,6 +26,20 @@ export default function StudentNav({ studentName }: { studentName: string }) {
           <span className="font-bold text-ink text-sm">Student View</span>
         </div>
         <div className="flex items-center gap-3">
+          <nav className="hidden sm:flex items-center gap-1">
+            <Link
+              href="/student/dashboard"
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${pathname === '/student/dashboard' ? 'bg-brand-50 text-brand-600' : 'text-muted hover:bg-gray-50 hover:text-ink'}`}
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/student/lessons"
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${pathname?.startsWith('/student/lessons') ? 'bg-brand-50 text-brand-600' : 'text-muted hover:bg-gray-50 hover:text-ink'}`}
+            >
+              Lessons
+            </Link>
+          </nav>
           <span className="text-xs text-muted hidden sm:block">{studentName}</span>
           <button onClick={handleSignOut} className="btn-ghost text-xs">
             <LogOut className="w-3.5 h-3.5" />
