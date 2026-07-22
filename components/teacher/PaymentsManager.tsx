@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Plus, X, Check, Loader2, Trash2, CircleCheck, Wallet, Pencil, ChevronLeft, ChevronRight, ChevronRight as Chevron } from 'lucide-react'
 import { addPayment, updatePayment, deletePayment, markPaymentPaid, updateTeacherCurrency, setLessonsRemaining, PaymentInput } from '@/app/actions/payments'
 import { formatMoney, currencySymbol, CURRENCIES } from '@/lib/currency'
+import { formatJpy } from '@/lib/fx'
 
 export interface StudentOption {
   id: string
@@ -52,8 +53,14 @@ const emptyForm = () => ({
 })
 
 export default function PaymentsManager({
-  students, payments, currency,
-}: { students: StudentOption[]; payments: ManagedPayment[]; currency: string }) {
+  students, payments, currency, jpyRate,
+}: {
+  students: StudentOption[]
+  payments: ManagedPayment[]
+  currency: string
+  /** null when no live rate could be fetched — the JPY line is hidden, never guessed. */
+  jpyRate?: { rate: number; asOf: string } | null
+}) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState('')
@@ -220,6 +227,16 @@ export default function PaymentsManager({
         <div className="stat-card flex-1 min-w-[150px]">
           <span className="stat-label">{monthLabel}</span>
           <span className="stat-value" style={{ color: '#10b981' }}>{formatMoney(viewedMonthReceived, currency)}</span>
+          {/* The month's income in yen. The rate and its date are shown because a
+              converted figure that hides its rate looks more precise than it is. */}
+          {jpyRate && currency !== 'JPY' && (
+            <span className="text-xs font-bold text-ink mt-0.5" title={`1 ${currency} = ${jpyRate.rate} JPY (${jpyRate.asOf})`}>
+              ≈ {formatJpy(viewedMonthReceived * jpyRate.rate)}
+              <span className="block text-[10px] font-normal text-muted">
+                at {jpyRate.rate.toFixed(2)} ¥/{currencySymbol(currency)} · {jpyRate.asOf}
+              </span>
+            </span>
+          )}
         </div>
         <div className="stat-card flex-1 min-w-[150px]">
           <span className="stat-label">Received all time</span>

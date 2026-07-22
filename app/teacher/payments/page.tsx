@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Wallet } from 'lucide-react'
 import PaymentsManager, { ManagedPayment, StudentOption } from '@/components/teacher/PaymentsManager'
 import RevenueChart, { MonthlyRevenue } from '@/components/teacher/RevenueChart'
+import { getRate } from '@/lib/fx'
 
 export default async function PaymentsPage() {
   const supabase = await createClient()
@@ -15,6 +16,11 @@ export default async function PaymentsPage() {
 
   const currency = profile?.currency ?? 'EUR'
   const studentName = new Map((students ?? []).map(s => [s.id, s.full_name]))
+
+  // Noa records payments in her own currency but wants the month's income in
+  // yen too. Null when the rate can't be fetched — the JPY line is then hidden
+  // rather than guessed at.
+  const jpyRate = await getRate(currency, 'JPY')
 
   // Payments with no student_id are non-student income: 'trial' or 'other' (default).
   const OTHER_ID = '__other__'
@@ -82,7 +88,7 @@ export default async function PaymentsPage() {
 
       {hasRevenue && <RevenueChart data={buckets} currency={currency} />}
 
-      <PaymentsManager students={studentOptions} payments={managedPayments} currency={currency} />
+      <PaymentsManager students={studentOptions} payments={managedPayments} currency={currency} jpyRate={jpyRate} />
     </div>
   )
 }
