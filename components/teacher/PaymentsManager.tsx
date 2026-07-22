@@ -335,18 +335,22 @@ export default function PaymentsManager({
             <table className="border-collapse text-xs">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-20 bg-gray-50 border-b border-r border-gray-200 px-3 py-2 text-left text-[11px] font-semibold text-muted uppercase tracking-wide w-[150px] min-w-[150px] max-w-[150px]">
+                  {/* On a phone the three frozen columns left ~10px for the
+                      actual days, so Lessons Left and Total only freeze from sm
+                      up; on mobile the balance rides along inside the student
+                      cell instead. */}
+                  <th className="sticky left-0 z-20 bg-gray-50 border-b border-r border-gray-200 px-2 sm:px-3 py-2 text-left text-[11px] font-semibold text-muted uppercase tracking-wide w-[124px] min-w-[124px] max-w-[124px] sm:w-[150px] sm:min-w-[150px] sm:max-w-[150px]">
                     Student
                   </th>
-                  <th className="sticky left-[150px] z-20 bg-gray-50 border-b border-r border-gray-200 px-2 py-2 text-center text-[11px] font-semibold text-muted uppercase tracking-wide w-[90px] min-w-[90px] max-w-[90px]">
+                  <th className="hidden sm:table-cell sm:sticky sm:left-[150px] z-20 bg-gray-50 border-b border-r border-gray-200 px-2 py-2 text-center text-[11px] font-semibold text-muted uppercase tracking-wide sm:w-[90px] sm:min-w-[90px] sm:max-w-[90px]">
                     Lessons Left
                   </th>
-                  <th className="sticky left-[240px] z-20 bg-gray-50 border-b border-r border-gray-200 px-2 py-2 text-right text-[11px] font-semibold text-muted uppercase tracking-wide w-[84px] min-w-[84px]">
+                  <th className="hidden sm:table-cell sm:sticky sm:left-[240px] z-20 bg-gray-50 border-b border-r border-gray-200 px-2 py-2 text-right text-[11px] font-semibold text-muted uppercase tracking-wide sm:w-[84px] sm:min-w-[84px]">
                     Total
                   </th>
                   {days.map(d => (
                     <th key={d.iso}
-                      className={`border-b border-gray-100 px-0 py-1.5 w-[68px] min-w-[68px] text-center font-semibold ${
+                      className={`border-b border-gray-100 px-0 py-1.5 w-[56px] min-w-[56px] sm:w-[68px] sm:min-w-[68px] text-center font-semibold ${
                         d.iso === today ? 'bg-brand-50' : d.weekend ? 'bg-gray-50/60' : 'bg-white'
                       }`}>
                       <div className={`text-sm leading-none ${d.iso === today ? 'text-brand-600' : 'text-ink'}`}>{d.day}</div>
@@ -361,23 +365,42 @@ export default function PaymentsManager({
                   const isFirstSpecial = s.id === TRIAL_ID
                   return (
                   <tr key={s.id} className={`group ${isFirstSpecial ? 'border-t-2 border-gray-200' : ''}`}>
-                    <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 px-3 py-2 w-[150px] min-w-[150px] max-w-[150px]">
+                    <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 px-2 sm:px-3 py-2 w-[124px] min-w-[124px] max-w-[124px] sm:w-[150px] sm:min-w-[150px] sm:max-w-[150px]">
                       {special ? (
                         <span className="font-semibold text-ink whitespace-nowrap flex items-center gap-1.5">
                           <span className="text-base leading-none">{special.icon}</span> {special.label}
                         </span>
                       ) : (
-                        <Link
-                          href={`/teacher/students/${s.id}`}
-                          title={s.archived ? `${s.fullName} (archived)` : s.fullName}
-                          onClick={e => { if (drag.current.moved) e.preventDefault() }}
-                          className={`font-medium hover:text-brand-600 transition-colors block truncate ${s.archived ? 'text-muted italic' : 'text-ink'}`}
-                        >
-                          {s.fullName}
-                        </Link>
+                        <>
+                          <Link
+                            href={`/teacher/students/${s.id}`}
+                            title={s.archived ? `${s.fullName} (archived)` : s.fullName}
+                            onClick={e => { if (drag.current.moved) e.preventDefault() }}
+                            className={`font-medium hover:text-brand-600 transition-colors block truncate ${s.archived ? 'text-muted italic' : 'text-ink'}`}
+                          >
+                            {s.fullName}
+                          </Link>
+                          {/* Mobile-only balance — the Lessons Left column is
+                              hidden below sm to make room for the days. */}
+                          {(() => {
+                            const lr = lessonsLeftMap.get(s.id)
+                            const tone = lr == null ? 'text-gray-400'
+                              : lr <= 0 ? 'text-red-600'
+                              : lr <= 2 ? 'text-orange-600'
+                              : 'text-emerald-600'
+                            return (
+                              <button
+                                onClick={() => openLessons(s.id, s.fullName)}
+                                className="sm:hidden mt-0.5 text-[10px] text-muted hover:text-ink"
+                              >
+                                <span className={`font-bold ${tone}`}>{lr == null ? '—' : lr}</span> left
+                              </button>
+                            )
+                          })()}
+                        </>
                       )}
                     </td>
-                    <td className="sticky left-[150px] z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 p-0 text-center w-[90px] min-w-[90px] max-w-[90px]">
+                    <td className="hidden sm:table-cell sm:sticky sm:left-[150px] z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 p-0 text-center sm:w-[90px] sm:min-w-[90px] sm:max-w-[90px]">
                       {special ? (
                         <span className="text-gray-300">—</span>
                       ) : (() => {
@@ -397,7 +420,7 @@ export default function PaymentsManager({
                         )
                       })()}
                     </td>
-                    <td className="sticky left-[240px] z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 px-2 py-2 text-right w-[84px] min-w-[84px]">
+                    <td className="hidden sm:table-cell sm:sticky sm:left-[240px] z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 px-2 py-2 text-right sm:w-[84px] sm:min-w-[84px]">
                       {rowTotal(s.id) > 0
                         ? <span className="font-bold text-ink text-[11px]">{formatMoney(rowTotal(s.id), currency)}</span>
                         : <span className="text-gray-300">—</span>}
@@ -414,7 +437,7 @@ export default function PaymentsManager({
                           ? 'bg-red-100 hover:bg-red-200 text-red-700'
                           : 'bg-orange-100 hover:bg-orange-200 text-orange-700'
                       return (
-                        <td key={d.iso} className={`border-b border-r border-gray-100 p-0 w-[68px] min-w-[68px] h-11 ${d.weekend && !has ? 'bg-gray-50/40' : ''}`}>
+                        <td key={d.iso} className={`border-b border-r border-gray-100 p-0 w-[56px] min-w-[56px] sm:w-[68px] sm:min-w-[68px] h-11 ${d.weekend && !has ? 'bg-gray-50/40' : ''}`}>
                           <button
                             onClick={() => handleCellClick(s.id, s.fullName, d.iso)}
                             title={has ? cell.map(p => `${formatMoney(p.amount, currency)} ${p.status}`).join(', ') : 'Add payment'}

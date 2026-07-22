@@ -140,20 +140,22 @@ export default async function StudentDetailPage({
         <Link href="/teacher/students" className="btn-ghost text-xs mb-3 -ml-1 inline-flex">
           <ArrowLeft className="w-3.5 h-3.5" /> All Students
         </Link>
-        <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-bold"
+        {/* Wraps on a phone: the name, badge row and action buttons were each
+            unshrinkable and pushed the whole page sideways. */}
+        <div className="flex items-start gap-3 sm:gap-4 flex-wrap">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-white text-lg sm:text-xl font-bold shrink-0"
             style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
             {student.full_name.charAt(0).toUpperCase()}
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-ink">{student.full_name}</h1>
-            <div className="flex items-center gap-2 mt-1">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-ink break-words">{student.full_name}</h1>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="badge-brand">{student.language}</span>
               <span className="badge text-xs bg-gray-100 text-muted">{student.level}</span>
-              <span className="text-xs text-muted">{student.email}</span>
+              <span className="text-xs text-muted break-all">{student.email}</span>
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
+          <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 flex-wrap sm:justify-end">
             {drafts.length > 0 && (
               <span className="badge-draft">{drafts.length} draft{drafts.length > 1 ? 's' : ''} pending</span>
             )}

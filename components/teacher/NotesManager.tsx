@@ -245,7 +245,7 @@ export default function NotesManager({
             <table className="border-collapse text-xs">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-20 bg-gray-50 border-b border-r border-gray-200 px-3 py-2 text-left text-[11px] font-semibold text-muted uppercase tracking-wide min-w-[140px]">
+                  <th className="sticky left-0 z-20 bg-gray-50 border-b border-r border-gray-200 px-2 sm:px-3 py-2 text-left text-[11px] font-semibold text-muted uppercase tracking-wide w-[112px] min-w-[112px] max-w-[112px] sm:w-auto sm:min-w-[140px] sm:max-w-none">
                     Student
                   </th>
                   {days.map(d => (
@@ -264,10 +264,11 @@ export default function NotesManager({
               <tbody>
                 {sortedStudents.map(s => (
                   <tr key={s.id} className="group">
-                    <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 px-3 py-2 min-w-[140px]">
+                    <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 px-2 sm:px-3 py-2 w-[112px] min-w-[112px] max-w-[112px] sm:w-auto sm:min-w-[140px] sm:max-w-none">
                       <Link
                         href={`/teacher/students/${s.id}`}
-                        className={`font-medium hover:text-brand-600 transition-colors whitespace-nowrap ${s.archived ? 'text-muted italic' : 'text-ink'}`}
+                        title={s.fullName}
+                        className={`font-medium hover:text-brand-600 transition-colors block truncate sm:whitespace-nowrap ${s.archived ? 'text-muted italic' : 'text-ink'}`}
                       >
                         {s.fullName}{s.archived && <span className="ml-1 text-[10px] not-italic">archived</span>}
                       </Link>

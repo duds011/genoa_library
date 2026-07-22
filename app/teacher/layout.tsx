@@ -23,7 +23,8 @@ export default async function TeacherLayout({
   return (
     <div className="min-h-screen bg-surface">
       <TeacherNav teacherName={profile.full_name || user.email || 'Teacher'} />
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      {/* pb-24 on mobile clears the fixed bottom nav bar. */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-24 md:pb-8">
         {children}
       </main>
     </div>

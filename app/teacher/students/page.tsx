@@ -38,14 +38,16 @@ export default async function StudentsPage() {
       <div className="space-y-2">
         <Link
           href={`/teacher/students/${student.id}`}
-          className={`card p-5 flex items-center gap-4 hover:border-brand-200 hover:shadow-md transition-all ${isArchived ? 'opacity-60' : ''}`}
+          className={`card p-4 sm:p-5 flex items-center gap-3 sm:gap-4 hover:border-brand-200 hover:shadow-md transition-all ${isArchived ? 'opacity-60' : ''}`}
         >
           <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold shrink-0"
             style={{ background: isArchived ? '#9ca3af' : 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
             {student.full_name.charAt(0).toUpperCase()}
           </div>
+          {/* truncate on both lines — a long name used to push the whole card
+              wider than a phone screen */}
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-ink">{student.full_name}</p>
+            <p className="font-semibold text-ink truncate">{student.full_name}</p>
             <p className="text-xs text-muted truncate">{student.email}</p>
           </div>
           <div className="text-right shrink-0">
@@ -94,8 +96,10 @@ export default async function StudentsPage() {
       </div>
 
       <div className="grid lg:grid-cols-5 gap-6">
-        {/* Students list */}
-        <div className="lg:col-span-3 space-y-3">
+        {/* Students list. min-w-0 lets the column shrink below its content —
+            without it the nowrap from `truncate` sets a min-content width wider
+            than a phone screen, and truncation never kicks in. */}
+        <div className="lg:col-span-3 space-y-3 min-w-0">
           {active.length === 0 && archived.length === 0 ? (
             <div className="card p-10 text-center">
               <p className="text-3xl mb-2">👋</p>
@@ -127,7 +131,7 @@ export default async function StudentsPage() {
         </div>
 
         {/* Add student form */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 min-w-0">
           <AddStudentForm teacherId={user!.id} />
         </div>
       </div>

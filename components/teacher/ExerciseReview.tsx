@@ -68,10 +68,12 @@ export default function ExerciseReview({
   }
 
   return (
-    <div className="card p-6">
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <div className="flex items-center gap-2">
-          <ListChecks className="w-4 h-4 text-brand-600" />
+    <div className="card p-4 sm:p-6">
+      {/* Title and toggle sit side by side when there's room and stack on a
+          phone — together they were 26px wider than the screen. */}
+      <div className="flex items-center justify-between gap-3 mb-1 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <ListChecks className="w-4 h-4 text-brand-600 shrink-0" />
           <h2 className="section-title">Practice Exercises</h2>
           <span className="text-[10px] font-bold uppercase tracking-wide text-purple-600 bg-purple-50 border border-purple-100 rounded-full px-2 py-0.5">auto-generated</span>
         </div>
