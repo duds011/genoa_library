@@ -3,12 +3,15 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, X, Check, Loader2, Trash2, Pin, PinOff, StickyNote, ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
+import { Plus, X, Check, Loader2, Trash2, Pin, PinOff, StickyNote, ChevronLeft, ChevronRight, Pencil, Archive } from 'lucide-react'
 import { addStudentNote, updateStudentNote, toggleNotePin, deleteStudentNote } from '@/app/actions/notes'
+import { EarningsPayment, formatHours, monthEarnings, LESSON_MINUTES } from '@/lib/earnings'
+import { formatMoney } from '@/lib/currency'
 
 export interface StudentOption {
   id: string
   fullName: string
+  archived?: boolean
 }
 
 export interface ManagedNote {
@@ -35,11 +38,17 @@ function fmtFullDate(iso: string) {
 }
 
 export default function NotesManager({
-  students, notes,
-}: { students: StudentOption[]; notes: ManagedNote[] }) {
+  students, notes, payments = [], currency = 'EUR',
+}: {
+  students: StudentOption[]
+  notes: ManagedNote[]
+  payments?: EarningsPayment[]
+  currency?: string
+}) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
 
   const now = new Date()
   const [viewYear, setViewYear] = useState(now.getFullYear())
@@ -64,7 +73,10 @@ export default function NotesManager({
     byCell.set(key, arr)
   }
 
-  const sortedStudents = [...students].sort((a, b) => a.fullName.localeCompare(b.fullName))
+  const archivedCount = students.filter(s => s.archived).length
+  const sortedStudents = [...students]
+    .filter(s => showArchived || !s.archived)
+    .sort((a, b) => a.fullName.localeCompare(b.fullName))
 
   // Days in the viewed month
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
@@ -80,6 +92,10 @@ export default function NotesManager({
   // Total notes shown this month (for the header)
   const monthPrefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`
   const monthCount = notes.filter(n => n.note_date.startsWith(monthPrefix)).length
+
+  // One note = one lesson taught. Notes for archived students still count —
+  // she taught those lessons and was paid for them.
+  const earnings = monthEarnings(monthPrefix, notes, payments)
 
   function prevMonth() {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1) }
@@ -141,6 +157,54 @@ export default function NotesManager({
 
   return (
     <div className="space-y-5">
+      {/* ── What the month was worth ──────────────────────────────────────────
+          Each note is one 50-minute lesson, so the grid doubles as a timesheet.
+          Revenue is what was actually paid in this month. */}
+      <div className="flex flex-wrap items-stretch gap-4">
+        <div className="stat-card flex-1 min-w-[140px]">
+          <span className="stat-label">Lessons in {monthLabel}</span>
+          <span className="stat-value">{earnings.lessons}</span>
+          <span className="text-[10px] text-muted mt-0.5">one note = one lesson</span>
+        </div>
+        <div className="stat-card flex-1 min-w-[140px]">
+          <span className="stat-label">Hours taught</span>
+          <span className="stat-value">{formatHours(earnings.hours)}</span>
+          <span className="text-[10px] text-muted mt-0.5">{LESSON_MINUTES} min per lesson</span>
+        </div>
+        <div className="stat-card flex-1 min-w-[140px]">
+          <span className="stat-label">Paid this month</span>
+          <span className="stat-value" style={{ color: '#10b981' }}>{formatMoney(earnings.revenue, currency)}</span>
+        </div>
+        <div className="stat-card flex-1 min-w-[140px]">
+          <span className="stat-label">Per hour</span>
+          {earnings.perHour == null ? (
+            <>
+              <span className="stat-value text-gray-300">—</span>
+              <span className="text-[10px] text-muted mt-0.5">no lessons logged yet</span>
+            </>
+          ) : (
+            <>
+              <span className="stat-value" style={{ color: '#4f46e5' }}>{formatMoney(earnings.perHour, currency)}</span>
+              <span className="text-[10px] text-muted mt-0.5">
+                {formatMoney(earnings.revenue, currency)} ÷ {formatHours(earnings.hours)}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Prepaid packages make this lumpy: a 12-lesson payment lands in one
+          month but is taught over the next few, so a single month's rate can
+          look far too high or too low. Say so rather than let the number
+          pass for a salary. */}
+      {earnings.perHour != null && (
+        <p className="text-[11px] text-muted -mt-2">
+          Counts cash received in {monthLabel} against lessons taught in {monthLabel}. Prepaid packages
+          are paid in one month and taught over the next few, so compare a few months rather than
+          trusting one.
+        </p>
+      )}
+
       {/* Toolbar: month nav + add */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1">
@@ -154,6 +218,15 @@ export default function NotesManager({
         </div>
         <button onClick={jumpToday} className="btn-ghost text-xs">Today</button>
         <span className="text-xs text-muted">{monthCount} note{monthCount === 1 ? '' : 's'} this month</span>
+        {archivedCount > 0 && (
+          <button
+            onClick={() => setShowArchived(v => !v)}
+            className={`btn-ghost text-xs flex items-center gap-1.5 ${showArchived ? 'text-brand-600' : ''}`}
+          >
+            <Archive className="w-3.5 h-3.5" />
+            {showArchived ? 'Hide' : 'Show'} archived ({archivedCount})
+          </button>
+        )}
         <button onClick={() => openAdd()} className="btn-primary text-xs flex items-center gap-1.5 ml-auto">
           <Plus className="w-3.5 h-3.5" /> Add Note
         </button>
@@ -192,8 +265,11 @@ export default function NotesManager({
                 {sortedStudents.map(s => (
                   <tr key={s.id} className="group">
                     <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 border-b border-r border-gray-200 px-3 py-2 min-w-[140px]">
-                      <Link href={`/teacher/students/${s.id}`} className="font-medium text-ink hover:text-brand-600 transition-colors whitespace-nowrap">
-                        {s.fullName}
+                      <Link
+                        href={`/teacher/students/${s.id}`}
+                        className={`font-medium hover:text-brand-600 transition-colors whitespace-nowrap ${s.archived ? 'text-muted italic' : 'text-ink'}`}
+                      >
+                        {s.fullName}{s.archived && <span className="ml-1 text-[10px] not-italic">archived</span>}
                       </Link>
                     </td>
                     {days.map(d => {

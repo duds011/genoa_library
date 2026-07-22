@@ -2,6 +2,39 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
+
+/**
+ * Archive or un-archive a student.
+ *
+ * Archiving is the gentle alternative to deleting: the student drops out of the
+ * students list, the payments grid and the notes grid, but every lesson, note
+ * and payment stays exactly where it was. Their past payments keep counting
+ * toward revenue — a month's income shouldn't change because someone stopped
+ * taking lessons afterwards.
+ */
+export async function setStudentArchived(
+  studentId: string,
+  archived: boolean
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) return { success: false, error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('students')
+    .update({ archived_at: archived ? new Date().toISOString() : null })
+    .eq('id', studentId)
+    .eq('teacher_id', user.id)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/teacher/students')
+  revalidatePath('/teacher/payments')
+  revalidatePath('/teacher/notes')
+  revalidatePath('/teacher/dashboard')
+  return { success: true }
+}
 
 export interface CreateStudentResult {
   success: boolean

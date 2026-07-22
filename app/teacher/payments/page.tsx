@@ -9,7 +9,7 @@ export default async function PaymentsPage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   const [{ data: students }, { data: payments }, { data: profile }] = await Promise.all([
-    supabase.from('students').select('id, full_name, lessons_remaining').eq('teacher_id', user!.id).order('full_name'),
+    supabase.from('students').select('id, full_name, lessons_remaining, archived_at').eq('teacher_id', user!.id).order('full_name'),
     supabase.from('payments').select('*').eq('teacher_id', user!.id),
     supabase.from('profiles').select('currency').eq('id', user!.id).single(),
   ])
@@ -40,10 +40,13 @@ export default async function PaymentsPage() {
     created_at: p.created_at,
   }))
 
+  // Archived students are hidden from the grid but their payments stay in every
+  // total — a past month's income shouldn't change because someone stopped.
   const studentOptions: StudentOption[] = (students ?? []).map(s => ({
     id: s.id,
     fullName: s.full_name,
     lessonsRemaining: (s as any).lessons_remaining ?? null,
+    archived: !!(s as any).archived_at,
   }))
 
   // ── Monthly revenue: 12 months ending at the latest month that has a payment

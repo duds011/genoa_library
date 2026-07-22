@@ -9,11 +9,12 @@ export default async function TeacherDashboard() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Fetch all students for this teacher
+  // Active students only — archived ones are retired, not deleted.
   const { data: students } = await supabase
     .from('students')
     .select('*')
     .eq('teacher_id', user!.id)
+    .is('archived_at', null)
     .order('full_name')
 
   // Fetch draft lessons (need review)

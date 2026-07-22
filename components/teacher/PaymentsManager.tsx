@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, X, Check, Loader2, Trash2, CircleCheck, Wallet, Pencil, ChevronLeft, ChevronRight, ChevronRight as Chevron } from 'lucide-react'
+import { Plus, X, Check, Loader2, Trash2, CircleCheck, Wallet, Pencil, ChevronLeft, ChevronRight, ChevronRight as Chevron, Archive, ArrowDownNarrowWide } from 'lucide-react'
 import { addPayment, updatePayment, deletePayment, markPaymentPaid, updateTeacherCurrency, setLessonsRemaining, PaymentInput } from '@/app/actions/payments'
 import { formatMoney, currencySymbol, CURRENCIES } from '@/lib/currency'
 import { formatJpy } from '@/lib/fx'
@@ -12,7 +12,10 @@ export interface StudentOption {
   id: string
   fullName: string
   lessonsRemaining?: number | null
+  archived?: boolean
 }
+
+type SortMode = 'name' | 'lessons'
 
 export interface ManagedPayment {
   id: string
@@ -75,6 +78,8 @@ export default function PaymentsManager({
   const [form, setForm] = useState(emptyForm())
 
   const [dayCell, setDayCell] = useState<{ studentId: string; name: string; date: string } | null>(null)
+  const [sortMode, setSortMode] = useState<SortMode>('name')
+  const [showArchived, setShowArchived] = useState(false)
 
   // Lessons-left balance per student + editor modal
   const lessonsLeftMap = new Map(students.map(s => [s.id, s.lessonsRemaining ?? null]))
@@ -110,10 +115,32 @@ export default function PaymentsManager({
     byCell.set(key, arr)
   }
 
-  const sortedStudents = [...students].sort((a, b) => a.fullName.localeCompare(b.fullName))
-  // Grid rows: all students alphabetically, then catch-all Trials and Other income rows.
+  const byName = (a: StudentOption, b: StudentOption) => a.fullName.localeCompare(b.fullName)
+
+  /**
+   * Sorting by lessons left puts whoever is closest to running out at the top,
+   * so the students who need a top-up conversation are the first thing she
+   * sees. Students with no balance tracked sink to the bottom — an untracked
+   * balance isn't urgent, it's just unknown.
+   */
+  function byLessonsLeft(a: StudentOption, b: StudentOption) {
+    const av = a.lessonsRemaining
+    const bv = b.lessonsRemaining
+    if (av == null && bv == null) return byName(a, b)
+    if (av == null) return 1
+    if (bv == null) return -1
+    if (av !== bv) return av - bv
+    return byName(a, b)
+  }
+
+  const archivedCount = students.filter(s => s.archived).length
+  const visibleStudents = [...students]
+    .filter(s => showArchived || !s.archived)
+    .sort(sortMode === 'lessons' ? byLessonsLeft : byName)
+
+  // Grid rows: students in the chosen order, then catch-all Trials and Other income rows.
   const gridRows: StudentOption[] = [
-    ...sortedStudents,
+    ...visibleStudents,
     { id: TRIAL_ID, fullName: 'Trials' },
     { id: OTHER_ID, fullName: 'Other' },
   ]
@@ -258,6 +285,31 @@ export default function PaymentsManager({
           <button onClick={nextMonth} className="p-1.5 rounded-lg text-muted hover:bg-gray-100 hover:text-ink transition-colors"><ChevronRight className="w-4 h-4" /></button>
         </div>
         <button onClick={jumpToday} className="btn-ghost text-xs">Today</button>
+
+        {/* Sort — "lessons left" surfaces who needs a top-up conversation. */}
+        <div className="flex items-center gap-1.5 text-xs text-muted">
+          <ArrowDownNarrowWide className="w-3.5 h-3.5" />
+          <select
+            value={sortMode}
+            onChange={e => setSortMode(e.target.value as SortMode)}
+            className="input text-[11px] py-1 w-auto"
+            title="Row order"
+          >
+            <option value="name">Sort by name</option>
+            <option value="lessons">Sort by lessons left</option>
+          </select>
+        </div>
+
+        {archivedCount > 0 && (
+          <button
+            onClick={() => setShowArchived(v => !v)}
+            className={`btn-ghost text-xs flex items-center gap-1.5 ${showArchived ? 'text-brand-600' : ''}`}
+          >
+            <Archive className="w-3.5 h-3.5" />
+            {showArchived ? 'Hide' : 'Show'} archived ({archivedCount})
+          </button>
+        )}
+
         <button onClick={() => openAdd()} className="btn-primary text-xs flex items-center gap-1.5 ml-auto">
           <Plus className="w-3.5 h-3.5" /> Add Payment
         </button>
@@ -317,9 +369,9 @@ export default function PaymentsManager({
                       ) : (
                         <Link
                           href={`/teacher/students/${s.id}`}
-                          title={s.fullName}
+                          title={s.archived ? `${s.fullName} (archived)` : s.fullName}
                           onClick={e => { if (drag.current.moved) e.preventDefault() }}
-                          className="font-medium text-ink hover:text-brand-600 transition-colors block truncate"
+                          className={`font-medium hover:text-brand-600 transition-colors block truncate ${s.archived ? 'text-muted italic' : 'text-ink'}`}
                         >
                           {s.fullName}
                         </Link>
@@ -511,7 +563,9 @@ export default function PaymentsManager({
                   <label className="text-[11px] font-semibold text-muted uppercase tracking-wide">Student</label>
                   <select value={studentId} onChange={e => setStudentId(e.target.value)} className="input w-full text-sm mt-1">
                     <option value="">Select a student…</option>
-                    {sortedStudents.map(s => <option key={s.id} value={s.id}>{s.fullName}</option>)}
+                    {[...visibleStudents].sort(byName).map(s => (
+                      <option key={s.id} value={s.id}>{s.fullName}{s.archived ? ' (archived)' : ''}</option>
+                    ))}
                     <option value={TRIAL_ID}>🎓 Trial lesson (not a student)</option>
                     <option value={OTHER_ID}>✨ Other (not a student)</option>
                   </select>
