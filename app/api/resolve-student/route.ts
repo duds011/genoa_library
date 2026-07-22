@@ -1,12 +1,16 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { extractCandidateNames, matchStudent } from '@/lib/matchStudent'
 import { NextRequest, NextResponse } from 'next/server'
 
 /**
  * POST /api/resolve-student
- * Called by n8n to fuzzy-match a raw filename/calendar title to a student.
+ * Called by n8n to match a raw filename / calendar title to a student.
  *
- * Body: { rawName: string, teacherId: string }
- * Returns: { studentId: string, studentName: string } | { studentId: null, studentName: string }
+ * Body: { rawName: string, teacherId: string, transcript?: string, teacherName?: string }
+ * Returns: { studentId: string | null, studentName: string, matchedBy: string }
+ *
+ * Pass the transcript when you have it — the attendee names inside it match
+ * against student emails, which is far more reliable than the filename.
  *
  * Auth: requires x-n8n-secret header matching N8N_SECRET env var.
  */
@@ -20,6 +24,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const rawName: string = (body.rawName ?? '').trim()
   const teacherId: string = (body.teacherId ?? '').trim()
+  const transcript: string = body.transcript ?? ''
+  const teacherName: string = (body.teacherName ?? '').trim()
 
   if (!rawName || !teacherId) {
     return NextResponse.json({ message: 'rawName and teacherId are required' }, { status: 400 })
@@ -29,24 +35,25 @@ export async function POST(req: NextRequest) {
 
   const { data: students, error } = await admin
     .from('students')
-    .select('id, full_name')
+    .select('id, full_name, email')
     .eq('teacher_id', teacherId)
 
   if (error || !students) {
     return NextResponse.json({ message: 'Failed to fetch students' }, { status: 500 })
   }
 
-  const normalised = rawName.toLowerCase()
+  // Attendee names from the transcript first — they resolve against emails.
+  // The filename is the last resort.
+  const candidates = [
+    ...extractCandidateNames(transcript, teacherName ? [teacherName] : []),
+    rawName,
+  ]
 
-  // Find the first student whose full_name appears anywhere in the raw string
-  const match = students.find(s =>
-    normalised.includes(s.full_name.toLowerCase())
-  )
+  const result = matchStudent(candidates, students)
 
-  if (match) {
-    return NextResponse.json({ studentId: match.id, studentName: match.full_name })
-  }
-
-  // No match — return null so n8n can create the lesson as unassigned
-  return NextResponse.json({ studentId: null, studentName: rawName })
+  return NextResponse.json({
+    studentId: result.studentId,
+    studentName: result.studentName || rawName,
+    matchedBy: result.matchedBy,
+  })
 }

@@ -357,6 +357,33 @@ If you already have the `check-drive` webhook workflow in n8n but it returns `{}
 
 ---
 
+## How a transcript gets matched to a student
+
+Filenames come from the calendar booking, so they're whatever the student typed
+— "Andy Andy", "Andrew Rapacke-Lesson 1". Matching on the filename alone fails
+often, so the **Parse AI Response** node in `GENOA_Drive_Monitor` scores several
+signals against every student's `full_name` **and** `email`:
+
+| Signal | Score | Example |
+| --- | --- | --- |
+| Filename/attendee equals full name | 100 | `Henry Lim` |
+| Name equals the email local-part | 95 | attendee "Andras Gladoun" → `andrasgladoun@gmail.com` |
+| Shared name token also in the email | 90 | "Rapacke" in both the name and `andy@arapackelaw.com` |
+| Token only found via the email | 85 | surname reachable only through the domain |
+| First **and** last name shared | 80 | |
+| One distinctive (5+ char) token | 70 | |
+| Full name contained in the filename | 65 | old behaviour |
+
+Names come from the transcript's `Attendees` line and its `Name:` speaker
+labels, plus the filename as a last resort. Below 65, or when two students tie,
+the lesson is left **unassigned** on purpose — a wrong assignment is worse than
+no assignment. Generic email domains (gmail, hotmail…) are ignored for scoring.
+
+The same algorithm lives in `lib/matchStudent.ts` and is exposed at
+`POST /api/resolve-student`. **Keep the two copies in sync.**
+
+---
+
 ## Filename Convention
 
 Teachers must name their transcript files:
