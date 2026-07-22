@@ -3,14 +3,13 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getLevelLabel } from '@/lib/utils'
 import ProgressCharts from '@/components/student/ProgressCharts'
-import VocabLevelBreakdown, { JLPT_COLORS } from '@/components/student/VocabLevelBreakdown'
+import VocabLevelBreakdown from '@/components/student/VocabLevelBreakdown'
 import StudentTour from '@/components/student/StudentTour'
 import JapaneseLearningMapCard from '@/components/student/JapaneseLearningMapCard'
 import { buildJapaneseLearningMap } from '@/lib/japaneseLearningMap'
 
 const MILESTONES = [1, 5, 10, 25, 50]
 const MILESTONE_EMOJIS = ['🌱', '🌸', '🌿', '⭐', '🏆']
-const JLPT_LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1']
 
 export default async function StudentDashboard() {
   const supabase = await createClient()
@@ -102,13 +101,6 @@ export default async function StudentDashboard() {
   const nextMilestone = MILESTONES.find(m => m > lessonCount) ?? 50
   const levelLabel = getLevelLabel(lessonCount)
 
-  // JLPT counts for inline badges — use distribution if available, fall back to 10-word items
-  const jlptCounts = JLPT_LEVELS.map(level => ({
-    level,
-    count: hasDistribution
-      ? (vocabDistribution[level] ?? 0)
-      : allVocab.filter((v: any) => v.jlpt_level === level).length,
-  })).filter(c => c.count > 0)
   const learningMap = buildJapaneseLearningMap((learningLessons || []) as any)
 
   return (
@@ -187,6 +179,30 @@ export default async function StudentDashboard() {
         </div>
       </div>
 
+      {/* Progress charts sit directly under the stat row and open by default.
+          Collapsed at the bottom of the page, below the learning map, students
+          simply never found them. */}
+      {lessonCount >= 2 && (
+        <ProgressCharts
+          lessons={(lessons || []).map((l: any) => {
+            // Use the full GPT-detected vocab count (same source as the vocab profile),
+            // not just the ~10 key words Noa curates per lesson.
+            const summary = l.lesson_summaries
+            const dist = summary?.vocab_level_distribution
+            const distSum = dist && typeof dist === 'object'
+              ? Object.values(dist).reduce((a: number, b: any) => a + Number(b), 0)
+              : 0
+            const vocabCount = summary?.vocab_total_count ?? (distSum > 0 ? distSum : (l.vocabulary_items?.length ?? 0))
+            return {
+              lessonNumber: l.lesson_number,
+              score: summary?.score ?? null,
+              talkPct: summary?.talk_percentage ?? null,
+              vocabCount,
+            }
+          })}
+        />
+      )}
+
       {/* Milestone progress */}
       <div className="card px-4 py-3" data-tour="milestones">
         <div className="relative px-3" style={{ paddingTop: '1.7rem', paddingBottom: '1.05rem' }}>
@@ -219,59 +235,17 @@ export default async function StudentDashboard() {
         </p>
       </div>
 
-      {/* Words learned + JLPT badges inline */}
+      {/* Vocabulary profile. This used to sit under a second card repeating the
+          same total and the same per-level counts — one is enough. */}
       {totalVocab > 0 && (
-        <div className="card px-4 py-3 flex items-center gap-2 flex-wrap" data-tour="vocab">
-          <span className="text-lg">📚</span>
-          <span className="font-semibold text-sm text-ink">{totalVocab} vocabulary items covered</span>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {jlptCounts.map(({ level, count }) => (
-              <span
-                key={level}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold"
-                style={{
-                  background: (JLPT_COLORS[level] ?? '#818cf8') + '18',
-                  color: JLPT_COLORS[level] ?? '#818cf8',
-                  border: `1px solid ${(JLPT_COLORS[level] ?? '#818cf8')}35`,
-                }}
-              >
-                {level} {count}
-              </span>
-            ))}
-          </div>
+        <div data-tour="vocab">
+          {hasDistribution
+            ? <VocabLevelBreakdown distribution={vocabDistribution} totalCount={totalVocab} />
+            : <VocabLevelBreakdown vocab={allVocab} />}
         </div>
       )}
 
-      {/* Vocab level bar */}
-      {totalVocab > 0 && (
-        hasDistribution
-          ? <VocabLevelBreakdown distribution={vocabDistribution} totalCount={totalVocab} />
-          : <VocabLevelBreakdown vocab={allVocab} />
-      )}
-
       <JapaneseLearningMapCard categories={learningMap} />
-
-      {/* Collapsible progress charts */}
-      {lessonCount >= 2 && (
-        <ProgressCharts
-          lessons={(lessons || []).map((l: any) => {
-            // Use the full GPT-detected vocab count (same source as the vocab profile),
-            // not just the ~10 key words Noa curates per lesson.
-            const summary = l.lesson_summaries
-            const dist = summary?.vocab_level_distribution
-            const distSum = dist && typeof dist === 'object'
-              ? Object.values(dist).reduce((a: number, b: any) => a + Number(b), 0)
-              : 0
-            const vocabCount = summary?.vocab_total_count ?? (distSum > 0 ? distSum : (l.vocabulary_items?.length ?? 0))
-            return {
-              lessonNumber: l.lesson_number,
-              score: summary?.score ?? null,
-              talkPct: summary?.talk_percentage ?? null,
-              vocabCount,
-            }
-          })}
-        />
-      )}
 
       {/* Tests / Evaluations */}
       {(tests?.length ?? 0) > 0 && (

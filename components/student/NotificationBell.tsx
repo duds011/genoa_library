@@ -71,9 +71,13 @@ export default function NotificationBell({ initial }: { initial: EmailPrefs }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-gray-100 bg-white shadow-xl z-50 p-4">
+        // The bell isn't at the right edge of the screen, so anchoring the panel
+        // to it with `right-0` pushed the left half off a phone display. On
+        // mobile it's pinned to the viewport instead; from sm up it hangs off
+        // the bell as before.
+        <div className="fixed inset-x-3 top-16 max-h-[70vh] overflow-y-auto sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 sm:max-h-none sm:overflow-visible rounded-2xl border border-gray-100 bg-white shadow-xl z-50 p-4">
           <div className="flex items-start justify-between gap-2">
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-bold text-ink">Email notifications</p>
               <p className="text-xs text-muted mt-0.5">Choose what Noa emails you about.</p>
             </div>
@@ -84,7 +88,7 @@ export default function NotificationBell({ initial }: { initial: EmailPrefs }) {
 
           {/* Master switch */}
           <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3 py-2.5">
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-ink">All emails</p>
               <p className="text-[11px] text-muted">{enabled ? 'You get the ones ticked below.' : 'Everything is turned off.'}</p>
             </div>
@@ -95,7 +99,7 @@ export default function NotificationBell({ initial }: { initial: EmailPrefs }) {
           <div className={`mt-1 divide-y divide-gray-50 ${enabled ? '' : 'opacity-50'}`}>
             {EMAIL_CATEGORIES.map(cat => (
               <div key={cat.key} className="flex items-center justify-between gap-3 py-2.5">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-ink">{cat.label}</p>
                   <p className="text-[11px] text-muted leading-snug">{cat.description}</p>
                 </div>

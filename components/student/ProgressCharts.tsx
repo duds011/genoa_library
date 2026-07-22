@@ -34,7 +34,10 @@ function CustomTooltip({ active, payload, label, suffix = '', label2 = '' }: any
 }
 
 export default function ProgressCharts({ lessons }: Props) {
-  const [open, setOpen] = useState(false)
+  // Open by default — this is the thing students most want to see, and behind a
+  // collapsed button at the foot of the page nobody ever opened it. It still
+  // collapses for anyone who'd rather have the room back.
+  const [open, setOpen] = useState(true)
 
   if (lessons.length < 2) return null
 
@@ -53,25 +56,29 @@ export default function ProgressCharts({ lessons }: Props) {
 
   return (
     <div>
+      {/* Reads as a section heading with a collapse affordance, not a button
+          that must be pressed before anything appears. */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-center gap-2 px-5 py-3 font-bold text-sm transition-all duration-200"
+        aria-expanded={open}
+        className="w-full flex items-center justify-between gap-2 px-4 sm:px-5 py-3 font-bold text-sm transition-all duration-200"
         style={{
           background: '#eef2ff',
           border: '1.5px solid #e0e7ff',
           borderRadius: '12px',
           color: '#4f46e5',
           marginBottom: open ? '0.85rem' : 0,
-          borderBottomLeftRadius: open ? '12px' : '12px',
-          borderBottomRightRadius: open ? '12px' : '12px',
         }}
       >
-        <span>Progress charts</span>
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        <span className="flex items-center gap-2">📊 Your progress charts</span>
+        <span className="flex items-center gap-1 text-xs font-semibold opacity-70">
+          {open ? 'Hide' : 'Show'}
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </span>
       </button>
 
       {open && (
-      <div className="px-5 pb-5 space-y-4">
+      <div className="px-0 sm:px-5 pb-5 space-y-4">
       <div className="grid sm:grid-cols-2 gap-4">
         {/* ── Score over time ─────────────────────────────────── */}
         {hasScores && (
