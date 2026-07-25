@@ -64,6 +64,17 @@ body {
   .section-title { @apply text-base font-bold text-ink; }
 }
 
+/* iOS Safari auto-zooms the page when you focus a field whose font-size is
+   under 16px (our .input is text-sm / 14px). Bump form controls to 16px on
+   phones only — desktop keeps the smaller size. */
+@media (max-width: 640px) {
+  .input,
+  .textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
