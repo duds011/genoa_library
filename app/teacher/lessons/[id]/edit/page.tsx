@@ -97,11 +97,11 @@ export default async function EditLessonPage({
             </span>
             {lesson.lesson_number && <span className="badge-brand">Lesson {lesson.lesson_number}</span>}
             {!(lesson.students as any)?.id && (
-              <span className="text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">âš  unassigned</span>
+              <span className="text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">⚠ unassigned</span>
             )}
           </div>
           <h1 className="text-xl font-bold text-ink">
-            Edit Lesson â€” {(lesson.students as any)?.full_name ?? <span className="text-amber-600">Unassigned</span>}
+            Edit Lesson — {(lesson.students as any)?.full_name ?? <span className="text-amber-600">Unassigned</span>}
           </h1>
           <p className="text-sm text-muted">{formatDateShort(lesson.lesson_date)}</p>
         </div>
@@ -128,7 +128,7 @@ export default async function EditLessonPage({
         rawTranscript={lesson.raw_transcript}
       />
 
-      {/* Auto-generated practice exercises â€” review before publishing + student results */}
+      {/* Auto-generated practice exercises — review before publishing + student results */}
       {exercises.length > 0 && (
         <ExerciseReview
           lessonId={lesson.id}

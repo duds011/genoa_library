@@ -32,7 +32,7 @@ export default async function NotesPage() {
     archived: !!(s as any).archived_at,
   }))
 
-  // Archived students' payments still count â€” see lib/earnings.ts.
+  // Archived students' payments still count — see lib/earnings.ts.
   const earningsPayments: EarningsPayment[] = (payments ?? []).map(p => ({
     status: p.status,
     payment_date: p.payment_date,
@@ -46,7 +46,7 @@ export default async function NotesPage() {
           <StickyNote className="w-5 h-5 text-brand-600" />
           <h1 className="text-2xl font-bold text-ink">Notes</h1>
         </div>
-        <p className="text-sm text-muted">Your private notes after each lesson â€” all in one place. Only you can see these.</p>
+        <p className="text-sm text-muted">Your private notes after each lesson — all in one place. Only you can see these.</p>
       </div>
 
       <NotesManager

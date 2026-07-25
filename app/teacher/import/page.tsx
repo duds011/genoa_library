@@ -34,7 +34,7 @@ export default async function ImportPage() {
         <ol className="list-decimal list-inside space-y-1 text-brand-600">
           <li>Select the student and lesson date below</li>
           <li>Paste the full Google Meet transcript</li>
-          <li>Click <strong>Process transcript</strong> â€” AI analysis takes ~10â€“15 seconds</li>
+          <li>Click <strong>Process transcript</strong> — AI analysis takes ~10–15 seconds</li>
           <li>A <span className="badge-draft inline">draft</span> lesson will appear on the dashboard for you to review and publish</li>
         </ol>
       </div>

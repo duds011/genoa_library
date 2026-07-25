@@ -65,7 +65,7 @@ export default async function LessonsPage() {
                   {lesson.title || `Lesson ${lesson.lesson_number}`}
                 </h2>
                 <p className="text-xs text-muted mt-0.5">
-                  {ordinal(lesson.lesson_number)} lesson â€¢ {formatDateShort(lesson.lesson_date)}
+                  {ordinal(lesson.lesson_number)} lesson • {formatDateShort(lesson.lesson_date)}
                 </p>
               </div>
 
@@ -77,7 +77,7 @@ export default async function LessonsPage() {
                 <span className="text-[11px] text-muted">
                   {openHomework > 0 ? `${openHomework} homework item${openHomework === 1 ? '' : 's'} open` : 'Recap ready'}
                 </span>
-                <span className="text-xs font-semibold text-brand-600">Open â†’</span>
+                <span className="text-xs font-semibold text-brand-600">Open →</span>
               </div>
             </Link>
           )
@@ -85,7 +85,7 @@ export default async function LessonsPage() {
 
         {(lessons?.length ?? 0) === 0 && (
           <div className="sm:col-span-2 card p-12 text-center">
-            <p className="text-4xl mb-3">ðŸ“–</p>
+            <p className="text-4xl mb-3">📖</p>
             <p className="font-semibold text-ink">No lessons yet</p>
             <p className="text-sm text-muted mt-1">Your lessons will appear here once published by your teacher.</p>
           </div>
