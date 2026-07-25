@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getUser } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Users, BookOpen, Clock, PenLine } from 'lucide-react'
 import { formatDateShort } from '@/lib/utils'
@@ -7,39 +7,45 @@ import CheckDriveButton from '@/components/teacher/CheckDriveButton'
 
 export default async function TeacherDashboard() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser() // memoized — shared with the layout
 
-  // Active students only — archived ones are retired, not deleted.
-  const { data: students } = await supabase
-    .from('students')
-    .select('*')
-    .eq('teacher_id', user!.id)
-    .is('archived_at', null)
-    .order('full_name')
-
-  // Fetch draft lessons (need review)
-  const { data: draftLessons } = await supabase
-    .from('lessons')
-    .select(`
-      id, lesson_number, lesson_date, student_id, title,
-      students ( full_name ),
-      lesson_summaries ( score, recap )
-    `)
-    .eq('teacher_id', user!.id)
-    .eq('status', 'draft')
-    .order('created_at', { ascending: false })
-
-  // Fetch all published lessons, oldest first
-  const { data: recentLessons } = await supabase
-    .from('lessons')
-    .select(`
-      id, lesson_number, lesson_date, student_id,
-      students ( full_name ),
-      lesson_summaries ( score )
-    `)
-    .eq('teacher_id', user!.id)
-    .eq('status', 'published')
-    .order('lesson_date', { ascending: false })
+  // These three queries are independent, so fire them in parallel rather than
+  // waiting on each Supabase round-trip in sequence.
+  const [
+    { data: students },
+    { data: draftLessons },
+    { data: recentLessons },
+  ] = await Promise.all([
+    // Active students only — archived ones are retired, not deleted.
+    supabase
+      .from('students')
+      .select('*')
+      .eq('teacher_id', user!.id)
+      .is('archived_at', null)
+      .order('full_name'),
+    // Draft lessons (need review)
+    supabase
+      .from('lessons')
+      .select(`
+        id, lesson_number, lesson_date, student_id, title,
+        students ( full_name ),
+        lesson_summaries ( score, recap )
+      `)
+      .eq('teacher_id', user!.id)
+      .eq('status', 'draft')
+      .order('created_at', { ascending: false }),
+    // All published lessons, newest first
+    supabase
+      .from('lessons')
+      .select(`
+        id, lesson_number, lesson_date, student_id,
+        students ( full_name ),
+        lesson_summaries ( score )
+      `)
+      .eq('teacher_id', user!.id)
+      .eq('status', 'published')
+      .order('lesson_date', { ascending: false }),
+  ])
 
   const totalStudents = students?.length ?? 0
   const totalLessons = (draftLessons?.length ?? 0) + (recentLessons?.length ?? 0)

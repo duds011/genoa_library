@@ -20,34 +20,40 @@ export default async function StudentDetailPage({
 }) {
   const supabase = await createClient()
 
-  const { data: student } = await supabase
-    .from('students')
-    .select('*')
-    .eq('id', params.id)
-    .single()
+  // student, lessons and tests all key off params.id and don't depend on each
+  // other — fetch them in parallel instead of three sequential round-trips.
+  const [
+    { data: student },
+    { data: lessons },
+    { data: tests },
+  ] = await Promise.all([
+    supabase
+      .from('students')
+      .select('*')
+      .eq('id', params.id)
+      .single(),
+    supabase
+      .from('lessons')
+      .select(`
+        id, lesson_number, lesson_date, status, title,
+        lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution ),
+        vocabulary_items ( id, jlpt_level ),
+        homework_items ( id, completed )
+      `)
+      .eq('student_id', params.id)
+      .order('lesson_number', { ascending: true }),
+    // Tests built for this student, with enough to show the score on each card
+    supabase
+      .from('tests')
+      .select('id, title, status, duration_minutes, lesson_numbers, created_at, test_questions ( id, type, points )')
+      .eq('student_id', params.id)
+      .order('created_at', { ascending: false }),
+  ])
 
   if (!student) notFound()
 
-  const { data: lessons } = await supabase
-    .from('lessons')
-    .select(`
-      id, lesson_number, lesson_date, status, title,
-      lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution ),
-      vocabulary_items ( id, jlpt_level ),
-      homework_items ( id, completed )
-    `)
-    .eq('student_id', params.id)
-    .order('lesson_number', { ascending: true })
-
   const published = (lessons || []).filter((l: any) => l.status === 'published')
   const drafts    = (lessons || []).filter((l: any) => l.status === 'draft')
-
-  // Tests built for this student, with enough to show the score on each card
-  const { data: tests } = await supabase
-    .from('tests')
-    .select('id, title, status, duration_minutes, lesson_numbers, created_at, test_questions ( id, type, points )')
-    .eq('student_id', params.id)
-    .order('created_at', { ascending: false })
 
   const testIds = (tests || []).map((t: any) => t.id)
   const testResults = new Map<string, { submitted: boolean } & ReturnType<typeof testScore>>()

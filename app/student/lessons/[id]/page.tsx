@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient, getUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -17,7 +17,7 @@ export default async function StudentLessonPage({
   params: { id: string }
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser() // memoized, shared with the layout
   if (!user) redirect('/login')
 
   const { data: student } = await supabase
@@ -37,7 +37,7 @@ export default async function StudentLessonPage({
 
   if (!lesson) notFound()
 
-  // Fetch teacher's display name (bypasses RLS — read-only, non-sensitive)
+  // Fetch teacher's display name (bypasses RLS â€” read-only, non-sensitive)
   const admin = createAdminClient()
   const { data: teacherProfile } = await admin
     .from('profiles')
@@ -82,12 +82,12 @@ export default async function StudentLessonPage({
   const voiceUrl = (lesson as any).voice_file_url
   const hasProgress = Boolean(summary || voiceUrl || summary?.teacher_note || attachments.length > 0)
 
-  // ── PROGRESS panel ──────────────────────────────────────────────────────────
+  // â”€â”€ PROGRESS panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const progressPanel = (
     <>
       {summary && (
         <div className="card p-5" style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f8f7ff 100%)', border: '1px solid rgba(79,70,229,0.16)' }}>
-          <h2 className="font-bold text-brand-800 text-base mb-4">📊 Lesson Dashboard</h2>
+          <h2 className="font-bold text-brand-800 text-base mb-4">ðŸ“Š Lesson Dashboard</h2>
 
           <div className="grid sm:grid-cols-3 gap-3 mb-3">
             {/* Speaking Balance */}
@@ -137,12 +137,12 @@ export default async function StudentLessonPage({
             <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
               <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Grammar Density</p>
               <p className="text-2xl font-extrabold text-brand-600 leading-none">
-                {summary.grammar_density || '—'}
+                {summary.grammar_density || 'â€”'}
               </p>
             </div>
           </div>
 
-          {/* Main Takeaways — inside dashboard */}
+          {/* Main Takeaways â€” inside dashboard */}
           {mainTakeaways && (
             <div className="border-t border-indigo-50 pt-4 mt-1">
               <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-3">Main Corrections & Refinements</p>
@@ -155,7 +155,7 @@ export default async function StudentLessonPage({
       {/* Teacher's Audio Review */}
       {voiceUrl && (
         <div className="card p-6" style={{ border: '1px solid rgba(79,70,229,0.12)' }}>
-          <h2 className="section-title mb-1">🎙️ Noa's Audio Review</h2>
+          <h2 className="section-title mb-1">ðŸŽ™ï¸ Noa's Audio Review</h2>
           <audio controls className="w-full" src={voiceUrl} />
         </div>
       )}
@@ -163,7 +163,7 @@ export default async function StudentLessonPage({
       {/* Teacher's Note */}
       {summary?.teacher_note && (
         <div className="card p-6" style={{ background: 'linear-gradient(180deg,#ffffff,#f7f4ff)', border: '1px solid rgba(79,70,229,0.12)' }}>
-          <h2 className="section-title mb-3">🌟 Noa's Note</h2>
+          <h2 className="section-title mb-3">ðŸŒŸ Noa's Note</h2>
           <p className="text-sm text-ink/85 leading-relaxed">{summary.teacher_note}</p>
         </div>
       )}
@@ -171,7 +171,7 @@ export default async function StudentLessonPage({
       {/* Attachments */}
       {attachments.length > 0 && (
         <div className="card p-6">
-          <h2 className="section-title mb-4">📎 Files from your teacher</h2>
+          <h2 className="section-title mb-4">ðŸ“Ž Files from your teacher</h2>
           <ul className="space-y-2">
             {attachments.map((a: any) => (
               <li key={a.id}>
@@ -181,7 +181,7 @@ export default async function StudentLessonPage({
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 p-3 rounded-xl bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 transition-colors"
                 >
-                  <span className="text-2xl">📄</span>
+                  <span className="text-2xl">ðŸ“„</span>
                   <span className="text-sm font-medium text-brand-700">{a.file_name}</span>
                 </a>
               </li>
@@ -196,7 +196,7 @@ export default async function StudentLessonPage({
     </>
   )
 
-  // ── LESSON panel ────────────────────────────────────────────────────────────
+  // â”€â”€ LESSON panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const lessonPanel = sections.length > 0 ? (
     <>
       {sections.map((section: any) => (
@@ -210,13 +210,13 @@ export default async function StudentLessonPage({
     <div className="card p-8 text-center text-muted text-sm">No lesson sections for this lesson.</div>
   )
 
-  // ── HOMEWORK panel ──────────────────────────────────────────────────────────
+  // â”€â”€ HOMEWORK panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const homeworkPanel = (
     <>
-      {/* Your Tasks — first */}
+      {/* Your Tasks â€” first */}
       {homework.length > 0 && (
         <div className="card p-6">
-          <h2 className="section-title mb-4">📝 Your Tasks <span className="text-muted font-normal text-sm">(宿題)</span></h2>
+          <h2 className="section-title mb-4">ðŸ“ Your Tasks <span className="text-muted font-normal text-sm">(å®¿é¡Œ)</span></h2>
           <ul className="space-y-2">
             {homework.map((hw: any) => (
               <li key={hw.id} className="flex items-start gap-3 p-3 rounded-xl bg-gray-50">
@@ -232,7 +232,7 @@ export default async function StudentLessonPage({
         </div>
       )}
 
-      {/* Practice Exercises — only if Noa chose to show them */}
+      {/* Practice Exercises â€” only if Noa chose to show them */}
       {exercises.length > 0 && (lesson as any).show_exercises !== false && (
         <LessonExercises
           lessonId={lesson.id}
@@ -251,7 +251,7 @@ export default async function StudentLessonPage({
         />
       )}
 
-      {/* Practice recording — general, for anything the student wants to share */}
+      {/* Practice recording â€” general, for anything the student wants to share */}
       <StudentAudioSubmit
         lessonId={lesson.id}
         studentId={student.id}
@@ -260,10 +260,10 @@ export default async function StudentLessonPage({
     </>
   )
 
-  // ── VOCABULARY panel ────────────────────────────────────────────────────────
+  // â”€â”€ VOCABULARY panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const vocabPanel = vocab.length > 0 ? (
     <div className="card p-6">
-      <h2 className="section-title mb-1">📖 Key Vocabulary</h2>
+      <h2 className="section-title mb-1">ðŸ“– Key Vocabulary</h2>
       <p className="text-xs text-muted mb-4">Showing {vocab.length} key vocabulary items from this lesson.</p>
       <div className="space-y-3">
         {vocab.map((v: any) => (
@@ -309,7 +309,7 @@ export default async function StudentLessonPage({
         <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
       </Link>
 
-      {/* ── Header panel ──────────────────────────────────────────────── */}
+      {/* â”€â”€ Header panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="card p-7" style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f7f4ff 100%)' }}>
 
         {/* Eyebrow */}
@@ -322,7 +322,7 @@ export default async function StudentLessonPage({
           {lesson.title || `Lesson ${lesson.lesson_number}`}
         </h1>
         <p className="text-sm text-muted mb-5">
-          🇯🇵 Japanese Lesson Recap: {student.full_name} &amp; {teacherFirstName}
+          ðŸ‡¯ðŸ‡µ Japanese Lesson Recap: {student.full_name} &amp; {teacherFirstName}
         </p>
 
         {/* Meta boxes */}
@@ -340,13 +340,13 @@ export default async function StudentLessonPage({
         </div>
       </div>
 
-      {/* ── Tabbed recap ──────────────────────────────────────────────── */}
+      {/* â”€â”€ Tabbed recap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <LessonTabs
         tabs={[
-          { id: 'progress', label: 'Progress',   icon: '📊', content: progressPanel },
-          { id: 'lesson',   label: 'Lesson',     icon: '📚', content: lessonPanel },
-          { id: 'homework', label: 'Homework',   icon: '📝', content: homeworkPanel },
-          { id: 'vocab',    label: 'Vocabulary', icon: '📖', content: vocabPanel },
+          { id: 'progress', label: 'Progress',   icon: 'ðŸ“Š', content: progressPanel },
+          { id: 'lesson',   label: 'Lesson',     icon: 'ðŸ“š', content: lessonPanel },
+          { id: 'homework', label: 'Homework',   icon: 'ðŸ“', content: homeworkPanel },
+          { id: 'vocab',    label: 'Vocabulary', icon: 'ðŸ“–', content: vocabPanel },
         ]}
       />
 

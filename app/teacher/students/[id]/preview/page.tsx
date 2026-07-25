@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient, getUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -8,7 +8,7 @@ import ProgressCharts from '@/components/student/ProgressCharts'
 import VocabLevelBreakdown from '@/components/student/VocabLevelBreakdown'
 
 const MILESTONES = [1, 5, 10, 25, 50]
-const MILESTONE_EMOJIS = ['🌱', '🌸', '🌿', '⭐', '🏆']
+const MILESTONE_EMOJIS = ['ðŸŒ±', 'ðŸŒ¸', 'ðŸŒ¿', 'â­', 'ðŸ†']
 
 export default async function StudentPreviewPage({
   params,
@@ -16,7 +16,7 @@ export default async function StudentPreviewPage({
   params: { id: string }
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser() // memoized, shared with the layout
   if (!user) notFound()
 
   const admin = createAdminClient()
@@ -66,7 +66,7 @@ export default async function StudentPreviewPage({
       {/* Teacher preview banner */}
       <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
         <div className="flex items-center gap-2.5">
-          <span className="text-lg">👁</span>
+          <span className="text-lg">ðŸ‘</span>
           <div>
             <p className="text-sm font-bold text-amber-800">Teacher Preview</p>
             <p className="text-xs text-amber-600">You're viewing {student.full_name}'s student dashboard</p>
@@ -77,7 +77,7 @@ export default async function StudentPreviewPage({
         </Link>
       </div>
 
-      {/* Header — mirrors student view */}
+      {/* Header â€” mirrors student view */}
       <div className="card p-6">
         <div className="flex items-center gap-2 px-3 py-1 bg-brand-50 rounded-full w-fit">
           <span className="w-2 h-2 rounded-full bg-brand-600 animate-pulse" />
@@ -102,18 +102,18 @@ export default async function StudentPreviewPage({
           <div className="stat-card">
             <span className="stat-label">Latest Score</span>
             <div className="flex flex-col">
-              <span className="stat-value">{latestScore ?? '—'}<span className="text-base font-normal text-muted">/10</span></span>
+              <span className="stat-value">{latestScore ?? 'â€”'}<span className="text-base font-normal text-muted">/10</span></span>
               <span className="text-xs text-muted">{scoreDelta} since lesson 1</span>
             </div>
           </div>
           <div className="stat-card">
             <span className="stat-label">Avg Score</span>
-            <span className="stat-value">{avgScore ? avgScore.toFixed(1) : '—'}<span className="text-base font-normal text-muted">/10</span></span>
+            <span className="stat-value">{avgScore ? avgScore.toFixed(1) : 'â€”'}<span className="text-base font-normal text-muted">/10</span></span>
           </div>
           <div className="stat-card">
             <span className="stat-label">You Talk</span>
             <div className="flex flex-col">
-              <span className="stat-value">{latestTalk ?? '—'}<span className="text-base font-normal text-muted">%</span></span>
+              <span className="stat-value">{latestTalk ?? 'â€”'}<span className="text-base font-normal text-muted">%</span></span>
               {talkDelta !== null && (
                 <span className="text-xs text-muted">{talkDelta >= 0 ? '+' : ''}{talkDelta}% since lesson 1</span>
               )}
@@ -136,7 +136,7 @@ export default async function StudentPreviewPage({
 
       {/* Words learned */}
       <div className="card px-5 py-4 flex items-center gap-3">
-        <span className="text-xl">📚</span>
+        <span className="text-xl">ðŸ“š</span>
         <span className="font-bold text-ink">{totalVocab} vocabulary items covered</span>
         {totalVocab > 0 && <span className="badge-green ml-1">{totalVocab} total</span>}
       </div>
@@ -174,7 +174,7 @@ export default async function StudentPreviewPage({
         <p className="text-xs text-muted text-center">
           {nextMilestone > lessonCount
             ? `${nextMilestone - lessonCount} more lesson${nextMilestone - lessonCount !== 1 ? 's' : ''} to unlock ${MILESTONE_EMOJIS[MILESTONES.indexOf(nextMilestone)]} ${levelLabel}`
-            : '🏆 Maximum milestone reached!'}
+            : 'ðŸ† Maximum milestone reached!'}
         </p>
       </div>
 
@@ -199,18 +199,18 @@ export default async function StudentPreviewPage({
                 <h3 className="font-bold text-ink text-base leading-snug">
                   {lesson.title || `Lesson ${lesson.lesson_number}`}
                 </h3>
-                <p className="text-xs text-muted mt-0.5">{ordinal(lesson.lesson_number)} lesson • {formatDateShort(lesson.lesson_date)}</p>
+                <p className="text-xs text-muted mt-0.5">{ordinal(lesson.lesson_number)} lesson â€¢ {formatDateShort(lesson.lesson_date)}</p>
               </div>
               {lesson.lesson_summaries?.recap && (
                 <p className="text-sm text-muted line-clamp-2">{lesson.lesson_summaries.recap}</p>
               )}
-              <div className="btn-primary w-full justify-center mt-auto">Open Lesson →</div>
+              <div className="btn-primary w-full justify-center mt-auto">Open Lesson â†’</div>
             </Link>
           ))}
 
           {lessonCount === 0 && (
             <div className="col-span-2 card p-12 text-center">
-              <p className="text-4xl mb-3">📖</p>
+              <p className="text-4xl mb-3">ðŸ“–</p>
               <p className="font-semibold text-ink">No published lessons yet</p>
               <p className="text-sm text-muted mt-1">Publish a lesson to see it here.</p>
             </div>

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient, getUser } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -10,7 +10,7 @@ export default async function TestReviewPage({
   params: { id: string }
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser() // memoized, shared with the layout
 
   const { data: test } = await supabase
     .from('tests')

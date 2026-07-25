@@ -39,36 +39,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Logged in → check role and route accordingly
-  if (user) {
-    // Already authed hitting login → redirect to dashboard
-    if (path === '/login' || path === '/') {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
+  // Logged in and landing on / or /login → send to their dashboard.
+  // This is the only place that needs the role here: there's no teacher/student
+  // layout on these routes to do it. On the actual /teacher and /student routes
+  // we deliberately DON'T re-query the role — the respective layouts already
+  // fetch the profile and redirect on a mismatch (and RLS guards the data), so
+  // repeating the query here was just an extra cross-region round-trip per click.
+  if (user && (path === '/login' || path === '/')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
 
-      const dest =
-        profile?.role === 'teacher' ? '/teacher/dashboard' : '/student/dashboard'
-      return NextResponse.redirect(new URL(dest, request.url))
-    }
-
-    // Teacher hitting student routes, or vice versa
-    if (path.startsWith('/teacher') || path.startsWith('/student')) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-      if (path.startsWith('/teacher') && profile?.role !== 'teacher') {
-        return NextResponse.redirect(new URL('/student/dashboard', request.url))
-      }
-      if (path.startsWith('/student') && profile?.role !== 'student') {
-        return NextResponse.redirect(new URL('/teacher/dashboard', request.url))
-      }
-    }
+    const dest =
+      profile?.role === 'teacher' ? '/teacher/dashboard' : '/student/dashboard'
+    return NextResponse.redirect(new URL(dest, request.url))
   }
 
   return supabaseResponse

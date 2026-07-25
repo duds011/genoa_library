@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getUser } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getLevelLabel } from '@/lib/utils'
@@ -13,7 +13,7 @@ const MILESTONE_EMOJIS = ['🌱', '🌸', '🌿', '⭐', '🏆']
 
 export default async function StudentDashboard() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser() // memoized — shared with the layout
   if (!user) redirect('/login')
 
   const { data: student } = await supabase
@@ -34,35 +34,40 @@ export default async function StudentDashboard() {
 
   const displayName = (student.full_name || user.email || 'student').trim().split(/\s+/)[0]
 
-  const { data: lessons } = await supabase
-    .from('lessons')
-    .select(`
-      id, lesson_number, lesson_date, title,
-      lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution, vocab_total_count ),
-      vocabulary_items ( id, word, jlpt_level ),
-      homework_items ( id, completed )
-    `)
-    .eq('student_id', student.id)
-    .eq('status', 'published')
-    .order('lesson_number', { ascending: false })
-
-  const { data: learningLessons } = await supabase
-    .from('lessons')
-    .select(`
-      id, lesson_number, title,
-      lesson_sections ( title, content )
-    `)
-    .eq('student_id', student.id)
-    .eq('status', 'published')
-    .order('lesson_number', { ascending: true })
-
-  // Published tests + this student's attempt state
-  const { data: tests } = await supabase
-    .from('tests')
-    .select('id, title, duration_minutes, lesson_numbers, created_at, test_attempts ( started_at, submitted_at )')
-    .eq('student_id', student.id)
-    .eq('status', 'published')
-    .order('created_at', { ascending: false })
+  // These three all key off student.id and are independent — run them together.
+  const [
+    { data: lessons },
+    { data: learningLessons },
+    { data: tests },
+  ] = await Promise.all([
+    supabase
+      .from('lessons')
+      .select(`
+        id, lesson_number, lesson_date, title,
+        lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution, vocab_total_count ),
+        vocabulary_items ( id, word, jlpt_level ),
+        homework_items ( id, completed )
+      `)
+      .eq('student_id', student.id)
+      .eq('status', 'published')
+      .order('lesson_number', { ascending: false }),
+    supabase
+      .from('lessons')
+      .select(`
+        id, lesson_number, title,
+        lesson_sections ( title, content )
+      `)
+      .eq('student_id', student.id)
+      .eq('status', 'published')
+      .order('lesson_number', { ascending: true }),
+    // Published tests + this student's attempt state
+    supabase
+      .from('tests')
+      .select('id, title, duration_minutes, lesson_numbers, created_at, test_attempts ( started_at, submitted_at )')
+      .eq('student_id', student.id)
+      .eq('status', 'published')
+      .order('created_at', { ascending: false }),
+  ])
 
   const lessonCount = (lessons || []).reduce((max: number, l: any) => Math.max(max, l.lesson_number ?? 0), 0)
   const scores = (lessons || []).map((l: any) => l.lesson_summaries?.score).filter(Boolean)

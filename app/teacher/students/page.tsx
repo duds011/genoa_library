@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient, getUser } from '@/lib/supabase/server'
 import Link from 'next/link'
 import AddStudentForm from '@/components/teacher/AddStudentForm'
 import SetupStudentLoginButton from '@/components/teacher/SetupStudentLoginButton'
@@ -8,7 +8,7 @@ import { ArrowRight, BookOpen } from 'lucide-react'
 
 export default async function StudentsPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser() // memoized, shared with the layout
 
   const { data: students } = await supabase
     .from('students')
@@ -44,7 +44,7 @@ export default async function StudentsPage() {
             style={{ background: isArchived ? '#9ca3af' : 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
             {student.full_name.charAt(0).toUpperCase()}
           </div>
-          {/* truncate on both lines — a long name used to push the whole card
+          {/* truncate on both lines â€” a long name used to push the whole card
               wider than a phone screen */}
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-ink truncate">{student.full_name}</p>
@@ -90,21 +90,21 @@ export default async function StudentsPage() {
           <h1 className="text-2xl font-bold text-ink">Students</h1>
           <p className="text-sm text-muted mt-0.5">
             {active.length} active student{active.length !== 1 ? 's' : ''}
-            {archived.length > 0 && ` · ${archived.length} archived`}
+            {archived.length > 0 && ` Â· ${archived.length} archived`}
           </p>
         </div>
       </div>
 
       <div className="grid lg:grid-cols-5 gap-6">
-        {/* Students list. min-w-0 lets the column shrink below its content —
+        {/* Students list. min-w-0 lets the column shrink below its content â€”
             without it the nowrap from `truncate` sets a min-content width wider
             than a phone screen, and truncation never kicks in. */}
         <div className="lg:col-span-3 space-y-3 min-w-0">
           {active.length === 0 && archived.length === 0 ? (
             <div className="card p-10 text-center">
-              <p className="text-3xl mb-2">👋</p>
+              <p className="text-3xl mb-2">ðŸ‘‹</p>
               <p className="font-semibold text-ink">No students yet</p>
-              <p className="text-sm text-muted mt-1">Add your first student using the form →</p>
+              <p className="text-sm text-muted mt-1">Add your first student using the form â†’</p>
             </div>
           ) : (
             active.map((student: any) => (

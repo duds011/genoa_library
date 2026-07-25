@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient, getUser } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Clock, FileText } from 'lucide-react'
@@ -7,12 +7,12 @@ import { groupBySection, testScore } from '@/lib/utils'
 import type { TestQuestion, TestSubmission } from '@/lib/types'
 
 const TYPE_LABEL: Record<string, string> = {
-  written: '✍️ Written',
-  speak: '🎙️ Speaking',
-  read_aloud: '🎙️ Read aloud',
-  reading_passage: '📖 Reading',
-  multiple_choice: '✅ Multiple choice',
-  fill_blank: '✏️ Fill in the blank',
+  written: 'âœï¸ Written',
+  speak: 'ðŸŽ™ï¸ Speaking',
+  read_aloud: 'ðŸŽ™ï¸ Read aloud',
+  reading_passage: 'ðŸ“– Reading',
+  multiple_choice: 'âœ… Multiple choice',
+  fill_blank: 'âœï¸ Fill in the blank',
 }
 
 export default async function StudentTestPage({
@@ -21,7 +21,7 @@ export default async function StudentTestPage({
   params: { id: string }
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser() // memoized, shared with the layout
   if (!user) redirect('/login')
 
   const { data: student } = await supabase
@@ -50,7 +50,7 @@ export default async function StudentTestPage({
     </Link>
   )
 
-  // Already submitted → show read-only results with teacher feedback
+  // Already submitted â†’ show read-only results with teacher feedback
   if (attempt?.submitted_at) {
     const subByQ = new Map(subs.map(s => [s.question_id, s]))
     // Multiple-choice and fill-in answers are marked the moment they're saved,
@@ -70,16 +70,16 @@ export default async function StudentTestPage({
 
           {!anyGraded ? (
             <p className="mt-3 text-sm text-brand-600 bg-brand-50 rounded-xl px-4 py-2 inline-block">
-              ⏳ Your teacher is reviewing your answers.
+              â³ Your teacher is reviewing your answers.
             </p>
           ) : awaiting > 0 ? (
             <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
               <p className="text-sm font-bold text-amber-800">
-                So far: {score} / {maxScore} — not your final score yet
+                So far: {score} / {maxScore} â€” not your final score yet
               </p>
               <p className="text-xs text-amber-700 mt-1">
                 Only the multiple-choice and fill-in-the-blank answers are marked automatically.
-                Noa still has {awaiting} answer{awaiting !== 1 ? 's' : ''} to mark by hand — your speaking
+                Noa still has {awaiting} answer{awaiting !== 1 ? 's' : ''} to mark by hand â€” your speaking
                 and writing. Your score will go up as she marks them.
               </p>
             </div>
@@ -143,7 +143,7 @@ export default async function StudentTestPage({
                         {isChoice ? (
                           <>
                             <p className={`text-sm font-semibold ${choiceCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                              Your answer: {choiceLabel ?? '—'} {s?.answer_text != null ? (choiceCorrect ? '✓' : '✗') : ''}
+                              Your answer: {choiceLabel ?? 'â€”'} {s?.answer_text != null ? (choiceCorrect ? 'âœ“' : 'âœ—') : ''}
                             </p>
                             {!choiceCorrect && correctText != null && (
                               <p className="text-xs text-green-600 font-semibold mt-1">Correct answer: {correctText}</p>
@@ -174,7 +174,7 @@ export default async function StudentTestPage({
     )
   }
 
-  // Not submitted → take the test
+  // Not submitted â†’ take the test
   return (
     <div className="space-y-4">
       {backLink}

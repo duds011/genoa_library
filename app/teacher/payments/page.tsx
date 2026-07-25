@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient, getUser } from '@/lib/supabase/server'
 import { Wallet } from 'lucide-react'
 import PaymentsManager, { ManagedPayment, StudentOption } from '@/components/teacher/PaymentsManager'
 import RevenueChart, { MonthlyRevenue } from '@/components/teacher/RevenueChart'
@@ -6,7 +6,7 @@ import { getRate } from '@/lib/fx'
 
 export default async function PaymentsPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser() // memoized, shared with the layout
 
   const [{ data: students }, { data: payments }, { data: profile }] = await Promise.all([
     supabase.from('students').select('id, full_name, lessons_remaining, archived_at').eq('teacher_id', user!.id).order('full_name'),
@@ -18,7 +18,7 @@ export default async function PaymentsPage() {
   const studentName = new Map((students ?? []).map(s => [s.id, s.full_name]))
 
   // Noa records payments in her own currency but wants the month's income in
-  // yen too. Null when the rate can't be fetched — the JPY line is then hidden
+  // yen too. Null when the rate can't be fetched â€” the JPY line is then hidden
   // rather than guessed at.
   const jpyRate = await getRate(currency, 'JPY')
 
@@ -41,7 +41,7 @@ export default async function PaymentsPage() {
   }))
 
   // Archived students are hidden from the grid but their payments stay in every
-  // total — a past month's income shouldn't change because someone stopped.
+  // total â€” a past month's income shouldn't change because someone stopped.
   const studentOptions: StudentOption[] = (students ?? []).map(s => ({
     id: s.id,
     fullName: s.full_name,
@@ -49,8 +49,8 @@ export default async function PaymentsPage() {
     archived: !!(s as any).archived_at,
   }))
 
-  // ── Monthly revenue: 12 months ending at the latest month that has a payment
-  //    (or the current month, whichever is later — so future-dated payments show).
+  // â”€â”€ Monthly revenue: 12 months ending at the latest month that has a payment
+  //    (or the current month, whichever is later â€” so future-dated payments show).
   const now = new Date()
   let endYear = now.getFullYear()
   let endMonth = now.getMonth() // 0-based
@@ -86,7 +86,7 @@ export default async function PaymentsPage() {
           <Wallet className="w-5 h-5 text-brand-600" />
           <h1 className="text-2xl font-bold text-ink">Payments</h1>
         </div>
-        <p className="text-sm text-muted">All student payments in one place — add, track, and reconcile</p>
+        <p className="text-sm text-muted">All student payments in one place â€” add, track, and reconcile</p>
       </div>
 
       {hasRevenue && <RevenueChart data={buckets} currency={currency} />}

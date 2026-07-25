@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getUser, getProfile } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import TeacherNav from '@/components/teacher/TeacherNav'
 
@@ -7,17 +7,10 @@ export default async function TeacherLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // Both are request-memoized, so this shares one round-trip with the page.
+  const [user, profile] = await Promise.all([getUser(), getProfile()])
 
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
   if (profile?.role !== 'teacher') redirect('/student/dashboard')
 
   return (

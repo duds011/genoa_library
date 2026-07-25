@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getUser } from '@/lib/supabase/server'
 import { BarChart2 } from 'lucide-react'
 import ClassAnalyticsCharts, { SummaryItem } from '@/components/teacher/ClassAnalyticsCharts'
 
 export default async function AnalyticsPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser() // memoized — shared with the layout
 
   const { data: lessonData } = await supabase
     .from('lessons')

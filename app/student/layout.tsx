@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getUser, getProfile } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import StudentNav from '@/components/student/StudentNav'
 import KanaBackground from '@/components/student/KanaBackground'
@@ -9,20 +9,14 @@ export default async function StudentLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // getUser/getProfile are request-memoized (shared with the page render).
+  const [user, profile] = await Promise.all([getUser(), getProfile()])
 
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
   if (profile?.role !== 'student') redirect('/teacher/dashboard')
 
   // The student's own row carries their email preferences (RLS: students_self).
+  const supabase = await createClient()
   const { data: studentRow } = await supabase
     .from('students')
     .select('email_enabled, email_prefs')
