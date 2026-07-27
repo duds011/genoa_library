@@ -338,7 +338,40 @@ export default async function StudentDetailPage({
         {published.length === 0 ? (
           <div className="card p-8 text-center text-muted text-sm">No published lessons yet.</div>
         ) : (
-          <div className="card overflow-hidden">
+          <>
+          {/* Mobile: tappable cards. The desktop table below clips its Edit
+              column inside overflow-hidden on a narrow phone, leaving lessons
+              impossible to open — this list keeps them reachable. */}
+          <div className="sm:hidden flex flex-col gap-3">
+            {published.map((lesson: any) => {
+              const hasUpdate = lessonsWithUpdates.has(lesson.id)
+              return (
+                <div key={lesson.id} className="card p-4 flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="badge-brand text-xs">Lesson {lesson.lesson_number}</span>
+                      {hasUpdate && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title="New submission" />}
+                    </div>
+                    <span className="text-xs text-muted">{formatDateShort(lesson.lesson_date)}</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-muted">
+                    <span><span className="font-semibold text-brand-600">{lesson.lesson_summaries?.score ?? '—'}</span>/10</span>
+                    <span>{lesson.lesson_summaries?.talk_percentage ?? '—'}% talk</span>
+                    <span>{lesson.vocabulary_items?.length ?? 0} words</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <Link href={`/teacher/lessons/${lesson.id}/edit`} className="btn-primary flex-1 justify-center text-xs">
+                      <PenLine className="w-3.5 h-3.5" /> Review &amp; Edit
+                    </Link>
+                    <DeleteLessonButton lessonId={lesson.id} lessonLabel={`Lesson ${lesson.lesson_number}`} variant="icon" />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Tablet/desktop: full table */}
+          <div className="card overflow-hidden hidden sm:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
@@ -382,6 +415,7 @@ export default async function StudentDetailPage({
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
     </div>
