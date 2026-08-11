@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ListChecks, Trash2, Loader2, CheckCircle2 } from 'lucide-react'
+import { ListChecks, Trash2, Loader2, CheckCircle2, Pencil, Plus } from 'lucide-react'
 import { deleteExercise, setExercisesVisibility } from '@/app/actions/exercises'
+import ExerciseEditor, { BLANK, type ExerciseType } from './ExerciseEditor'
 
 interface Exercise {
   id: string
@@ -41,6 +42,10 @@ export default function ExerciseReview({
   const [pending, startTransition] = useTransition()
   const [busyId, setBusyId] = useState<string | null>(null)
   const [show, setShow] = useState(initialShow)
+  // Which exercise is open in the editor. 'new' holds one being written, which
+  // has no row yet — it only reaches the database when she saves it.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<{ id: string; type: ExerciseType; prompt: string; data: any } | null>(null)
 
   function toggleShow() {
     const next = !show
@@ -95,7 +100,7 @@ export default function ExerciseReview({
         </div>
       </div>
       <p className="text-xs text-muted mb-4">
-        Review these before publishing. {show
+        Review and reword these before publishing. {show
           ? 'Students see them in their Homework tab; multiple-choice and fill-in are graded automatically.'
           : 'Currently hidden — students will not see the practice exercises for this lesson.'}
       </p>
@@ -107,8 +112,8 @@ export default function ExerciseReview({
         </div>
       )}
 
-      {ordered.length === 0 ? (
-        <p className="text-sm text-muted text-center py-6">No exercises were generated for this lesson.</p>
+      {ordered.length === 0 && !draft ? (
+        <p className="text-sm text-muted text-center py-6">No exercises for this lesson yet — write one below.</p>
       ) : (
         <div className="space-y-3">
           {ordered.map(ex => (
@@ -117,18 +122,37 @@ export default function ExerciseReview({
                 <span className="text-[11px] font-bold text-brand-600 bg-brand-50 border border-indigo-100 rounded-full px-2.5 py-0.5">
                   {TYPE_LABEL[ex.type] ?? ex.type}
                 </span>
-                <button
-                  onClick={() => handleDelete(ex.id)}
-                  disabled={pending}
-                  title="Remove exercise"
-                  className="text-gray-400 hover:text-red-500 transition-colors shrink-0"
-                >
-                  {busyId === ex.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => { setDraft(null); setEditingId(editingId === ex.id ? null : ex.id) }}
+                    disabled={pending}
+                    title="Edit exercise"
+                    className="text-gray-400 hover:text-brand-600 transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(ex.id)}
+                    disabled={pending}
+                    title="Remove exercise"
+                    className="text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    {busyId === ex.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
+              {editingId === ex.id && (
+                <ExerciseEditor
+                  exercise={{ id: ex.id, type: ex.type, prompt: ex.prompt, data: ex.data }}
+                  lessonId={lessonId}
+                  onDone={() => { setEditingId(null); router.refresh() }}
+                  onCancel={() => setEditingId(null)}
+                />
+              )}
+
               {/* Type-specific preview */}
-              {ex.type === 'read_aloud' && (
+              {editingId !== ex.id && ex.type === 'read_aloud' && (
                 <div>
                   {ex.data?.focus && <p className="text-xs text-muted mb-1.5">Focus: {ex.data.focus}</p>}
                   <ul className="space-y-1">
@@ -139,7 +163,7 @@ export default function ExerciseReview({
                 </div>
               )}
 
-              {ex.type === 'speak' && (
+              {editingId !== ex.id && ex.type === 'speak' && (
                 <div>
                   <p className="text-sm text-ink">{ex.data?.prompt_jp}</p>
                   <p className="text-xs text-muted">{ex.data?.prompt_en}</p>
@@ -147,7 +171,7 @@ export default function ExerciseReview({
                 </div>
               )}
 
-              {ex.type === 'multiple_choice' && (
+              {editingId !== ex.id && ex.type === 'multiple_choice' && (
                 <div>
                   <p className="text-sm font-medium text-ink mb-1.5">{ex.data?.question}</p>
                   <ul className="space-y-1">
@@ -171,7 +195,7 @@ export default function ExerciseReview({
                 </div>
               )}
 
-              {ex.type === 'fill_blank' && (
+              {editingId !== ex.id && ex.type === 'fill_blank' && (
                 <div>
                   <p className="text-sm text-ink">
                     {ex.data?.before}<span className="font-bold text-green-700"> {ex.data?.answer} </span>{ex.data?.after}
@@ -190,6 +214,36 @@ export default function ExerciseReview({
                 </div>
               )}
             </div>
+          ))}
+
+          {draft && (
+            <div className="rounded-xl border border-brand-200 bg-brand-50/40 p-4">
+              <span className="text-[11px] font-bold text-brand-600 bg-white border border-indigo-100 rounded-full px-2.5 py-0.5">
+                New · {TYPE_LABEL[draft.type] ?? draft.type}
+              </span>
+              <ExerciseEditor
+                exercise={draft}
+                lessonId={lessonId}
+                onDone={() => { setDraft(null); router.refresh() }}
+                onCancel={() => setDraft(null)}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Writing one of her own, when the generated set isn't what she wants set. */}
+      {!draft && (
+        <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2 flex-wrap">
+          <span className="text-[11px] font-semibold text-muted uppercase tracking-wide mr-1">Write your own</span>
+          {(Object.keys(BLANK) as ExerciseType[]).map(t => (
+            <button
+              key={t}
+              onClick={() => { setEditingId(null); setDraft({ id: '', type: t, ...BLANK[t] }) }}
+              className="text-xs font-semibold text-brand-600 inline-flex items-center gap-1 rounded-full border border-indigo-100 bg-white px-2.5 py-1 hover:bg-brand-50"
+            >
+              <Plus className="w-3.5 h-3.5" /> {TYPE_LABEL[t]}
+            </button>
           ))}
         </div>
       )}

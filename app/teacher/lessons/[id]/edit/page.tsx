@@ -128,15 +128,15 @@ export default async function EditLessonPage({
         rawTranscript={lesson.raw_transcript}
       />
 
-      {/* Auto-generated practice exercises — review before publishing + student results */}
-      {exercises.length > 0 && (
-        <ExerciseReview
-          lessonId={lesson.id}
-          exercises={exercises as any}
-          submissions={(exSubmissions ?? []) as any}
-          initialShow={(lesson as any).show_exercises !== false}
-        />
-      )}
+      {/* Practice exercises — review, reword or write before publishing, plus
+          the student's results. Shown even with none generated, since this is
+          also where an exercise gets written by hand. */}
+      <ExerciseReview
+        lessonId={lesson.id}
+        exercises={exercises as any}
+        submissions={(exSubmissions ?? []) as any}
+        initialShow={(lesson as any).show_exercises !== false}
+      />
     </div>
   )
 }
