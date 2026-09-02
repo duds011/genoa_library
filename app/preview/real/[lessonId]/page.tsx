@@ -50,7 +50,10 @@ export default async function Page({ params }: { params: { lessonId: string } })
   // The level spread, counted from the words themselves.
   const spread = new Map<string, number>()
   for (const v of vocab) if (v.jlpt_level) spread.set(v.jlpt_level, (spread.get(v.jlpt_level) ?? 0) + 1)
-  const levels = [...spread.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+  // Array.from, not spread: this tsconfig targets below es2015, where
+  // spreading a Map iterator is a type error. next.config ignores build
+  // errors, so it would have shipped silently.
+  const levels = Array.from(spread.entries()).sort((a, b) => b[0].localeCompare(a[0]))
   const LEVEL_COLOUR: Record<string, string> = {
     N5: '#4f46e5', N4: '#7c3aed', N3: '#a855f7', N2: '#c084fc', N1: '#d8b4fe',
   }
