@@ -34,11 +34,14 @@
 .gr-metrics{background:rgba(255,255,255,.8);border-radius:16px;padding:14px 15px 16px;margin-top:10px}
 .gr-sublab{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
   color:var(--mv-ink,#4f46e5);margin:0 0 11px}
-.gr-metric-grid{display:grid;gap:9px;grid-template-columns:repeat(auto-fit,minmax(118px,1fr))}
+.gr-metric-grid{display:grid;gap:9px;grid-template-columns:repeat(2,minmax(0,1fr))}
+/* Fixed columns, not auto-fit. There are exactly six of these, and auto-fit
+   packed them 5+1 on a laptop and 4+2 on a phone — a stranded last tile
+   reads as something having gone wrong. Two across, then three. */
 /* 118px, not 96: at 96 a phone fitted four tiles and "longest answer"
    wrapped onto three lines. Three roomy tiles read faster than four cramped ones. */
 .gr-metric{background:#fff;border-radius:12px;padding:10px 11px 11px;display:grid;gap:1px}
-.gr-metric-v{font-size:19px;font-weight:800;letter-spacing:-.03em;color:var(--mv-ink,#4f46e5);
+.gr-metric-v{font-size:21px;font-weight:800;letter-spacing:-.03em;color:var(--mv-ink,#4f46e5);
   line-height:1.1;font-variant-numeric:tabular-nums}
 .gr-metric-k{font-size:10.5px;font-weight:700;color:#1e1b4b}
 .gr-metric-h{font-size:9.5px;font-weight:500;color:#6b7280;line-height:1.35}
@@ -107,6 +110,57 @@
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .gr-r.on .gr-lab{color:#1e1b4b;font-weight:800}
   .gr-cnt{display:none}
+  .gr-metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .gr-mv{padding:20px 22px 24px}
   .gr-mv-h{font-size:11.5px}
 }
+
+
+/* ── Lesson analytics ─────────────────────────────────────────────────────
+   Ported from Lesson Studio's lesson view: the stat cards, the measured
+   speaking grid and the vocabulary spread. Proportions are theirs — they are
+   tuned — and the palette is this portal's indigo/purple. */
+
+.gr-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:12px}
+/* 172px, not Lesson Studio's 210: a rail takes 210px off this page that it
+   does not take off theirs, and at 210 the three cards broke 2+1 and left
+   the third stranded beside a gap. */
+.gr-stat{background:#fff;border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;
+  box-shadow:0 1px 2px rgba(30,27,75,.05);border-top:3px solid var(--accent,#4f46e5)}
+.gr-stat-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.gr-stat-icon{font-size:15px}
+.gr-stat-label{font-size:10.5px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.07em}
+.gr-stat-value{font-size:27px;font-weight:800;letter-spacing:-.04em;line-height:1;color:var(--accent,#4f46e5)}
+.gr-stat-unit{font-size:14px;font-weight:600;color:#9ca3af}
+.gr-stat-sep{color:#d9d7ec;margin:0 3px}
+.gr-stat-chip{display:inline-flex;align-self:flex-start;margin-top:auto;background:#eef0fe;
+  color:#4f46e5;border-radius:999px;padding:5px 11px;font-size:10.5px;font-weight:800}
+.gr-stat-note{font-size:11px;color:#6b7280;margin:auto 0 0}
+
+/* Who did the talking. Two rows, because a single number does not say which
+   way it went. */
+.gr-bal{display:grid;gap:8px;margin-top:12px}
+.gr-bal-row{display:grid;grid-template-columns:60px 1fr 38px;align-items:center;gap:10px;
+  font-size:11px;font-weight:700;color:#6b7280}
+.gr-bal-track{height:7px;border-radius:999px;background:#f0f0f8;overflow:hidden}
+.gr-bal-fill{height:100%;border-radius:999px;background:linear-gradient(135deg,#4f46e5,#7c3aed)}
+.gr-bal-fill.student{background:linear-gradient(135deg,#7c3aed,#facc15)}
+
+/* The vocabulary spread across levels. */
+.gr-levels{display:grid;gap:9px;margin-top:4px}
+.gr-level{display:grid;grid-template-columns:34px 1fr 30px;align-items:center;gap:10px;
+  font-size:11px;font-weight:700;color:#6b7280}
+.gr-level-track{height:8px;border-radius:999px;background:#f0f0f8;overflow:hidden}
+.gr-level-fill{height:100%;border-radius:999px}
+.gr-level b{font-weight:800;color:#1e1b4b;font-size:10.5px}
+
+/* Corrections and wins read as quotes, so the student's own words lead. */
+.gr-quote{padding:13px 0;border-bottom:1px solid #eceaf6}
+.gr-quote:first-child{padding-top:0}
+.gr-quote:last-child{border-bottom:0;padding-bottom:0}
+.gr-said{font-size:13px;color:#9ca3af;text-decoration:line-through;text-decoration-thickness:1px}
+.gr-fixed{font-size:14px;font-weight:700;color:#1e1b4b;margin-top:3px}
+.gr-why{font-size:11.5px;color:#6b7280;line-height:1.55;margin-top:5px}
+.gr-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.gr-tag{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.9);color:var(--mv-ink,#4f46e5)}
