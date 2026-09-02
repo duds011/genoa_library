@@ -8,7 +8,8 @@ import SectionContent from '@/components/student/SectionContent'
 import VocabLevelBreakdown, { JLPT_COLORS, JLPT_LABELS } from '@/components/student/VocabLevelBreakdown'
 import HomeworkSubmitSection from '@/components/student/HomeworkSubmitSection'
 import StudentAudioSubmit from '@/components/student/StudentAudioSubmit'
-import LessonTabs from '@/components/student/LessonTabs'
+import RecapFlow, { type Movement } from '@/components/student/RecapFlow'
+import LessonMetrics from '@/components/student/LessonMetrics'
 import LessonExercises from '@/components/student/LessonExercises'
 
 export default async function StudentLessonPage({
@@ -302,13 +303,82 @@ export default async function StudentLessonPage({
     <div className="card p-8 text-center text-muted text-sm">No vocabulary for this lesson.</div>
   )
 
+  /**
+   * The recap as a sequence rather than a set of drawers.
+   *
+   * Order is the story of the hour: how you spoke, what you got right, what to
+   * fix, what you covered, the words, then practice. A movement with nothing
+   * in it is dropped by RecapFlow, which is what lets every lesson recorded
+   * before the new pipeline render unchanged — it simply has fewer movements.
+   */
+  const metrics = (summary as any)?.metrics ?? null
+  const corrections: any[] = Array.isArray((summary as any)?.corrections) ? (summary as any).corrections : []
+  const didWell: any[] = Array.isArray((summary as any)?.did_well) ? (summary as any).did_well : []
+  const studentFirst = student.full_name.split(' ')[0]
+
+  const movements: Movement[] = [
+    {
+      id: 'spoke',
+      label: 'How you spoke',
+      node: hasProgress ? (
+        <>
+          {progressPanel}
+          <LessonMetrics metrics={metrics} studentFirst={studentFirst} />
+        </>
+      ) : null,
+    },
+    {
+      id: 'won',
+      label: 'What you nailed',
+      count: didWell.length ? String(didWell.length) : null,
+      node: didWell.length ? (
+        <div className="card p-5">
+          <ul className="space-y-3">
+            {didWell.map((d: any, i: number) => (
+              <li key={i}>
+                <p className="text-sm font-bold text-ink">&ldquo;{d?.said}&rdquo;</p>
+                {d?.note && <p className="text-xs text-muted mt-1 leading-relaxed">{d.note}</p>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null,
+    },
+    {
+      id: 'fix',
+      label: 'What to fix',
+      count: corrections.length ? String(corrections.length) : null,
+      node: corrections.length ? (
+        <div className="card p-5">
+          <ul className="space-y-4">
+            {corrections.map((c: any, i: number) => (
+              <li key={i}>
+                <p className="text-sm text-muted line-through">{c?.said}</p>
+                <p className="text-sm font-bold text-ink mt-0.5">{c?.correction}</p>
+                {c?.explanation && <p className="text-xs text-muted mt-1 leading-relaxed">{c.explanation}</p>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null,
+    },
+    {
+      id: 'covered',
+      label: 'What we covered',
+      count: sections.length ? String(sections.length) : null,
+      node: sections.length ? lessonPanel : null,
+    },
+    {
+      id: 'words',
+      label: 'Words from today',
+      count: vocab.length ? String(vocab.length) : null,
+      node: vocab.length ? vocabPanel : null,
+    },
+    { id: 'practice', label: 'Practice', node: homeworkPanel },
+  ]
+
   return (
     <div className="max-w-3xl mx-auto space-y-5 pb-12">
-      {/* Back */}
-      <Link href="/student/dashboard" className="btn-ghost text-xs -ml-1 inline-flex mt-2">
-        <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
-      </Link>
-
       {/* ── Header panel ──────────────────────────────────────────────── */}
       <div className="card p-7" style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f7f4ff 100%)' }}>
 
@@ -340,22 +410,8 @@ export default async function StudentLessonPage({
         </div>
       </div>
 
-      {/* ── Tabbed recap ──────────────────────────────────────────────── */}
-      <LessonTabs
-        tabs={[
-          { id: 'progress', label: 'Progress',   icon: '📊', content: progressPanel },
-          { id: 'lesson',   label: 'Lesson',     icon: '📚', content: lessonPanel },
-          { id: 'homework', label: 'Homework',   icon: '📝', content: homeworkPanel },
-          { id: 'vocab',    label: 'Vocabulary', icon: '📖', content: vocabPanel },
-        ]}
-      />
-
-      {/* Bottom nav */}
-      <div className="flex justify-center pt-2">
-        <Link href="/student/dashboard" className="btn-secondary">
-          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-        </Link>
-      </div>
+      {/* ── The recap, as one scroll ──────────────────────────────────── */}
+      <RecapFlow movements={movements} back={{ href: '/student/dashboard', label: 'Dashboard' }} />
     </div>
   )
 }
