@@ -36,3 +36,10 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# Scratch scripts used to probe the live database during a session.
+.probe.mjs
+.verify.mjs
+.idtest.mjs
+.match-test.mjs
+.roster.json
