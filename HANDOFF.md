@@ -53,6 +53,14 @@ refuses rather than guesses. Verified against the real roster in production.
 **Zero-click recording is impossible.** `chrome.tabCapture.getMediaStreamId`
 requires a genuine user gesture. Do not promise it.
 
+**The spoken language is a property of the student, not of the lesson.**
+`students.spoken_language` (migration 007, default English) is what Whisper is
+told the hour sounds like — a different question from `students.language`, what
+they are learning. It is set on the add-student form and from the control in
+the admin row of a student's page; `/api/ext/complete` reads it from the row and
+ignores what the extension sends. The recorder's language dropdown is gone with
+it (v1.3.0), replaced by a line saying what it will use.
+
 ---
 
 ## Open items
