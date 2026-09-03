@@ -125,3 +125,7 @@ html{background:var(--bg)}
 .k-thead .btn-primary,.wrap .k-thead .btn-primary{background:#fff;color:#4f46e5;box-shadow:none}
 .k-thead .btn-primary:hover,.wrap .k-thead .btn-primary:hover{background:#eef2ff}
 .status-pill.published{background:#ede9fe;color:#6d28d9}
+
+/* The talk bar's second segment reads `var(--yellow)`, which the token file
+   never defined — the teacher's share rendered as a gap. */
+:root{--yellow:#c4b5fd}
