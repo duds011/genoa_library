@@ -152,3 +152,12 @@ html{background:var(--bg)}
 }
 /* A lesson chip inside the grammar modal is a link, not a level badge. */
 a.k-vocab-level:hover{background:#e0e7ff}
+
+/* — the recap review page — */
+/* Save and Publish follow the page. On a four-tab review the buttons were at
+   the bottom of whichever tab happened to be longest, so publishing meant
+   scrolling past the vocabulary to find them. */
+.review-actions{position:sticky;bottom:0;z-index:20;margin-top:8px;padding:14px 0 18px;
+  background:linear-gradient(180deg,transparent,var(--bg) 26%)}
+/* The editor's tab strip is the student's, one level up. */
+.wrap .tabs{position:sticky;top:0;z-index:15;margin-bottom:18px}

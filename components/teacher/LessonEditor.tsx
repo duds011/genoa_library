@@ -70,6 +70,16 @@ interface Props {
   rawTranscript?: string
 }
 
+/**
+ * The review page's tabs, mirroring what the student will open.
+ *
+ * She used to scroll one column of eleven cards to check a recap — the score
+ * near the top, the words near the bottom, and the transcript below that. The
+ * student reads it as four things, so she reviews it as the same four.
+ */
+const REVIEW_TABS = ['Progress', 'Recap', 'Homework', 'Vocabulary'] as const
+type ReviewTab = (typeof REVIEW_TABS)[number]
+
 export default function LessonEditor({
   lessonId,
   lessonTitle,
@@ -92,6 +102,12 @@ export default function LessonEditor({
   const router = useRouter()
   const supabase = createClient()
 
+  const [tab, setTab] = useState<ReviewTab>('Progress')
+  // Written by the recorder, never edited here — see the Corrections card.
+  const metrics = (summary as any)?.metrics ?? null
+  const corrections: any[] = Array.isArray((summary as any)?.corrections) ? (summary as any).corrections : []
+  const didWell: any[] = Array.isArray((summary as any)?.did_well) ? (summary as any).did_well : []
+  const studentFirstName = (allStudents.find((s) => s.id === studentId)?.full_name ?? 'your student').split(' ')[0]
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [showTranscript, setShowTranscript] = useState(false)
@@ -468,6 +484,26 @@ export default function LessonEditor({
         )}
       </div>
 
+      {/* One row, the same four the student opens. `hidden` rather than
+           unmounting: every pane holds unsaved edits, and a teacher who
+           checks the vocabulary must not lose the note she just typed. */}
+      <div className="tabs" role="tablist" aria-label="Recap sections">
+        {REVIEW_TABS.map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            className={`tab ${tab === t ? 'sel' : ''}`}
+            onClick={() => setTab(t)}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Progress ── */}
+      <div hidden={tab !== 'Progress'} className="space-y-6 tab-anim" key={'Progress'}>
       {/* Score + Talk % */}
       <div className="card p-6 grid sm:grid-cols-2 gap-6">
         <div>
@@ -546,6 +582,10 @@ export default function LessonEditor({
         />
       </div>
 
+      </div>
+
+      {/* ── Recap ── */}
+      <div hidden={tab !== 'Recap'} className="space-y-6 tab-anim" key={'Recap'}>
       {/* ── Lesson Sections ────────────────────────────────────────────────── */}
       <div className="card p-6 space-y-4">
         <div className="flex items-center justify-between">
@@ -608,6 +648,10 @@ export default function LessonEditor({
         )}
       </div>
 
+      </div>
+
+      {/* ── Homework ── */}
+      <div hidden={tab !== 'Homework'} className="space-y-6 tab-anim" key={'Homework'}>
       {/* Homework */}
       <div className="card p-6">
         <h3 className="section-title mb-4">📝 Homework</h3>
@@ -645,6 +689,10 @@ export default function LessonEditor({
         </div>
       </div>
 
+      </div>
+
+      {/* ── Vocabulary ── */}
+      <div hidden={tab !== 'Vocabulary'} className="space-y-6 tab-anim" key={'Vocabulary'}>
       {/* Vocabulary */}
       <div className="card p-6">
         <h3 className="section-title mb-4">📖 Vocabulary</h3>
@@ -727,6 +775,53 @@ export default function LessonEditor({
           <Plus className="w-3.5 h-3.5" /> Add Word
         </button>
       </div>
+
+      </div>
+
+      {/* ── Materials and feedback: on Progress, with everything else that
+             travels out with the recap. ── */}
+      <div hidden={tab !== 'Progress'} className="space-y-6 tab-anim">
+      {/* Measured from the recording — the numbers the student sees on the
+           recap, shown here so she reviews them rather than meets them after
+           publishing. Absent on lessons that came from a Meet transcript. */}
+      {metrics && (
+        <div className="card p-6">
+          <h3 className="section-title mb-1">📈 Measured speaking</h3>
+          <p className="text-xs text-muted mb-4">Counted from the recording, not estimated. This is what {studentFirstName} will see.</p>
+          <div className="metric-grid">
+            <div className="metric"><div className="mv">{metrics.studentWpm ?? '—'}</div><div className="mk">words / min</div><div className="mn">speaking pace</div></div>
+            <div className="metric"><div className="mv">{metrics.avgResponseSec != null ? `${metrics.avgResponseSec}s` : '—'}</div><div className="mk">thinking time</div><div className="mn">before replying</div></div>
+            <div className="metric"><div className="mv">{metrics.longestTurnSec != null ? `${metrics.longestTurnSec}s` : '—'}</div><div className="mk">longest answer</div><div className="mn">best unbroken stretch</div></div>
+            <div className="metric"><div className="mv">{metrics.avgTurnWords ?? '—'}</div><div className="mk">words / answer</div><div className="mn">average turn length</div></div>
+            <div className="metric"><div className="mv">{metrics.fillerCount ?? '—'}</div><div className="mk">hesitation words</div><div className="mn">えーと, あの, um…</div></div>
+            <div className="metric"><div className="mv">{metrics.longPauseCount ?? '—'}</div><div className="mk">long pauses</div><div className="mn">silences over 1.5s</div></div>
+          </div>
+        </div>
+      )}
+
+      {/* Read-only on purpose: these are quotes of what was actually said, and
+           the place to change them is the recording, not a text box. */}
+      {(corrections.length > 0 || didWell.length > 0) && (
+        <div className="card p-6">
+          <h3 className="section-title mb-1">✍️ Corrections</h3>
+          <p className="text-xs text-muted mb-4">Quoted from the lesson. {studentFirstName} reads these as &ldquo;what you nailed&rdquo; and &ldquo;what to fix&rdquo;.</p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {didWell.map((d: any, i: number) => (
+              <div key={`w${i}`} className="rounded-xl p-3" style={{ background: 'var(--green-soft)' }}>
+                <p className="text-sm font-bold text-ink">&ldquo;{d?.said}&rdquo;</p>
+                {d?.note && <p className="text-xs text-muted mt-1 leading-relaxed">{d.note}</p>}
+              </div>
+            ))}
+            {corrections.map((c: any, i: number) => (
+              <div key={`c${i}`} className="rounded-xl p-3" style={{ background: 'var(--amber-soft)' }}>
+                <p className="text-sm text-muted line-through">{c?.said}</p>
+                <p className="text-sm font-bold text-ink mt-0.5">{c?.correction}</p>
+                {c?.explanation && <p className="text-xs text-muted mt-1 leading-relaxed">{c.explanation}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 📎 File Attachments */}
       <div className="card p-6 space-y-4">
@@ -937,6 +1032,9 @@ export default function LessonEditor({
         )}
       </div>
 
+      </div>
+
+      <div hidden={tab !== 'Homework'} className="space-y-6 tab-anim">
       {/* 🎙️ Student Practice Recordings */}
       <div className="card p-6 space-y-4">
         <div className="flex items-center justify-between">
@@ -981,6 +1079,8 @@ export default function LessonEditor({
         />
       </div>
 
+      </div>
+
       {/* Raw transcript (collapsible) */}
       {rawTranscript && (
         <div className="card overflow-hidden">
@@ -1001,8 +1101,8 @@ export default function LessonEditor({
         </div>
       )}
 
-      {/* Action buttons */}
-      <div className="flex items-center gap-3 pb-8 flex-wrap">
+      {/* Action buttons — sticky, so they are reachable from every tab. */}
+      <div className="review-actions flex items-center gap-3 flex-wrap">
         <button onClick={handleSave} disabled={saving} className="btn-secondary">
           <Save className="w-4 h-4" />
           {saved ? '✓ Saved!' : saving ? 'Saving…' : 'Save Draft'}
