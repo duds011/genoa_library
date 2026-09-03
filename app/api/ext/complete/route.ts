@@ -48,7 +48,9 @@ export async function POST(req: Request) {
   const admin = createAdminClient()
   const { data: student } = await admin
     .from('students')
-    .select('id, full_name, language')
+    // `*` rather than a column list: `spoken_language` arrives in migration
+    // 007, and naming a column that does not exist yet fails the request.
+    .select('*')
     .eq('id', studentId)
     .eq('teacher_id', caller.teacherId)
     .maybeSingle()
@@ -110,8 +112,14 @@ async function buildRecap({
    * that is mostly English, and forcing Japanese onto it does not skip those
    * parts, it renders them as Japanese nonsense. The recap needs the language
    * being LEARNED, so it knows what counts as a learner error.
+   *
+   * Both now come from the student's own record. The recorder used to ask for
+   * the first one with a dropdown on every single lesson, which made a settled
+   * fact about a student into a question that could be answered wrong in a
+   * hurry — so the student's row wins, and what the extension sends is only a
+   * fallback for a build that predates the column.
    */
-  const code = toWhisperLanguage(spokenLanguage ?? language)
+  const code = toWhisperLanguage(student.spoken_language ?? spokenLanguage ?? language)
   const targetLanguage = student.language ?? 'Japanese'
 
   const det = await transcribeTracksDetailed(tracks, code)

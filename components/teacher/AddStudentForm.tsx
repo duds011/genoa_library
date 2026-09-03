@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserPlus, Eye, EyeOff } from 'lucide-react'
 import { createStudent } from '@/app/actions/students'
+import { SPOKEN_LANGUAGES } from '@/lib/languages'
 
 const LANGUAGES = ['Japanese', 'Spanish', 'French', 'Portuguese', 'Italian', 'German', 'Korean', 'Mandarin', 'Other']
 const LEVELS = ['Beginner', 'Elementary', 'Pre-Intermediate', 'Intermediate', 'Upper-Intermediate', 'Advanced']
@@ -20,6 +21,9 @@ export default function AddStudentForm({ teacherId, bare = false }: { teacherId:
     full_name: '',
     email: '',
     language: 'Japanese',
+    // What the hour will SOUND like, which is not what they are learning.
+    // English for almost everyone; the recorder reads it so it never has to ask.
+    spoken_language: 'English',
     level: 'Beginner',
     password: '',
   })
@@ -41,6 +45,7 @@ export default function AddStudentForm({ teacherId, bare = false }: { teacherId:
       email: form.email,
       password: form.password,
       language: form.language,
+      spoken_language: form.spoken_language,
       level: form.level,
     })
 
@@ -52,7 +57,7 @@ export default function AddStudentForm({ teacherId, bare = false }: { teacherId:
 
     // Show credentials so teacher can share them
     setCreatedCreds({ email: form.email, password: form.password })
-    setForm({ full_name: '', email: '', language: 'Japanese', level: 'Beginner', password: '' })
+    setForm({ full_name: '', email: '', language: 'Japanese', spoken_language: 'English', level: 'Beginner', password: '' })
     setLoading(false)
     router.refresh()
   }
@@ -121,7 +126,7 @@ export default function AddStudentForm({ teacherId, bare = false }: { teacherId:
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="form-label">Language</label>
+              <label className="form-label">Learning</label>
               <select name="language" className="input" value={form.language} onChange={handleChange}>
                 {LANGUAGES.map(l => <option key={l}>{l}</option>)}
               </select>
@@ -132,6 +137,16 @@ export default function AddStudentForm({ teacherId, bare = false }: { teacherId:
                 {LEVELS.map(l => <option key={l}>{l}</option>)}
               </select>
             </div>
+          </div>
+          <div>
+            <label className="form-label">Lessons spoken in</label>
+            <select name="spoken_language" className="input" value={form.spoken_language} onChange={handleChange}>
+              {SPOKEN_LANGUAGES.map(l => <option key={l}>{l}</option>)}
+            </select>
+            <p className="text-xs text-muted mt-1">
+              What the hour actually sounds like, not what they&apos;re learning — the recorder transcribes
+              against this. Mostly English with a beginner; switch it when they stop needing it.
+            </p>
           </div>
 
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2.5">{error}</p>}

@@ -49,6 +49,8 @@ export async function createStudent(formData: {
   email: string
   password: string
   language: string
+  /** What their lessons will be spoken in — the transcriber's hint. */
+  spoken_language?: string
   level: string
 }): Promise<CreateStudentResult> {
   // 1. Verify the caller is the logged-in teacher
@@ -112,6 +114,7 @@ export async function createStudent(formData: {
       full_name: formData.full_name,
       email: formData.email,
       language: formData.language,
+      spoken_language: formData.spoken_language || 'English',
       level: formData.level,
     })
     .select('id')
@@ -301,4 +304,36 @@ export async function resetStudentPassword(studentId: string, newPassword: strin
   if (updateError) return { success: false, error: updateError.message }
 
   return { success: true, newPassword }
+}
+
+/**
+ * Set what this student's lessons are spoken in.
+ *
+ * This is the answer the recorder used to ask for on every lesson. It belongs
+ * to the student — a beginner's hour is mostly English however many times you
+ * are asked — so it is set once here, and both the extension and the
+ * transcriber read it from the record.
+ */
+export async function updateStudentSpokenLanguage(
+  studentId: string,
+  spokenLanguage: string,
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) return { success: false, error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('students')
+    .update({ spoken_language: spokenLanguage })
+    .eq('id', studentId)
+    .eq('teacher_id', user.id)
+
+  if (error) {
+    // She sees this sentence, not the database's. The detail goes to the log.
+    console.error('[updateStudentSpokenLanguage]', error.message)
+    return { success: false, error: 'That could not be saved. Try again in a moment.' }
+  }
+
+  revalidatePath(`/teacher/students/${studentId}`)
+  return { success: true }
 }

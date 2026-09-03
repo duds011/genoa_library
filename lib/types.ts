@@ -16,7 +16,16 @@ export interface Student {
   full_name: string
   email: string
   level: string
+  /** What they are learning. */
   language: string
+  /**
+   * What their lessons are actually spoken in — the transcriber's hint.
+   *
+   * Not the same question as `language`: a beginner's hour is mostly the
+   * language teacher and student share. Set on the student, so the recorder
+   * never has to ask.
+   */
+  spoken_language?: string
   created_at: string
 }
 

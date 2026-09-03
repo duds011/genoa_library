@@ -18,7 +18,10 @@ export async function GET(req: Request) {
   const [{ data, error }, { data: profile }] = await Promise.all([
     admin
       .from('students')
-      .select('id, full_name, language')
+      // `*` rather than a column list on purpose: `spoken_language` arrives in
+      // migration 007, and a named column that does not exist yet fails the
+      // whole request rather than coming back empty.
+      .select('*')
       .eq('teacher_id', caller.teacherId)
       .is('archived_at', null)
       .order('full_name'),
@@ -27,15 +30,24 @@ export async function GET(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  /**
+   * Only the four fields the recorder actually uses.
+   *
+   * `spoken_language` is the one that replaced a dropdown: the recorder used
+   * to ask, every lesson, what the hour would be spoken in. It is a property of
+   * the student, not of the lesson, so it is answered once on their record and
+   * read from here — see /api/ext/complete, which trusts this over anything the
+   * extension sends.
+   */
+  const students = (data ?? []).map((s: any) => ({
+    id: s.id,
+    full_name: s.full_name,
+    language: s.language,
+    spoken_language: s.spoken_language ?? 'English',
+  }))
+
   return NextResponse.json({
-    students: data ?? [],
-    teacher: {
-      name: (profile as any)?.full_name ?? null,
-      // This portal is one teacher teaching one language, so there is no
-      // per-teacher setting to read: Japanese is what is taught, and the
-      // language a lesson is SPOKEN in is chosen per student in the recorder.
-      language: 'Japanese',
-      speaking: null,
-    },
+    students,
+    teacher: { name: (profile as any)?.full_name ?? null },
   })
 }

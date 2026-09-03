@@ -6,6 +6,7 @@ import ProgressSwipe from '@/components/student/ProgressSwipe'
 import VocabLevelBreakdown from '@/components/student/VocabLevelBreakdown'
 import ResetPasswordButton from '@/components/teacher/ResetPasswordButton'
 import UpdateEmailButton from '@/components/teacher/UpdateEmailButton'
+import SpokenLanguageSelect from '@/components/teacher/SpokenLanguageSelect'
 import DeleteLessonButton from '@/components/teacher/DeleteLessonButton'
 import BuildTestButton from '@/components/teacher/BuildTestButton'
 import PageHeader from '@/components/PageHeader'
@@ -145,7 +146,8 @@ export default async function StudentDetailPage({
     <div className="k-page" style={{ display: 'grid', gap: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <Link href="/teacher/students" className="btn btn-ghost btn-sm">← All students</Link>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <SpokenLanguageSelect studentId={student.id} current={student.spoken_language} />
           <UpdateEmailButton studentId={student.id} currentEmail={student.email} />
           {student.profile_id && <ResetPasswordButton studentId={student.id} />}
         </div>
