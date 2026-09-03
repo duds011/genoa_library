@@ -13,6 +13,7 @@ import {
   type GeneratedTest,
   type TestScript,
 } from '@/lib/testPrompt'
+import { normalizeFurigana, normalizeFuriganaDeep, sameAnswer } from '@/lib/furigana'
 import { notifyStudentTestPublished, notifyTeacherOfSubmission } from '@/app/actions/notifications'
 
 export type { BuildTestOptions, TestScript }
@@ -182,7 +183,13 @@ async function generateTestWithAI(
   )
   if (parsed.questions.length === 0) throw new Error('No usable questions were generated. Try again.')
 
-  parsed.questions.forEach(q => { q.data = stripTranslations(q.data) })
+  parsed.questions.forEach(q => {
+    // Fold every furigana variant the model reaches for (学校(がっこう),
+    // full-width brackets) into the one 学校[がっこう] syntax, so what Noa sees
+    // in the editor is always the same markup.
+    q.prompt = normalizeFurigana(q.prompt)
+    q.data = normalizeFuriganaDeep(stripTranslations(q.data))
+  })
 
   return parsed
 }
@@ -272,9 +279,11 @@ export async function updateTestQuestion(input: {
   const { error } = await supabase
     .from('test_questions')
     .update({
-      prompt: input.prompt.trim(),
+      // Noa may type a reading as 学校(がっこう) out of habit — accept it and
+      // store the canonical 学校[がっこう] either way.
+      prompt: normalizeFurigana(input.prompt.trim()),
       points: Math.max(0, Math.round(input.points) || 0),
-      data: input.data ?? {},
+      data: normalizeFuriganaDeep(input.data ?? {}),
     })
     .eq('id', input.questionId)
   if (error) return { success: false, error: error.message }
@@ -392,7 +401,9 @@ export async function saveChoiceAnswer(input: {
   if (q.type === 'multiple_choice') {
     correct = Number(input.answer) === Number((q.data as any)?.answer)
   } else if (q.type === 'fill_blank') {
-    correct = String(input.answer).trim() === String((q.data as any)?.answer ?? '').trim()
+    // Compared without furigana: if Noa corrected a reading on the option but
+    // not on the answer key, the student must still be marked right.
+    correct = sameAnswer(String(input.answer), String((q.data as any)?.answer ?? ''))
   }
   const score = correct ? (q.points ?? 1) : 0
 

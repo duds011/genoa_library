@@ -3,6 +3,8 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Clock, FileText } from 'lucide-react'
 import TestRunner from '@/components/student/TestRunner'
+import Furigana from '@/components/Furigana'
+import { sameAnswer } from '@/lib/furigana'
 import { groupBySection, testScore } from '@/lib/utils'
 import type { TestQuestion, TestSubmission } from '@/lib/types'
 
@@ -112,7 +114,8 @@ export default async function StudentTestPage({
                     choiceCorrect = idx === Number(q.data?.answer)
                   } else {
                     choiceLabel = String(s.answer_text)
-                    choiceCorrect = choiceLabel.trim() === String(q.data?.answer ?? '').trim()
+                    // Furigana-insensitive, matching how the answer was graded.
+                    choiceCorrect = sameAnswer(choiceLabel, String(q.data?.answer ?? ''))
                   }
                 }
                 const correctText = q.type === 'multiple_choice'
@@ -132,21 +135,21 @@ export default async function StudentTestPage({
 
                     {isPassage ? (
                       <div className="rounded-lg bg-[#f8f7ff] border border-gray-100 px-4 py-3">
-                        <p className="text-base text-ink leading-relaxed whitespace-pre-line">{q.data?.text}</p>
+                        <p className="text-base text-ink leading-relaxed whitespace-pre-line"><Furigana text={q.data?.text} /></p>
                         {q.data?.romaji && <p className="text-sm text-brand-600 italic leading-relaxed whitespace-pre-line mt-1">{q.data.romaji}</p>}
                       </div>
                     ) : (
                       <>
-                        <p className="text-sm font-semibold text-ink">{q.type === 'multiple_choice' ? (q.data?.question || q.prompt) : q.prompt}</p>
+                        <p className="text-sm font-semibold text-ink"><Furigana text={q.type === 'multiple_choice' ? (q.data?.question || q.prompt) : q.prompt} /></p>
                         {q.type === 'multiple_choice' && q.data?.question_romaji && <p className="text-xs text-brand-600 italic mb-1">{q.data.question_romaji}</p>}
                         <div className="mb-2" />
                         {isChoice ? (
                           <>
                             <p className={`text-sm font-semibold ${choiceCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                              Your answer: {choiceLabel ?? '—'} {s?.answer_text != null ? (choiceCorrect ? '✓' : '✗') : ''}
+                              Your answer: {choiceLabel ? <Furigana text={choiceLabel} /> : '—'} {s?.answer_text != null ? (choiceCorrect ? '✓' : '✗') : ''}
                             </p>
                             {!choiceCorrect && correctText != null && (
-                              <p className="text-xs text-green-600 font-semibold mt-1">Correct answer: {correctText}</p>
+                              <p className="text-xs text-green-600 font-semibold mt-1">Correct answer: <Furigana text={correctText} /></p>
                             )}
                           </>
                         ) : (

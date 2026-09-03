@@ -7,6 +7,8 @@ import { setTestStatus, deleteTest, deleteTestQuestion, gradeTestAnswer, updateT
 import { sendTestResults } from '@/app/actions/notifications'
 import type { TestQuestion, TestSubmission } from '@/lib/types'
 import { groupBySection, testScore } from '@/lib/utils'
+import { sameAnswer } from '@/lib/furigana'
+import Furigana from '@/components/Furigana'
 import QuestionEditor from './QuestionEditor'
 
 const TYPE_LABEL: Record<string, string> = {
@@ -217,7 +219,7 @@ export default function TestReview({
                     />
                   ) : (
                     <>
-                      {q.type !== 'multiple_choice' && <p className="text-sm font-semibold text-ink">{q.prompt}</p>}
+                      {q.type !== 'multiple_choice' && <p className="text-sm font-semibold text-ink"><Furigana text={q.prompt} /></p>}
                       <QuestionPreview q={q} />
 
                       {q.data?.hint && (
@@ -366,7 +368,7 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
     return (
       <div className="mt-2 rounded-lg bg-[#f8f7ff] border border-gray-100 px-4 py-3">
         <span className="text-[10px] font-bold uppercase tracking-wide text-muted">{q.data?.script ?? 'text'}</span>
-        <p className="text-base text-ink leading-relaxed whitespace-pre-line mt-1">{q.data?.text}</p>
+        <p className="text-base text-ink leading-relaxed whitespace-pre-line mt-1"><Furigana text={q.data?.text} /></p>
         {q.data?.romaji && <p className="text-sm text-brand-600 italic leading-relaxed whitespace-pre-line mt-1">{q.data.romaji}</p>}
       </div>
     )
@@ -374,13 +376,13 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
   if (q.type === 'multiple_choice') {
     return (
       <div className="mt-1">
-        <p className="text-sm font-medium text-ink">{q.data?.question || q.prompt}</p>
+        <p className="text-sm font-medium text-ink"><Furigana text={q.data?.question || q.prompt} /></p>
         {q.data?.question_romaji && <p className="text-xs text-brand-600 italic mb-1.5">{q.data.question_romaji}</p>}
         <ul className="space-y-1 mt-1.5">
           {(q.data?.options ?? []).map((o: string, i: number) => (
             <li key={i} className={`text-sm flex items-center gap-1.5 ${i === q.data?.answer ? 'text-green-700 font-semibold' : 'text-muted'}`}>
-              {i === q.data?.answer ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : <span className="w-3.5 h-3.5 inline-block rounded-full border border-gray-300" />}
-              {o}
+              {i === q.data?.answer ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" /> : <span className="w-3.5 h-3.5 shrink-0 inline-block rounded-full border border-gray-300" />}
+              <Furigana text={o} />
             </li>
           ))}
         </ul>
@@ -391,9 +393,15 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
     return (
       <div className="mt-1">
         <p className="text-sm text-ink">
-          {q.data?.before}<span className="font-bold text-green-700"> {q.data?.answer} </span>{q.data?.after}
+          <Furigana text={q.data?.before} />
+          <span className="font-bold text-green-700"> <Furigana text={q.data?.answer} /> </span>
+          <Furigana text={q.data?.after} />
         </p>
-        <p className="text-[11px] text-muted mt-1">Options: {(q.data?.options ?? []).join(' · ')}</p>
+        <p className="text-[11px] text-muted mt-1">
+          Options: {(q.data?.options ?? []).map((o: string, i: number) => (
+            <span key={i}>{i > 0 && ' · '}<Furigana text={o} /></span>
+          ))}
+        </p>
       </div>
     )
   }
@@ -404,7 +412,7 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
         <ul className="space-y-1.5">
           {(q.data?.sentences ?? []).map((s: any, i: number) => (
             <li key={i} className="text-sm text-ink">
-              {s.jp}
+              <Furigana text={s.jp} />
               {s.romaji && <span className="text-brand-600 italic text-xs"> · {s.romaji}</span>}
             </li>
           ))}
@@ -415,7 +423,7 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
   if (q.type === 'speak') {
     return (
       <div className="mt-2">
-        {q.data?.prompt_jp && <p className="text-sm text-ink">{q.data.prompt_jp}</p>}
+        {q.data?.prompt_jp && <p className="text-sm text-ink"><Furigana text={q.data.prompt_jp} /></p>}
         {q.data?.prompt_romaji && <p className="text-xs text-brand-600 italic">{q.data.prompt_romaji}</p>}
       </div>
     )
@@ -423,9 +431,9 @@ function QuestionPreview({ q }: { q: TestQuestion }) {
   // written
   return (
     <div className="mt-2 space-y-1">
-      {q.data?.context && <p className="text-sm text-ink bg-[#f8f7ff] rounded-lg px-3 py-2">{q.data.context}</p>}
+      {q.data?.context && <p className="text-sm text-ink bg-[#f8f7ff] rounded-lg px-3 py-2"><Furigana text={q.data.context} /></p>}
       {q.data?.reference_answer && (
-        <p className="text-xs text-muted"><span className="font-semibold text-emerald-600">Model answer:</span> {q.data.reference_answer}</p>
+        <p className="text-xs text-muted"><span className="font-semibold text-emerald-600">Model answer:</span> <Furigana text={q.data.reference_answer} /></p>
       )}
       {q.data?.guidance && <p className="text-[11px] text-muted">Grading note: {q.data.guidance}</p>}
     </div>
@@ -454,7 +462,8 @@ function AnswerGrader({ q, submission, points }: { q: TestQuestion; submission?:
       choiceCorrect = idx === Number(q.data?.answer)
     } else {
       choiceLabel = String(submission.answer_text)
-      choiceCorrect = choiceLabel.trim() === String(q.data?.answer ?? '').trim()
+      // Furigana-insensitive, matching how saveChoiceAnswer grades it.
+      choiceCorrect = sameAnswer(choiceLabel, String(q.data?.answer ?? ''))
     }
   }
 
@@ -476,7 +485,7 @@ function AnswerGrader({ q, submission, points }: { q: TestQuestion; submission?:
       <p className="text-[10px] font-bold text-muted uppercase tracking-widest">Student answer</p>
       {isChoice ? (
         <p className={`text-sm font-semibold ${choiceCorrect ? 'text-green-600' : 'text-red-600'}`}>
-          Chose: {choiceLabel ?? '—'} {choiceCorrect ? '✓' : '✗'}
+          Chose: {choiceLabel ? <Furigana text={choiceLabel} /> : '—'} {choiceCorrect ? '✓' : '✗'}
         </p>
       ) : (
         <>

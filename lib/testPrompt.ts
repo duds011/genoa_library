@@ -87,7 +87,19 @@ export function buildTestPrompt(input: {
 - For every "multiple_choice"/"fill_blank" option and answer that contains Japanese, write the hiragana followed by its romaji in parentheses, e.g. がくせい (gakusei).
 Always include romaji — never leave a Japanese phrase without its romaji reading.`,
     hiragana: `SCRIPT: Write ALL Japanese in hiragana (use katakana only where a word is normally katakana). Do NOT use kanji and do NOT use rōmaji anywhere. For "reading_passage", set "script" to "hiragana".`,
-    kanji: `SCRIPT: Write Japanese using normal hiragana/katakana plus basic kanji. Immediately after each kanji word, give its hiragana reading in parentheses, e.g. 学校(がっこう). Do not use rōmaji. For "reading_passage", set "script" to "hiragana".`,
+    kanji: `SCRIPT — KANJI + KANA: Write Japanese using normal hiragana/katakana plus basic kanji. Do not use rōmaji. For "reading_passage", set "script" to "hiragana".
+WRITE IT IN KANJI: the lesson material below is often written out in kana (がっこう, たべます, にほん). That is how the teacher typed her notes — it is NOT an instruction to avoid kanji. In THIS test, spell every word the way it is normally written in Japanese: がっこう → 学校, たべます → 食べます, にほん → 日本, やすみ → 休み, なんようび → 何曜日. Spelling a known word in kanji is NOT new material — it is the same word the student already learned, so the "only cover material from the lessons" rule does not stop you. Only genuinely kana words (ここ, とても, から, ください and grammar particles/endings) stay in kana.
+FURIGANA — EVERY kanji must carry its reading, with no exceptions. Write the reading in square brackets immediately after the kanji it belongs to, and the app will display it above the kanji:
+- 学校[がっこう]へ行[い]きます。
+- お茶[ちゃ]を飲[の]みます。
+- 私[わたし]は日本語[にほんご]を勉強[べんきょう]しています。
+Rules for the brackets:
+- The reading attaches to the kanji run directly in front of it — never leave a gap, punctuation or kana between the kanji and its bracket.
+- Split a word at its okurigana: write 行[い]きます and 食[た]べる, NOT 行きます[いきます] or 食べる[たべる].
+- The reading itself is hiragana only (katakana only where the word is normally katakana). Never put rōmaji in the brackets.
+- Never mark kana that is not a kanji — ひらがな and カタカナ take no brackets.
+- This applies EVERYWHERE Japanese appears: prompts, passages, questions, every multiple_choice and fill_blank option, the fill_blank answer, read_aloud sentences, speaking prompts, written contexts and reference answers.
+- If a fill_blank option or answer is a kanji word, it carries its own reading too, e.g. "options": ["学校[がっこう]", "会社[かいしゃ]"].`,
   }[options.script]
 
   const sectionSpecs: Record<string, string> = {

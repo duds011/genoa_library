@@ -8,9 +8,32 @@ import {
 
 // ── Colour palettes ──────────────────────────────────────────────────────────
 
+// One colour per student — 22, so none of the 21 active students share one.
+// Bright and saturated, but each dark enough to stay legible as a 2px line on
+// white. Consecutive entries jump hue so neighbours never look alike.
 const STUDENT_COLORS = [
-  '#4f46e5', '#7c3aed', '#06b6d4', '#10b981',
-  '#f59e0b', '#f43f5e', '#8b5cf6', '#ec4899', '#14b8a6',
+  '#FF3B30', // red
+  '#2979FF', // blue
+  '#00B894', // green-teal
+  '#E040FB', // magenta
+  '#FF9500', // orange
+  '#7C4DFF', // violet
+  '#00BCD4', // cyan
+  '#FF2D8E', // pink
+  '#5DD400', // lime
+  '#F5A600', // amber
+  '#448AFF', // light blue
+  '#FF1744', // crimson
+  '#00BFA5', // teal
+  '#8E24AA', // purple
+  '#FF6D00', // deep orange
+  '#29A9E0', // sky
+  '#00C853', // green
+  '#F50057', // hot pink
+  '#9575FF', // periwinkle
+  '#D4A200', // gold
+  '#FF7043', // coral
+  '#52B812', // olive lime
 ]
 
 const JLPT_ORDER  = ['N5', 'N4', 'N3', 'N2', 'N1'] as const
@@ -59,11 +82,21 @@ interface ClassStats {
   totalVocab: number
 }
 
+export interface ProgressionItem {
+  name: string
+  fullName: string
+  points: { idx: number; lesson: number; score: number }[]
+  avg: number
+  delta: number
+  lessons: number
+}
+
 interface Props {
   summaryData: SummaryItem[]
-  trendData: Record<string, number>[]
-  studentNames: string[]
+  progressionData: ProgressionItem[]
   classStats: ClassStats
+  /** [min, max] fitted to the scores that exist, shared by every sparkline. */
+  scoreDomain: [number, number]
 }
 
 // ── Vocab tooltip ─────────────────────────────────────────────────────────────
@@ -89,9 +122,75 @@ function VocabTooltip({ active, payload, label }: any) {
   )
 }
 
+// ── Student progression card ──────────────────────────────────────────────────
+
+function SparkTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null
+  const p = payload[0].payload
+  return (
+    <div style={{ ...TOOLTIP_STYLE, background: '#fff', padding: '6px 10px' }}>
+      <span className="text-muted">Lesson {p.lesson}</span>
+      <span className="font-bold text-ink ml-2">{p.score}</span>
+    </div>
+  )
+}
+
+// The AI score wobbles by about 0.42 (SD) between lessons for the same student,
+// so a first-to-last difference carries roughly 0.6 of noise on its own. Below
+// that, a "change" is the scorer being inconsistent, not the student moving —
+// flagging it red would send Noa chasing ghosts. 0.6 is one standard deviation
+// of that difference, measured over all 125 published lessons.
+const TREND_NOISE = 0.6
+
+function trendOf(delta: number) {
+  if (delta > TREND_NOISE) return { color: '#16a34a', arrow: '▲', label: 'up' }
+  if (delta < -TREND_NOISE) return { color: '#dc2626', arrow: '▼', label: 'down' }
+  return { color: '#9ca3af', arrow: '▬', label: 'steady' }
+}
+
+function ProgressionCard({ s, color, domain }: { s: ProgressionItem; color: string; domain: [number, number] }) {
+  const t = trendOf(s.delta)
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-3.5 hover:border-gray-200 transition-colors">
+      <div className="flex items-baseline justify-between gap-2 mb-1">
+        <span className="font-semibold text-ink text-sm truncate" title={s.fullName}>{s.name}</span>
+        <span className="text-xs font-semibold tabular-nums shrink-0" style={{ color: t.color }}
+          title={`${t.label} ${Math.abs(s.delta)} points from their first lesson to their last`}>
+          {t.arrow} {Math.abs(s.delta).toFixed(1)}
+        </span>
+      </div>
+      <div className="h-[52px] -mx-1">
+        {s.lessons > 1 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={s.points} margin={{ top: 6, right: 8, bottom: 2, left: 8 }}>
+              <YAxis domain={domain} hide />
+              <ReferenceLine y={s.avg} stroke="#e5e7eb" strokeDasharray="3 3" />
+              <Tooltip content={<SparkTooltip />} cursor={{ stroke: '#e5e7eb' }} />
+              <Line type="monotone" dataKey="score" stroke={color} strokeWidth={2.4}
+                dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff', fill: color }} isAnimationActive={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-full flex items-center justify-center">
+            <span className="text-[11px] text-muted italic">one lesson so far</span>
+          </div>
+        )}
+      </div>
+      <p className="text-[11px] text-muted mt-1">
+        {s.lessons} lesson{s.lessons !== 1 ? 's' : ''} · avg <span className="font-semibold text-ink">{s.avg}</span>
+      </p>
+    </div>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function ClassAnalyticsCharts({ summaryData, trendData, studentNames, classStats }: Props) {
+export default function ClassAnalyticsCharts({ summaryData, progressionData, classStats, scoreDomain }: Props) {
+  // Colour is assigned once, by the student's rank in summaryData, and looked up
+  // by name everywhere else. The progression grid sorts differently, so keying
+  // off the array index there would have given the same student two colours.
+  const colorOf = new Map(summaryData.map((s, i) => [s.name, STUDENT_COLORS[i % STUDENT_COLORS.length]]))
+  const declining = progressionData.filter(s => s.delta < -TREND_NOISE).length
   // Flatten nested vocabByLevel for Recharts (can't use dot-notation in dataKey)
   const vocabChartData = summaryData.map(s => ({
     name: s.name,
@@ -114,7 +213,7 @@ export default function ClassAnalyticsCharts({ summaryData, trendData, studentNa
         </div>
         <div className="stat-card">
           <span className="stat-label">Class Avg Score</span>
-          <span className="stat-value" style={{ color: '#4f46e5' }}>
+          <span className="stat-value" style={{ color: '#0a61c9' }}>
             {classStats.avgScore}<span className="text-sm font-medium text-muted">/10</span>
           </span>
         </div>
@@ -146,38 +245,43 @@ export default function ClassAnalyticsCharts({ summaryData, trendData, studentNa
             <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: '#f9fafb' }} formatter={(v: unknown) => [`${v}/10`, 'Avg Score']} />
             <ReferenceLine
               y={classStats.avgScore}
-              stroke="#4f46e5" strokeDasharray="5 3" strokeOpacity={0.45}
-              label={{ value: `class avg ${classStats.avgScore}`, position: 'insideTopRight', fontSize: 10, fill: '#4f46e5', dy: 4, dx: -4 }}
+              stroke="#0a61c9" strokeDasharray="5 3" strokeOpacity={0.45}
+              label={{ value: `class avg ${classStats.avgScore}`, position: 'insideTopRight', fontSize: 10, fill: '#0a61c9', dy: 4, dx: -4 }}
             />
             <Bar dataKey="avgScore" radius={[6, 6, 0, 0]} maxBarSize={54}>
-              {summaryData.map((_, i) => <Cell key={i} fill={STUDENT_COLORS[i % STUDENT_COLORS.length]} />)}
+              {summaryData.map((s, i) => <Cell key={i} fill={colorOf.get(s.name)} />)}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* ── Score progression line chart ── */}
-      {trendData.length > 1 && (
+      {/* ── Score progression, one card per student ── */}
+      {progressionData.length > 0 && (
         <div className="card p-6">
-          <h3 className="font-bold text-ink mb-0.5">Score Progression</h3>
-          <p className="text-xs text-muted mb-5">Each student's score per lesson number over time</p>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={trendData} margin={{ top: 8, right: 20, left: -20, bottom: 24 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-              <XAxis dataKey="lesson" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}
-                label={{ value: 'Lesson number', position: 'insideBottom', offset: -12, fontSize: 11, fill: '#9ca3af' }} />
-              <YAxis domain={[0, 10]} ticks={[0, 2, 4, 6, 8, 10]} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: unknown, name: unknown) => [`${v}/10`, String(name ?? '')]} />
-              <Legend wrapperStyle={{ fontSize: '12px', fontFamily: 'Poppins', paddingTop: '12px' }} iconType="circle" iconSize={8} />
-              {studentNames.map((name, i) => (
-                <Line key={name} type="monotone" dataKey={name}
-                  stroke={STUDENT_COLORS[i % STUDENT_COLORS.length]} strokeWidth={2.5}
-                  dot={{ r: 4, strokeWidth: 0, fill: STUDENT_COLORS[i % STUDENT_COLORS.length] }}
-                  activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
-                  connectNulls={false} />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
+            <div>
+              <h3 className="font-bold text-ink mb-0.5">Score Progression</h3>
+              <p className="text-xs text-muted">
+                Each student&apos;s own lessons, biggest drop first. The arrow is the change from their
+                first lesson to their last; the dashed line is their average. Hover a point for the lesson.
+              </p>
+            </div>
+            {declining > 0 && (
+              <span className="text-xs font-semibold text-red-600 bg-red-50 border border-red-100 rounded-full px-3 py-1 shrink-0">
+                {declining} trending down
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {progressionData.map(s => (
+              <ProgressionCard
+                key={s.fullName}
+                s={s}
+                color={colorOf.get(s.name) ?? STUDENT_COLORS[0]}
+                domain={scoreDomain}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -196,7 +300,7 @@ export default function ClassAnalyticsCharts({ summaryData, trendData, studentNa
               label={{ value: '50% target', position: 'insideTopRight', fontSize: 10, fill: '#10b981', dy: 4, dx: -4 }}
             />
             <Bar dataKey="avgTalk" radius={[6, 6, 0, 0]} maxBarSize={54}>
-              {summaryData.map((_, i) => <Cell key={i} fill={STUDENT_COLORS[i % STUDENT_COLORS.length]} opacity={0.85} />)}
+              {summaryData.map((s, i) => <Cell key={i} fill={colorOf.get(s.name)} opacity={0.85} />)}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -256,7 +360,7 @@ export default function ClassAnalyticsCharts({ summaryData, trendData, studentNa
               <tr key={s.fullName} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
                 <td className="px-6 py-3.5">
                   <div className="flex items-center gap-2.5">
-                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: STUDENT_COLORS[i % STUDENT_COLORS.length] }} />
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: colorOf.get(s.name) }} />
                     <span className="font-medium text-ink">{s.fullName}</span>
                   </div>
                 </td>

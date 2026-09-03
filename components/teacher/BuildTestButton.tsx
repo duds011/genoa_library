@@ -16,7 +16,7 @@ interface LessonOption {
 const SCRIPT_OPTIONS: { value: TestScript; label: string; hint: string }[] = [
   { value: 'romaji',   label: 'Beginner',  hint: 'Hiragana + romaji' },
   { value: 'hiragana', label: 'Hiragana', hint: 'Kana, no romaji' },
-  { value: 'kanji',    label: 'Kanji + kana', hint: 'Kanji with readings' },
+  { value: 'kanji',    label: 'Kanji + kana', hint: 'Furigana over kanji' },
 ]
 
 const SECTION_OPTIONS: { value: string; label: string }[] = [

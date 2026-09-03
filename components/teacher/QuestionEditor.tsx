@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, Plus, Trash2, Save, X } from 'lucide-react'
+import { Loader2, Plus, Trash2, Save, X, Info } from 'lucide-react'
 import { updateTestQuestion } from '@/app/actions/tests'
+import { hasKanji, kanjiWithoutReading } from '@/lib/furigana'
+import Furigana from '@/components/Furigana'
 import type { TestQuestion } from '@/lib/types'
 
 export default function QuestionEditor({
@@ -33,11 +35,20 @@ export default function QuestionEditor({
     onDone()
   }
 
+  // Every place this question holds Japanese — used to decide whether the
+  // furigana guide is worth showing at all.
+  const japaneseHere = [
+    prompt, data.prompt_jp, data.text, data.question, data.before, data.after,
+    data.answer, data.context, data.reference_answer,
+    ...(data.options ?? []),
+    ...(data.sentences ?? []).map((s: any) => s?.jp),
+  ]
+
   return (
     <div className="mt-1 space-y-3">
-      <Field label="Prompt / task shown to the student">
-        <textarea value={prompt} onChange={e => setPrompt(e.target.value)} rows={2} className={inputCls} />
-      </Field>
+      {japaneseHere.some(t => hasKanji(t)) && <FuriganaGuide />}
+
+      <JpField label="Prompt / task shown to the student" value={prompt} onChange={setPrompt} rows={2} />
 
       {q.type !== 'reading_passage' && (
         <Field label="Points">
@@ -47,7 +58,7 @@ export default function QuestionEditor({
 
       {q.type === 'speak' && (
         <>
-          <Field label="Japanese (prompt_jp)"><input value={data.prompt_jp ?? ''} onChange={e => set('prompt_jp', e.target.value)} className={inputCls} /></Field>
+          <JpField label="Japanese (prompt_jp)" value={data.prompt_jp ?? ''} onChange={v => set('prompt_jp', v)} />
           <Field label="Romaji (prompt_romaji)"><input value={data.prompt_romaji ?? ''} onChange={e => set('prompt_romaji', e.target.value)} className={inputCls} /></Field>
           <Field label="Hint — shown only if the student asks for it">
             <input value={data.hint ?? ''} onChange={e => set('hint', e.target.value)} placeholder="A nudge, not the answer or a translation" className={inputCls} />
@@ -64,14 +75,14 @@ export default function QuestionEditor({
 
       {q.type === 'reading_passage' && (
         <>
-          <Field label="Passage (Japanese)"><textarea value={data.text ?? ''} onChange={e => set('text', e.target.value)} rows={6} className={inputCls} /></Field>
+          <JpField label="Passage (Japanese)" value={data.text ?? ''} onChange={v => set('text', v)} rows={6} />
           <Field label="Romaji reading"><textarea value={data.romaji ?? ''} onChange={e => set('romaji', e.target.value)} rows={4} className={inputCls} /></Field>
         </>
       )}
 
       {q.type === 'multiple_choice' && (
         <>
-          <Field label="Question"><input value={data.question ?? ''} onChange={e => set('question', e.target.value)} className={inputCls} /></Field>
+          <JpField label="Question" value={data.question ?? ''} onChange={v => set('question', v)} />
           <Field label="Question romaji"><input value={data.question_romaji ?? ''} onChange={e => set('question_romaji', e.target.value)} className={inputCls} /></Field>
           <OptionsEditor
             options={data.options ?? []}
@@ -84,8 +95,8 @@ export default function QuestionEditor({
       {q.type === 'fill_blank' && (
         <>
           <div className="grid grid-cols-2 gap-2">
-            <Field label="Text before blank"><input value={data.before ?? ''} onChange={e => set('before', e.target.value)} className={inputCls} /></Field>
-            <Field label="Text after blank"><input value={data.after ?? ''} onChange={e => set('after', e.target.value)} className={inputCls} /></Field>
+            <JpField label="Text before blank" value={data.before ?? ''} onChange={v => set('before', v)} />
+            <JpField label="Text after blank" value={data.after ?? ''} onChange={v => set('after', v)} />
           </div>
           <FillOptionsEditor
             options={data.options ?? []}
@@ -97,8 +108,8 @@ export default function QuestionEditor({
 
       {q.type === 'written' && (
         <>
-          <Field label="Context (optional)"><textarea value={data.context ?? ''} onChange={e => set('context', e.target.value)} rows={2} className={inputCls} /></Field>
-          <Field label="Model answer (for your grading)"><textarea value={data.reference_answer ?? ''} onChange={e => set('reference_answer', e.target.value)} rows={2} className={inputCls} /></Field>
+          <JpField label="Context (optional)" value={data.context ?? ''} onChange={v => set('context', v)} rows={2} />
+          <JpField label="Model answer (for your grading)" value={data.reference_answer ?? ''} onChange={v => set('reference_answer', v)} rows={2} />
           <Field label="Grading note (optional)"><input value={data.guidance ?? ''} onChange={e => set('guidance', e.target.value)} className={inputCls} /></Field>
         </>
       )}
@@ -132,6 +143,64 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+// Shown once per question that contains kanji, so the bracket syntax is never
+// something Noa has to remember or guess at.
+function FuriganaGuide() {
+  return (
+    <div className="rounded-xl border border-indigo-100 bg-brand-50 px-3.5 py-2.5 flex items-start gap-2">
+      <Info className="w-3.5 h-3.5 text-brand-600 shrink-0 mt-0.5" />
+      <div className="text-[11px] text-ink/80 leading-relaxed">
+        <span className="font-semibold text-brand-700">Furigana.</span>{' '}
+        Put the reading in square brackets right after the kanji it belongs to — <code className="bg-white/70 rounded px-1">お茶[ちゃ]</code> shows as{' '}
+        <span className="text-sm whitespace-nowrap"><Furigana text="お茶[ちゃ]" /></span>.
+        Split at the okurigana: <code className="bg-white/70 rounded px-1">行[い]きます</code>, not 行きます[いきます].
+        Fix a wrong reading by editing what&apos;s inside the brackets — the preview under each box updates as you type.
+      </div>
+    </div>
+  )
+}
+
+// A Japanese text box with the rendered result underneath, so a reading can be
+// corrected and checked without leaving the editor.
+function JpField({
+  label, value, onChange, rows,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  rows?: number
+}) {
+  return (
+    <Field label={label}>
+      {rows ? (
+        <textarea value={value} onChange={e => onChange(e.target.value)} rows={rows} className={inputCls} />
+      ) : (
+        <input value={value} onChange={e => onChange(e.target.value)} className={inputCls} />
+      )}
+      <FuriganaPreview text={value} />
+    </Field>
+  )
+}
+
+function FuriganaPreview({ text, compact }: { text: string; compact?: boolean }) {
+  if (!hasKanji(text)) return null
+  const bare = kanjiWithoutReading(text)
+
+  return (
+    <div className={`mt-1.5 rounded-lg border border-indigo-100 bg-[#f8f7ff] px-3 ${compact ? 'py-1.5' : 'py-2'}`}>
+      {!compact && (
+        <span className="block text-[10px] font-bold uppercase tracking-wide text-muted mb-0.5">Student sees</span>
+      )}
+      <span className="text-base text-ink whitespace-pre-line"><Furigana text={text} /></span>
+      {bare.length > 0 && (
+        <span className="block text-[11px] text-orange-600 mt-1">
+          No reading yet on {bare.join(' ')} — add it as {bare[0]}[reading].
+        </span>
+      )}
+    </div>
+  )
+}
+
 function OptionsEditor({
   options, correctIndex, onChange,
 }: {
@@ -156,10 +225,13 @@ function OptionsEditor({
       <span className="text-[11px] font-semibold text-muted uppercase tracking-wide">Options — select the correct one</span>
       <div className="mt-1 space-y-2">
         {options.map((o, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input type="radio" name="correct" checked={i === correctIndex} onChange={() => onChange(options, i)} className="accent-brand-600 w-4 h-4 shrink-0" title="Mark correct" />
-            <input value={o} onChange={e => edit(i, e.target.value)} className={inputCls} />
-            <button onClick={() => remove(i)} className="text-gray-400 hover:text-red-500 shrink-0" title="Remove option"><Trash2 className="w-4 h-4" /></button>
+          <div key={i} className="flex items-start gap-2">
+            <input type="radio" name="correct" checked={i === correctIndex} onChange={() => onChange(options, i)} className="accent-brand-600 w-4 h-4 shrink-0 mt-2.5" title="Mark correct" />
+            <div className="flex-1">
+              <input value={o} onChange={e => edit(i, e.target.value)} className={inputCls} />
+              <FuriganaPreview text={o} compact />
+            </div>
+            <button onClick={() => remove(i)} className="text-gray-400 hover:text-red-500 shrink-0 mt-2.5" title="Remove option"><Trash2 className="w-4 h-4" /></button>
           </div>
         ))}
       </div>
@@ -191,10 +263,13 @@ function FillOptionsEditor({
       <span className="text-[11px] font-semibold text-muted uppercase tracking-wide">Options — select the correct answer</span>
       <div className="mt-1 space-y-2">
         {options.map((o, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input type="radio" name="fillcorrect" checked={o !== '' && o === answer} onChange={() => onChange(options, o)} className="accent-brand-600 w-4 h-4 shrink-0" title="Mark correct" />
-            <input value={o} onChange={e => edit(i, e.target.value)} className={inputCls} />
-            <button onClick={() => remove(i)} className="text-gray-400 hover:text-red-500 shrink-0" title="Remove option"><Trash2 className="w-4 h-4" /></button>
+          <div key={i} className="flex items-start gap-2">
+            <input type="radio" name="fillcorrect" checked={o !== '' && o === answer} onChange={() => onChange(options, o)} className="accent-brand-600 w-4 h-4 shrink-0 mt-2.5" title="Mark correct" />
+            <div className="flex-1">
+              <input value={o} onChange={e => edit(i, e.target.value)} className={inputCls} />
+              <FuriganaPreview text={o} compact />
+            </div>
+            <button onClick={() => remove(i)} className="text-gray-400 hover:text-red-500 shrink-0 mt-2.5" title="Remove option"><Trash2 className="w-4 h-4" /></button>
           </div>
         ))}
       </div>
@@ -227,6 +302,7 @@ function SentencesEditor({
               <button onClick={() => remove(i)} className="text-gray-400 hover:text-red-500" title="Remove"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
             <input value={s.jp ?? ''} onChange={e => edit(i, 'jp', e.target.value)} placeholder="Japanese" className={inputCls} />
+            <FuriganaPreview text={s.jp ?? ''} compact />
             <input value={s.romaji ?? ''} onChange={e => edit(i, 'romaji', e.target.value)} placeholder="Romaji" className={inputCls} />
           </div>
         ))}

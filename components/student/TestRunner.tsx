@@ -7,6 +7,7 @@ import { Clock, Loader2, Mic, Square, Send, RotateCcw, Sparkles, CheckCircle2, L
 import { startTestAttempt, saveWrittenAnswer, saveChoiceAnswer, submitTest } from '@/app/actions/tests'
 import type { TestQuestion, TestSubmission } from '@/lib/types'
 import { groupBySection } from '@/lib/utils'
+import Furigana from '@/components/Furigana'
 
 const TYPE_LABEL: Record<string, string> = {
   written: '✍️ Written',
@@ -47,7 +48,7 @@ export default function TestRunner({
     return (
       <div className="card p-8 text-center max-w-lg mx-auto">
         <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-white mb-4"
-          style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+          style={{ background: 'linear-gradient(135deg, #0a61c9, #a24ee0)' }}>
           <Sparkles className="w-6 h-6" />
         </div>
         <h1 className="text-xl font-bold text-ink">{test.title}</h1>
@@ -156,7 +157,9 @@ function StartedTest({
                     </span>
                     {!isPassage && <span className="text-[11px] text-muted">{q.points} pt{q.points !== 1 ? 's' : ''}</span>}
                   </div>
-                  {q.type !== 'multiple_choice' && <p className="text-sm font-semibold text-ink mb-2">{q.prompt}</p>}
+                  {q.type !== 'multiple_choice' && (
+                    <p className="text-sm font-semibold text-ink mb-2"><Furigana text={q.prompt} /></p>
+                  )}
 
                   <QuestionBody
                     q={q}
@@ -202,7 +205,7 @@ function QuestionBody({
   if (q.type === 'reading_passage') {
     return (
       <div className="rounded-lg px-4 py-3 border border-gray-100 bg-[#f8f7ff]">
-        <p className="text-base text-ink leading-relaxed whitespace-pre-line">{q.data?.text}</p>
+        <p className="text-base text-ink leading-relaxed whitespace-pre-line"><Furigana text={q.data?.text} /></p>
         {q.data?.romaji && <p className="text-sm text-brand-600 italic leading-relaxed whitespace-pre-line mt-1">{q.data.romaji}</p>}
       </div>
     )
@@ -227,7 +230,7 @@ function QuestionBody({
             <div className="space-y-1.5">
               {(q.data?.sentences ?? []).map((s: any, j: number) => (
                 <div key={j} className="bg-white rounded-lg px-3 py-2 border border-gray-100">
-                  <p className="text-base text-ink">{s.jp}</p>
+                  <p className="text-base text-ink"><Furigana text={s.jp} /></p>
                   {s.romaji && <p className="text-sm text-brand-600 italic mt-0.5">{s.romaji}</p>}
                 </div>
               ))}
@@ -236,7 +239,7 @@ function QuestionBody({
         )}
         {q.type === 'speak' && (
           <div className="mb-3 bg-[#f8f7ff] rounded-lg px-3 py-2.5 border border-gray-100">
-            {q.data?.prompt_jp && <p className="text-base text-ink">{q.data.prompt_jp}</p>}
+            {q.data?.prompt_jp && <p className="text-base text-ink"><Furigana text={q.data.prompt_jp} /></p>}
             {q.data?.prompt_romaji && <p className="text-sm text-brand-600 italic mt-0.5">{q.data.prompt_romaji}</p>}
           </div>
         )}
@@ -303,7 +306,7 @@ function WrittenAnswer({
 
   return (
     <div>
-      {data?.context && <p className="text-sm text-ink bg-[#f8f7ff] rounded-lg px-3 py-2 mb-2">{data.context}</p>}
+      {data?.context && <p className="text-sm text-ink bg-[#f8f7ff] rounded-lg px-3 py-2 mb-2"><Furigana text={data.context} /></p>}
       <textarea
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -339,7 +342,7 @@ function ChoiceAnswer({
 
   return (
     <div>
-      <p className="text-sm font-semibold text-ink">{data?.question || prompt}</p>
+      <p className="text-sm font-semibold text-ink"><Furigana text={data?.question || prompt} /></p>
       {data?.question_romaji && <p className="text-xs text-brand-600 italic mb-2">{data.question_romaji}</p>}
       <div className="flex flex-col gap-2 mt-3">
         {opts.map((o, i) => (
@@ -350,7 +353,7 @@ function ChoiceAnswer({
               selected === i ? 'border-brand-400 bg-brand-50 text-brand-700 font-semibold' : 'border-gray-200 bg-white hover:border-brand-200 hover:bg-brand-50'
             }`}
           >
-            {o}
+            <Furigana text={o} />
           </button>
         ))}
       </div>
@@ -377,11 +380,11 @@ function FillBlankAnswer({
   return (
     <div>
       <div className="bg-[#f8f7ff] rounded-lg px-3.5 py-3 my-1 text-base text-ink">
-        {data?.before}
+        <Furigana text={data?.before} />
         <span className="inline-block min-w-[52px] text-center font-bold border-b-2 px-2 mx-0.5 text-brand-600 border-brand-400">
-          {selected || '＿＿'}
+          {selected ? <Furigana text={selected} /> : '＿＿'}
         </span>
-        {data?.after}
+        <Furigana text={data?.after} />
       </div>
       <div className="flex flex-wrap gap-2 mt-2">
         {opts.map((o, i) => (
@@ -392,7 +395,7 @@ function FillBlankAnswer({
               selected === o ? 'border-brand-400 bg-brand-50 text-brand-700 font-semibold' : 'border-gray-200 bg-white hover:border-brand-200 hover:bg-brand-50'
             }`}
           >
-            {o}
+            <Furigana text={o} />
           </button>
         ))}
       </div>
