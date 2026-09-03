@@ -13,8 +13,15 @@ export const dynamic = 'force-dynamic'
  * A 50-minute lesson is two tracks of audio to transcribe and then a long
  * completion. Whichever ceiling the host imposes, this must ask for the most
  * it can get — the work does not become shorter for being cut off.
+ *
+ * 300 is that ceiling on this project's Vercel plan; Lesson Studio asks for
+ * 800 on Pro. A long lesson can therefore run out of time here, and when it
+ * does the answer is to CALL THIS AGAIN with the same recordingId: the
+ * transcript is cached in storage beside the audio, so a second attempt skips
+ * the expensive half and finishes in seconds. The recorder retries once for
+ * exactly this reason. Raising the plan removes the problem outright.
  */
-export const maxDuration = 800
+export const maxDuration = 300
 
 /**
  * Turn an uploaded recording into a draft recap.
