@@ -1,5 +1,5 @@
 ﻿import { createClient, getUser } from '@/lib/supabase/server'
-import { FileText } from 'lucide-react'
+import PageHeader from '@/components/PageHeader'
 import ImportTranscriptForm from '@/components/teacher/ImportTranscriptForm'
 
 export default async function ImportPage() {
@@ -13,34 +13,22 @@ export default async function ImportPage() {
     .order('full_name')
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2.5 mb-1">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
-            <FileText className="w-5 h-5 text-white" />
+    <div className="k-page" style={{ display: 'grid', gap: 18, maxWidth: 820 }}>
+      <PageHeader
+        eyebrow="Manage"
+        title="Import a transcript"
+        meta="For lessons that were not on Google Meet. Paste the transcript and the recap, vocabulary and homework are generated for you to review."
+      />
+
+      <div className="k-sec">
+        <div className="k-sec-head">
+          <span className="k-sec-icon b">📄</span>
+          <div>
+            <h3>How it works</h3>
+            <p className="desc">Pick the student and the lesson date, paste the full transcript, then process it. Analysis takes ten to fifteen seconds and lands as a <b>draft</b> on your overview for you to review and publish.</p>
           </div>
-          <h1 className="text-2xl font-bold text-ink">Import Transcript</h1>
         </div>
-        <p className="text-sm text-muted ml-11">
-          Paste a lesson transcript and GPT-4o will generate the recap, vocabulary, and homework automatically.
-        </p>
-      </div>
 
-      {/* How it works */}
-      <div className="bg-brand-50 border border-brand-100 rounded-2xl px-5 py-4 text-sm space-y-2">
-        <p className="font-semibold text-brand-700">How it works</p>
-        <ol className="list-decimal list-inside space-y-1 text-brand-600">
-          <li>Select the student and lesson date below</li>
-          <li>Paste the full Google Meet transcript</li>
-          <li>Click <strong>Process transcript</strong> — AI analysis takes ~10–15 seconds</li>
-          <li>A <span className="badge-draft inline">draft</span> lesson will appear on the dashboard for you to review and publish</li>
-        </ol>
-      </div>
-
-      {/* Form */}
-      <div className="card p-6">
         {!students || students.length === 0 ? (
           <div className="text-center py-8 text-muted text-sm">
             <p>No students found.</p>

@@ -1,18 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { formatDateShort, getLevelLabel, ordinal, testScore } from '@/lib/utils'
+import { formatDateShort, ordinal, testScore } from '@/lib/utils'
 import StudentProgressChart from '@/components/teacher/StudentProgressChart'
 import VocabLevelBreakdown from '@/components/student/VocabLevelBreakdown'
 import ResetPasswordButton from '@/components/teacher/ResetPasswordButton'
 import UpdateEmailButton from '@/components/teacher/UpdateEmailButton'
-import { PenLine, BookOpen, ArrowLeft, FileText, Clock } from 'lucide-react'
 import DeleteLessonButton from '@/components/teacher/DeleteLessonButton'
 import BuildTestButton from '@/components/teacher/BuildTestButton'
+import PageHeader from '@/components/PageHeader'
+import MilestoneTrack from '@/components/MilestoneTrack'
 
-const MILESTONES = [1, 5, 10, 25, 50]
-const MILESTONE_EMOJIS = ['🌱', '🌸', '🌿', '⭐', '🏆']
-
+/**
+ * One student, the teacher's view — the shape of Lesson Studio's student
+ * page: the band with the headline figures and the admin actions, the
+ * progress chart, then lessons and tests as two sibling lists.
+ */
 export default async function StudentDetailPage({
   params,
 }: {
@@ -20,8 +23,6 @@ export default async function StudentDetailPage({
 }) {
   const supabase = await createClient()
 
-  // student, lessons and tests all key off params.id and don't depend on each
-  // other — fetch them in parallel instead of three sequential round-trips.
   const [
     { data: student },
     { data: lessons },
@@ -42,7 +43,6 @@ export default async function StudentDetailPage({
       `)
       .eq('student_id', params.id)
       .order('lesson_number', { ascending: true }),
-    // Tests built for this student, with enough to show the score on each card
     supabase
       .from('tests')
       .select('id, title, status, duration_minutes, lesson_numbers, created_at, test_questions ( id, type, points )')
@@ -76,7 +76,7 @@ export default async function StudentDetailPage({
     }
   }
 
-  // Find which lessons have unreviewed homework or audio submissions
+  // Which lessons have unreviewed homework or audio submissions
   const lessonIds = (lessons || []).map((l: any) => l.id)
   const lessonsWithUpdates = new Set<string>()
   if (lessonIds.length > 0) {
@@ -91,18 +91,11 @@ export default async function StudentDetailPage({
 
   const scores      = published.map((l: any) => l.lesson_summaries?.score).filter(Boolean)
   const latestScore = scores[scores.length - 1] ?? null
-  const firstScore  = scores[0] ?? null
   const avgScore    = scores.length ? scores.reduce((a: number, b: number) => a + b, 0) / scores.length : null
-  const scoreDelta  = latestScore && firstScore
-    ? (latestScore - firstScore >= 0 ? '+' : '') + (latestScore - firstScore).toFixed(1)
-    : null
 
   const talks      = published.map((l: any) => l.lesson_summaries?.talk_percentage).filter(Boolean)
   const latestTalk = talks[talks.length - 1] ?? null
-  const firstTalk  = talks[0] ?? null
-  const talkDelta  = latestTalk && firstTalk ? latestTalk - firstTalk : null
 
-  // Aggregate vocab_level_distribution (full GPT-detected vocab) — same source as student dashboard
   const vocabDistribution: Record<string, number> = {}
   for (const lesson of published) {
     const dist = (lesson as any).lesson_summaries?.vocab_level_distribution
@@ -114,7 +107,6 @@ export default async function StudentDetailPage({
   }
   const hasDistribution = Object.values(vocabDistribution).some(v => v > 0)
 
-  // Fallback: count vocabulary_items rows with a jlpt_level (for older lessons)
   const allVocabRaw = published.flatMap((l: any) => l.vocabulary_items || [])
   const seenWords = new Set<string>()
   const allVocab = allVocabRaw.filter((v: any) => {
@@ -129,9 +121,7 @@ export default async function StudentDetailPage({
     ? Object.values(vocabDistribution).reduce((sum, n) => sum + n, 0)
     : allVocab.length
 
-  const lessonCount   = published.reduce((max: number, l: any) => Math.max(max, l.lesson_number ?? 0), 0)
-  const nextMilestone = MILESTONES.find(m => m > lessonCount) ?? 50
-  const levelLabel    = getLevelLabel(lessonCount)
+  const lessonCount = published.reduce((max: number, l: any) => Math.max(max, l.lesson_number ?? 0), 0)
 
   const chartData = published.map((l: any) => ({
     lesson: `L${l.lesson_number}`,
@@ -139,285 +129,149 @@ export default async function StudentDetailPage({
     talk:  l.lesson_summaries?.talk_percentage ?? null,
   }))
 
+  const initials = student.full_name.split(' ').map((p: string) => p[0]).slice(0, 2).join('').toUpperCase()
+  // Newest first — the teacher opens this to reach the latest recap.
+  const rows = [...drafts, ...published].sort((a: any, b: any) => (b.lesson_number ?? 0) - (a.lesson_number ?? 0))
+
   return (
-    <div className="space-y-8">
-      {/* Back + header */}
-      <div>
-        <Link href="/teacher/students" className="btn-ghost text-xs mb-3 -ml-1 inline-flex">
-          <ArrowLeft className="w-3.5 h-3.5" /> All Students
-        </Link>
-        {/* Wraps on a phone: the name, badge row and action buttons were each
-            unshrinkable and pushed the whole page sideways. */}
-        <div className="flex items-start gap-3 sm:gap-4 flex-wrap">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-white text-lg sm:text-xl font-bold shrink-0"
-            style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
-            {student.full_name.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold text-ink break-words">{student.full_name}</h1>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="badge-brand">{student.language}</span>
-              <span className="badge text-xs bg-gray-100 text-muted">{student.level}</span>
-              <span className="text-xs text-muted break-all">{student.email}</span>
-            </div>
-          </div>
-          <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 flex-wrap sm:justify-end">
-            {drafts.length > 0 && (
-              <span className="badge-draft">{drafts.length} draft{drafts.length > 1 ? 's' : ''} pending</span>
-            )}
-            <BuildTestButton
-              studentId={student.id}
-              lessons={published.map((l: any) => ({ id: l.id, lesson_number: l.lesson_number, title: l.title, lesson_date: l.lesson_date }))}
-            />
-            <UpdateEmailButton studentId={student.id} currentEmail={student.email} />
-            {student.profile_id && <ResetPasswordButton studentId={student.id} />}
-          </div>
+    <div className="k-page" style={{ display: 'grid', gap: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <Link href="/teacher/students" className="btn btn-ghost btn-sm">← All students</Link>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <UpdateEmailButton studentId={student.id} currentEmail={student.email} />
+          {student.profile_id && <ResetPasswordButton studentId={student.id} />}
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="stat-card">
-          <span className="stat-label">Lessons</span>
-          <span className="stat-value">{lessonCount}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Latest Score</span>
-          <div className="flex flex-col">
-            <span className="stat-value text-brand-600">{latestScore ?? '—'}<span className="text-sm font-normal text-muted">/10</span></span>
-            {scoreDelta && <span className="text-xs text-muted">{scoreDelta} since lesson 1</span>}
-          </div>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Avg Score</span>
-          <span className="stat-value">{avgScore ? avgScore.toFixed(1) : '—'}<span className="text-sm font-normal text-muted">/10</span></span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Student Talks</span>
-          <div className="flex flex-col">
-            <span className="stat-value">{latestTalk ?? '—'}<span className="text-sm font-normal text-muted">%</span></span>
-            {talkDelta !== null && <span className="text-xs text-muted">{talkDelta >= 0 ? '+' : ''}{talkDelta}% since lesson 1</span>}
-          </div>
-        </div>
-      </div>
-
-      {/* Progress chart */}
-      {chartData.length > 1 && (
-        <div className="card p-6">
-          <h2 className="section-title mb-4">Progress Over Time</h2>
-          <StudentProgressChart data={chartData} />
-        </div>
-      )}
-
-      {/* Words learned + vocab breakdown */}
-      {totalVocab > 0 && (
-        <>
-          <div className="card px-5 py-4 flex items-center gap-3">
-            <span className="text-xl">📚</span>
-            <span className="font-bold text-ink">{totalVocab} vocabulary items covered across {lessonCount} lessons</span>
-          </div>
-          {hasDistribution
-            ? <VocabLevelBreakdown distribution={vocabDistribution} totalCount={totalVocab} />
-            : <VocabLevelBreakdown vocab={allVocab} />
-          }
-        </>
-      )}
-
-      {/* Milestone progress */}
-      <div className="card p-5">
-        <h2 className="section-title mb-4">Lesson Milestones</h2>
-        <div className="relative px-3" style={{ paddingTop: '2.5rem', paddingBottom: '1.75rem' }}>
-          <div className="relative h-1.5 bg-gray-200 rounded-full">
-            <div
-              className="absolute h-full rounded-full transition-all duration-700"
-              style={{
-                width: `${Math.min((lessonCount / 50) * 100, 100)}%`,
-                background: 'linear-gradient(90deg, #4f46e5, #7c3aed)',
-              }}
-            />
-            {MILESTONES.map((m, i) => {
-              const pct     = (m / 50) * 100
-              const reached = lessonCount >= m
-              return (
-                <div key={m} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2" style={{ left: `${pct}%` }}>
-                  <span className="absolute text-base" style={{ bottom: '18px', left: '50%', transform: 'translateX(-50%)', lineHeight: 1 }}>
-                    {MILESTONE_EMOJIS[i]}
-                  </span>
-                  <div className={`w-3.5 h-3.5 rounded-full border-2 transition-colors ${reached ? 'bg-brand-600 border-brand-600' : 'bg-white border-gray-300'}`} />
-                  <span className="absolute text-[10px] text-muted font-medium" style={{ top: '14px', left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>
-                    {m}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-        <p className="text-xs text-muted text-center">
-          {nextMilestone > lessonCount
-            ? `${nextMilestone - lessonCount} more lesson${nextMilestone - lessonCount !== 1 ? 's' : ''} to unlock ${MILESTONE_EMOJIS[MILESTONES.indexOf(nextMilestone)]} ${levelLabel}`
-            : '🏆 Maximum milestone reached!'}
-        </p>
-      </div>
-
-      {/* Tests */}
-      {(tests?.length ?? 0) > 0 && (
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <FileText className="w-4 h-4 text-brand-600" />
-            <h2 className="section-title">Tests</h2>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {(tests || []).map((t: any) => {
-              const result = testResults.get(t.id)
-              return (
-                <Link key={t.id} href={`/teacher/tests/${t.id}`} className="card p-5 hover:border-brand-200 hover:shadow-md transition-all">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-[10px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 ${t.status === 'published' ? 'text-green-600 bg-green-50 border border-green-100' : 'text-orange-600 bg-orange-50 border border-orange-100'}`}>
-                      {t.status === 'published' ? 'Published' : 'Draft'}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs text-muted"><Clock className="w-3.5 h-3.5" /> {t.duration_minutes} min</span>
-                  </div>
-                  <p className="font-semibold text-ink">{t.title}</p>
-                  {t.lesson_numbers?.length > 0 && (
-                    <p className="text-xs text-muted mt-0.5">Covers lessons {t.lesson_numbers.join(', ')}</p>
-                  )}
-
-                  {result?.submitted && (
-                    <div className="mt-3 flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1 tabular-nums">
-                        {result.score}/{result.maxScore} · {result.percent}%
-                      </span>
-                      {result.awaiting > 0 && (
-                        <span className="text-[11px] font-semibold text-orange-700 bg-orange-50 border border-orange-100 rounded-full px-2 py-0.5">
-                          {result.awaiting} to grade
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  <span className="btn-ghost text-xs mt-3 -ml-1 inline-flex">
-                    {result?.submitted ? (result.awaiting > 0 ? 'Grade answers →' : 'See answers →') : 'Review & grade →'}
-                  </span>
-                </Link>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Pending drafts */}
-      {drafts.length > 0 && (
-        <section>
-          <h2 className="section-title mb-3">⏳ Pending Review ({drafts.length})</h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {drafts.map((lesson: any) => (
-              <div key={lesson.id} className="card p-5 border-orange-100">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="badge-draft">Draft</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted">{formatDateShort(lesson.lesson_date)}</span>
-                    <DeleteLessonButton lessonId={lesson.id} lessonLabel={`Lesson ${lesson.lesson_number}`} variant="icon" />
-                  </div>
-                </div>
-                <p className="font-semibold text-ink mb-3">{lesson.title || `Lesson ${lesson.lesson_number}`}</p>
-                <Link href={`/teacher/lessons/${lesson.id}/edit`} className="btn-primary w-full justify-center">
-                  <PenLine className="w-3.5 h-3.5" /> Review & Edit
-                </Link>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Published lessons */}
-      <section>
-        <div className="flex items-center gap-2 mb-4">
-          <BookOpen className="w-4 h-4 text-brand-600" />
-          <h2 className="section-title">Published Lessons</h2>
-        </div>
-        {published.length === 0 ? (
-          <div className="card p-8 text-center text-muted text-sm">No published lessons yet.</div>
-        ) : (
+      <PageHeader
+        lead={<div className="avatar lg">{initials}</div>}
+        title={student.full_name}
+        meta={`${student.email} · ${student.level} · ${student.language}`}
+        figures={[
+          { label: 'Lessons', value: lessonCount },
+          { label: 'Avg score', value: <>{avgScore != null ? avgScore.toFixed(1) : '—'}<i>/10</i></> },
+          { label: 'Latest score', value: <>{latestScore ?? '—'}<i>/10</i></> },
+          { label: 'Latest talk', value: <>{latestTalk ?? '—'}<i>%</i></> },
+          { label: 'Vocab', value: totalVocab },
+        ]}
+        wideActions
+        actions={
           <>
-          {/* Mobile: tappable cards. The desktop table below clips its Edit
-              column inside overflow-hidden on a narrow phone, leaving lessons
-              impossible to open — this list keeps them reachable. */}
-          <div className="sm:hidden flex flex-col gap-3">
-            {published.map((lesson: any) => {
-              const hasUpdate = lessonsWithUpdates.has(lesson.id)
-              return (
-                <div key={lesson.id} className="card p-4 flex flex-col gap-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="badge-brand text-xs">Lesson {lesson.lesson_number}</span>
-                      {hasUpdate && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title="New submission" />}
-                    </div>
-                    <span className="text-xs text-muted">{formatDateShort(lesson.lesson_date)}</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-muted">
-                    <span><span className="font-semibold text-brand-600">{lesson.lesson_summaries?.score ?? '—'}</span>/10</span>
-                    <span>{lesson.lesson_summaries?.talk_percentage ?? '—'}% talk</span>
-                    <span>{lesson.vocabulary_items?.length ?? 0} words</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 mt-1">
-                    <Link href={`/teacher/lessons/${lesson.id}/edit`} className="btn-primary flex-1 justify-center text-xs">
-                      <PenLine className="w-3.5 h-3.5" /> Review &amp; Edit
-                    </Link>
-                    <DeleteLessonButton lessonId={lesson.id} lessonLabel={`Lesson ${lesson.lesson_number}`} variant="icon" />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Tablet/desktop: full table */}
-          <div className="card overflow-hidden hidden sm:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">#</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Date</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Score</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Talk %</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Words</th>
-                  <th className="text-right px-5 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {published.map((lesson: any) => {
-                  const hasUpdate = lessonsWithUpdates.has(lesson.id)
-                  return (
-                    <tr key={lesson.id} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="px-5 py-3 font-semibold text-ink">
-                        <div className="flex items-center gap-2">
-                          {lesson.lesson_number}
-                          {hasUpdate && (
-                            <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title="New submission" />
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3 text-muted">{formatDateShort(lesson.lesson_date)}</td>
-                      <td className="px-5 py-3">
-                        <span className="font-semibold text-brand-600">{lesson.lesson_summaries?.score ?? '—'}</span>
-                        <span className="text-muted">/10</span>
-                      </td>
-                      <td className="px-5 py-3 text-muted">{lesson.lesson_summaries?.talk_percentage ?? '—'}%</td>
-                      <td className="px-5 py-3 text-muted">{lesson.vocabulary_items?.length ?? 0}</td>
-                      <td className="px-5 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Link href={`/teacher/lessons/${lesson.id}/edit`} className="btn-ghost text-xs">Edit</Link>
-                          <DeleteLessonButton lessonId={lesson.id} lessonLabel={`Lesson ${lesson.lesson_number}`} variant="row" />
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+            {drafts.length > 0 && (
+              <span className="pill amber">{drafts.length} draft{drafts.length > 1 ? 's' : ''} to review</span>
+            )}
+            <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
+              <BuildTestButton
+                studentId={student.id}
+                lessons={published.map((l: any) => ({ id: l.id, lesson_number: l.lesson_number, title: l.title, lesson_date: l.lesson_date }))}
+              />
+              <Link href={`/teacher/students/${student.id}/preview`} className="btn btn-ghost btn-sm">Student view →</Link>
+            </span>
           </>
-        )}
-      </section>
+        }
+      />
+
+      {/* Progress + milestones, side by side where there is room */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.6fr) minmax(280px,.9fr)', gap: 14, alignItems: 'start' }} className="g-two-col">
+        <div className="k-card k-chart-card">
+          <div className="k-card-head"><h3>Progress over time</h3><span className="k-link">{published.length} lesson{published.length === 1 ? '' : 's'}</span></div>
+          {chartData.length > 1 ? (
+            <StudentProgressChart data={chartData} />
+          ) : (
+            <div className="k-swipe-empty">A trend needs two scored lessons.</div>
+          )}
+        </div>
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div className="k-card">
+            <div className="k-card-head"><h3>Milestones</h3></div>
+            <MilestoneTrack lessonCount={lessonCount} />
+          </div>
+          {totalVocab > 0 && (
+            <div className="k-card">
+              <div className="k-card-head"><h3>Vocabulary</h3><span className="k-link">{totalVocab} words</span></div>
+              {hasDistribution
+                ? <VocabLevelBreakdown distribution={vocabDistribution} totalCount={totalVocab} />
+                : <VocabLevelBreakdown vocab={allVocab} />}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16, alignItems: 'start' }}>
+        <section>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 44, margin: '0 0 11px' }}>
+            <h2 className="section-heading" style={{ margin: 0 }}>Lessons & recaps</h2>
+          </div>
+          {rows.length === 0 ? (
+            <div className="empty"><strong style={{ color: 'var(--ink)' }}>No lessons yet</strong><br />Recaps for this student will appear here once a transcript comes through.</div>
+          ) : (
+            <div>
+              {rows.map((lesson: any) => {
+                const s = lesson.lesson_summaries
+                const hasUpdate = lessonsWithUpdates.has(lesson.id)
+                return (
+                  <div key={lesson.id} className="lesson-card">
+                    <Link href={`/teacher/lessons/${lesson.id}/edit`} className="lc-num">L{lesson.lesson_number}</Link>
+                    <Link href={`/teacher/lessons/${lesson.id}/edit`} style={{ minWidth: 0 }}>
+                      <div className="lc-title" style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lesson.title || `Lesson ${lesson.lesson_number}`}</span>
+                        {hasUpdate && <span className="g-dot" title="New submission" />}
+                      </div>
+                      <div className="lc-meta">
+                        {ordinal(lesson.lesson_number)} lesson · {formatDateShort(lesson.lesson_date)}
+                        {s?.talk_percentage != null && ` · ${s.talk_percentage}% talk`}
+                        {` · ${lesson.vocabulary_items?.length ?? 0} words`}
+                      </div>
+                    </Link>
+                    <div className="lc-tools">
+                      <span className={`status-pill ${lesson.status === 'published' ? 'published' : 'draft'}`}>{lesson.status}</span>
+                      {s?.score != null && <span className="lc-score" style={{ color: 'var(--brand)' }}>{s.score}<span style={{ fontSize: 10, color: 'var(--muted)' }}>/10</span></span>}
+                      <DeleteLessonButton lessonId={lesson.id} lessonLabel={`Lesson ${lesson.lesson_number}`} variant="row" />
+                    </div>
+                    <Link href={`/teacher/lessons/${lesson.id}/edit`} className="lc-arrow">→</Link>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
+
+        <section>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, minHeight: 44, margin: '0 0 11px' }}>
+            <h2 className="section-heading" style={{ margin: 0 }}>Tests</h2>
+          </div>
+          {(tests ?? []).length === 0 ? (
+            <div className="empty" style={{ padding: 26 }}>
+              <strong style={{ color: 'var(--ink)' }}>No tests yet</strong>
+              <br />
+              Build an exam-style test from any published lesson. You review it before the student sees it.
+            </div>
+          ) : (
+            <div>
+              {(tests as any[]).map((t) => {
+                const result = testResults.get(t.id)
+                return (
+                  <Link key={t.id} href={`/teacher/tests/${t.id}`} className="lesson-card">
+                    <div className="lc-num" style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}>{t.duration_minutes}m</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="lc-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
+                      <div className="lc-meta">
+                        {t.lesson_numbers?.length > 0 ? `Lessons ${t.lesson_numbers.join(', ')} · ` : ''}{formatDateShort(t.created_at)}
+                        {result?.submitted && ` · ${result.score}/${result.maxScore} (${result.percent}%)`}
+                        {result?.submitted && result.awaiting > 0 && ` · ${result.awaiting} to grade`}
+                      </div>
+                    </div>
+                    <span className={`status-pill ${t.status === 'published' ? 'published' : 'draft'}`}>
+                      {result?.submitted ? (result.awaiting > 0 ? 'to grade' : 'scored') : t.status}
+                    </span>
+                    <span className="lc-arrow">→</span>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   )
 }

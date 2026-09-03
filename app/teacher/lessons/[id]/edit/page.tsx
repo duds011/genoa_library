@@ -4,6 +4,7 @@ import LessonEditor from '@/components/teacher/LessonEditor'
 import ExerciseReview from '@/components/teacher/ExerciseReview'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import PageHeader from '@/components/PageHeader'
 import { formatDateShort } from '@/lib/utils'
 import { markLessonSubmissionsReviewed } from '@/app/actions/lessons'
 
@@ -78,34 +79,28 @@ export default async function EditLessonPage({
   )
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Back */}
-      <Link
-        href={(lesson.students as any)?.id ? `/teacher/students/${(lesson.students as any)?.id}` : '/teacher/dashboard'}
-        className="btn-ghost text-xs -ml-1 inline-flex"
-      >
-        <ArrowLeft className="w-3.5 h-3.5" />
-        {(lesson.students as any)?.full_name ?? 'Dashboard'}
-      </Link>
-
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`badge ${lesson.status === 'draft' ? 'badge-draft' : 'badge-green'}`}>
-              {lesson.status}
-            </span>
-            {lesson.lesson_number && <span className="badge-brand">Lesson {lesson.lesson_number}</span>}
-            {!(lesson.students as any)?.id && (
-              <span className="text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">⚠ unassigned</span>
-            )}
-          </div>
-          <h1 className="text-xl font-bold text-ink">
-            Edit Lesson — {(lesson.students as any)?.full_name ?? <span className="text-amber-600">Unassigned</span>}
-          </h1>
-          <p className="text-sm text-muted">{formatDateShort(lesson.lesson_date)}</p>
-        </div>
+    <div className="k-page" style={{ display: 'grid', gap: 16, maxWidth: 960 }}>
+      <div>
+        <Link
+          href={(lesson.students as any)?.id ? `/teacher/students/${(lesson.students as any)?.id}` : '/teacher/dashboard'}
+          className="btn btn-ghost btn-sm"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          {(lesson.students as any)?.full_name ?? 'Overview'}
+        </Link>
       </div>
+
+      <PageHeader
+        eyebrow={`${lesson.status === 'draft' ? 'Draft' : 'Published'}${lesson.lesson_number ? ` · Lesson ${lesson.lesson_number}` : ''}`}
+        title={(lesson.students as any)?.full_name ?? 'Unassigned lesson'}
+        meta={`${formatDateShort(lesson.lesson_date)}${!(lesson.students as any)?.id ? ' · no matching student — assign one below before publishing' : ''}`}
+        figures={[
+          ...((lesson.lesson_summaries as any)?.score != null ? [{ label: 'Score', value: <>{(lesson.lesson_summaries as any).score}<i>/10</i></> }] : []),
+          ...((lesson.lesson_summaries as any)?.talk_percentage != null ? [{ label: 'Talk', value: <>{(lesson.lesson_summaries as any).talk_percentage}<i>%</i></> }] : []),
+          { label: 'Words', value: vocab.length },
+          { label: 'Homework', value: homework.length },
+        ]}
+      />
 
       {/* Editor */}
       <LessonEditor

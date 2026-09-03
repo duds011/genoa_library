@@ -8,7 +8,9 @@ import { createStudent } from '@/app/actions/students'
 const LANGUAGES = ['Japanese', 'Spanish', 'French', 'Portuguese', 'Italian', 'German', 'Korean', 'Mandarin', 'Other']
 const LEVELS = ['Beginner', 'Elementary', 'Pre-Intermediate', 'Intermediate', 'Upper-Intermediate', 'Advanced']
 
-export default function AddStudentForm({ teacherId }: { teacherId: string }) {
+/** `bare` drops the card and heading — for when the form sits inside a dialog
+ *  that already has both. */
+export default function AddStudentForm({ teacherId, bare = false }: { teacherId: string; bare?: boolean }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -56,11 +58,13 @@ export default function AddStudentForm({ teacherId }: { teacherId: string }) {
   }
 
   return (
-    <div className="card p-6">
-      <div className="flex items-center gap-2 mb-5">
-        <UserPlus className="w-4 h-4 text-brand-600" />
-        <h2 className="section-title">Add New Student</h2>
-      </div>
+    <div className={bare ? '' : 'card p-6'}>
+      {!bare && (
+        <div className="flex items-center gap-2 mb-5">
+          <UserPlus className="w-4 h-4 text-brand-600" />
+          <h2 className="section-title">Add New Student</h2>
+        </div>
+      )}
 
       {createdCreds ? (
         <div className="space-y-4">

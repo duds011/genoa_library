@@ -11,8 +11,8 @@ import LessonMetrics from '@/components/student/LessonMetrics'
 export const dynamic = 'force-dynamic'
 
 const LEVELS: [string, number, string][] = [
-  ['N5', 18, '#4f46e5'],
-  ['N4', 13, '#7c3aed'],
+  ['N5', 18, '#0a61c9'],
+  ['N4', 13, '#a24ee0'],
   ['N3', 9, '#a855f7'],
   ['N2', 4, '#c084fc'],
 ]
@@ -53,7 +53,7 @@ export default function Page() {
       node: (
         <>
           <div className="gr-stats">
-            <Stat accent="#4f46e5" icon="🗣️" label="Speaking balance">
+            <Stat accent="#0a61c9" icon="🗣️" label="Speaking balance">
               <div className="gr-stat-value">
                 {studentTalk}<span className="gr-stat-unit">%</span>
                 <span className="gr-stat-sep">/</span>
@@ -78,9 +78,9 @@ export default function Page() {
               </div>
             </Stat>
 
-            <Stat accent="#7c3aed" icon="📚" label="Grammar density"
+            <Stat accent="#a24ee0" icon="📚" label="Grammar density"
                   note={`${totalVocab} vocabulary items practised`}>
-              <div className="gr-stat-value" style={{ color: '#7c3aed', fontSize: 22 }}>Medium-High</div>
+              <div className="gr-stat-value" style={{ color: '#a24ee0', fontSize: 22 }}>Medium-High</div>
             </Stat>
           </div>
 

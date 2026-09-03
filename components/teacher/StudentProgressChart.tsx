@@ -51,9 +51,9 @@ export default function StudentProgressChart({ data }: { data: ChartData[] }) {
           yAxisId="score"
           type="monotone"
           dataKey="score"
-          stroke="#4f46e5"
+          stroke="#0a61c9"
           strokeWidth={2.5}
-          dot={{ r: 4, fill: '#4f46e5' }}
+          dot={{ r: 4, fill: '#0a61c9' }}
           activeDot={{ r: 6 }}
           name="Score (/10)"
           connectNulls
@@ -62,9 +62,9 @@ export default function StudentProgressChart({ data }: { data: ChartData[] }) {
           yAxisId="talk"
           type="monotone"
           dataKey="talk"
-          stroke="#7c3aed"
+          stroke="#a24ee0"
           strokeWidth={2}
-          dot={{ r: 3, fill: '#7c3aed' }}
+          dot={{ r: 3, fill: '#a24ee0' }}
           strokeDasharray="4 2"
           name="Talk (%)"
           connectNulls

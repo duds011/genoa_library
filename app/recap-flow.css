@@ -3,25 +3,25 @@
    prefixed `gr-` on purpose: the movement tints below set --mv-ink, and the
    rest of the page must not inherit it.
 
-   Structure ported from Lesson Studio's recap; the palette is this portal's
-   own indigo/purple, not that app's blue. */
+   Structure ported from Lesson Studio's recap; the palette is now the KOKU
+   blue this portal shares with Lesson Studio. */
 
 .gr-flow{display:grid;gap:12px}
 .gr-mv{border-radius:20px;padding:16px 16px 20px;scroll-margin-top:70px}
 
 /* Each movement gets its own ground so the eye can tell, mid-scroll, which
    part of the lesson it is in without reading a heading. */
-.gr-mv--spoke   {background:#eef0fe;--mv-ink:#3730a3}
+.gr-mv--spoke   {background:#e8f2fd;--mv-ink:#073f8f}
 .gr-mv--won     {background:#e9f7ef;--mv-ink:#116343}
 .gr-mv--fix     {background:#fdf2e3;--mv-ink:#7c4a06}
-.gr-mv--covered {background:#f1f0f8;--mv-ink:#3b3663}
-.gr-mv--words   {background:#f6eefe;--mv-ink:#6b21a8}
+.gr-mv--covered {background:#f4f7f8;--mv-ink:#334155}
+.gr-mv--words   {background:#f4ecfd;--mv-ink:#5a1f85}
 .gr-mv--practice{background:#e8f5f4;--mv-ink:#0d6a62}
 .gr-mv--files   {background:#f2f3f7;--mv-ink:#414a63}
 
 .gr-mv-h{display:flex;align-items:center;gap:9px;margin:0 0 12px;
   font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--mv-ink,#4f46e5)}
+  color:var(--mv-ink,#0a61c9)}
 .gr-mv-h s{text-decoration:none;font-size:10px;font-weight:700;letter-spacing:.04em;
   padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.75);color:var(--mv-ink)}
 
@@ -33,7 +33,7 @@
 /* ── Measured speaking ─────────────────────────────────────────────────── */
 .gr-metrics{background:rgba(255,255,255,.8);border-radius:16px;padding:14px 15px 16px;margin-top:10px}
 .gr-sublab{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--mv-ink,#4f46e5);margin:0 0 11px}
+  color:var(--mv-ink,#0a61c9);margin:0 0 11px}
 .gr-metric-grid{display:grid;gap:9px;grid-template-columns:repeat(2,minmax(0,1fr))}
 /* Fixed columns, not auto-fit. There are exactly six of these, and auto-fit
    packed them 5+1 on a laptop and 4+2 on a phone — a stranded last tile
@@ -41,46 +41,46 @@
 /* 118px, not 96: at 96 a phone fitted four tiles and "longest answer"
    wrapped onto three lines. Three roomy tiles read faster than four cramped ones. */
 .gr-metric{background:#fff;border-radius:12px;padding:10px 11px 11px;display:grid;gap:1px}
-.gr-metric-v{font-size:21px;font-weight:800;letter-spacing:-.03em;color:var(--mv-ink,#4f46e5);
+.gr-metric-v{font-size:21px;font-weight:800;letter-spacing:-.03em;color:var(--mv-ink,#0a61c9);
   line-height:1.1;font-variant-numeric:tabular-nums}
-.gr-metric-k{font-size:10.5px;font-weight:700;color:#1e1b4b}
+.gr-metric-k{font-size:10.5px;font-weight:700;color:#1f2937}
 .gr-metric-h{font-size:9.5px;font-weight:500;color:#6b7280;line-height:1.35}
 .gr-metric-foot{margin:11px 0 0;font-size:11px;color:#5b6b85;line-height:1.5}
-.gr-metric-foot b{color:var(--mv-ink,#4f46e5);font-weight:800}
+.gr-metric-foot b{color:var(--mv-ink,#0a61c9);font-weight:800}
 
 /* ── Phone: the bar lives at the bottom ────────────────────────────────── */
 .gr-strip{position:sticky;top:auto;bottom:0;z-index:20;margin:10px -12px 0;
   padding:0 12px;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);
-  border-top:1px solid rgba(79,70,229,.12)}
-.gr-bar{height:3px;background:#e9e8f5;overflow:hidden;margin:0 -12px}
+  border-top:1px solid rgba(10,97,201,.12)}
+.gr-bar{height:3px;background:#eaeef0;overflow:hidden;margin:0 -12px}
 .gr-bar span{display:block;height:100%;width:0;border-radius:0 2px 2px 0;
-  background:var(--mv-ink,#4f46e5);transition:width .12s linear}
+  background:var(--mv-ink,#0a61c9);transition:width .12s linear}
 .gr-row{display:flex;align-items:center;gap:9px;padding:7px 0 9px}
 .gr-back-btn{flex:0 0 auto;width:34px;height:34px;border-radius:11px;display:grid;
   place-items:center;color:#6b7280;background:#f3f4f6;text-decoration:none}
-.gr-back-btn:active{color:#1e1b4b}
+.gr-back-btn:active{color:#1f2937}
 .gr-back-btn svg{width:15px;height:15px}
 .gr-now{display:flex;align-items:center;gap:10px;flex:1;min-width:0;padding:2px;
   border:0;background:transparent;cursor:pointer;font:inherit;text-align:left}
-.gr-name{font-size:12.5px;font-weight:800;letter-spacing:-.015em;color:var(--mv-ink,#1e1b4b);
+.gr-name{font-size:12.5px;font-weight:800;letter-spacing:-.015em;color:var(--mv-ink,#1f2937);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gr-count{margin-left:auto;font-size:9.5px;font-weight:800;letter-spacing:.08em;
   color:#6b7280;white-space:nowrap}
 .gr-caret{width:13px;height:13px;color:#6b7280;flex:0 0 auto;transition:transform .18s ease}
-.gr-now.open .gr-caret{transform:rotate(180deg);color:var(--mv-ink,#4f46e5)}
+.gr-now.open .gr-caret{transform:rotate(180deg);color:var(--mv-ink,#0a61c9)}
 .gr-picker{position:absolute;left:12px;right:12px;bottom:100%;z-index:22;
-  background:#fff;border-radius:16px;box-shadow:0 -8px 34px rgba(30,27,75,.16);
-  border:1px solid rgba(79,70,229,.1);padding:6px;display:grid;gap:1px;
+  background:#fff;border-radius:16px;box-shadow:0 -8px 34px rgba(31,41,55,.16);
+  border:1px solid rgba(10,97,201,.1);padding:6px;display:grid;gap:1px;
   animation:gr-drop .16s ease both}
 @keyframes gr-drop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .gr-picker button{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;
   border:0;background:transparent;border-radius:11px;cursor:pointer;font:inherit;
-  font-size:12.5px;font-weight:600;color:#1e1b4b;text-align:left}
-.gr-picker button:hover{background:#f5f6ff}
-.gr-picker button.on{background:#eef0fe;color:#4f46e5;font-weight:800}
+  font-size:12.5px;font-weight:600;color:#1f2937;text-align:left}
+.gr-picker button:hover{background:#f1f7f9}
+.gr-picker button.on{background:#e8f2fd;color:#0a61c9;font-weight:800}
 .gr-picker button>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gr-picker s{flex:0 0 auto;text-decoration:none;font-size:10px;font-weight:700;color:#6b7280}
-.gr-picker button.on s{color:#4f46e5}
+.gr-picker button.on s{color:#0a61c9}
 
 .gr-rail{display:none}
 
@@ -92,23 +92,23 @@
     padding:4px 0 8px;position:sticky}
   .gr-rail-back{display:flex;align-items:center;gap:8px;padding:8px 9px;margin:0 0 8px;
     border-radius:10px;font-size:12px;font-weight:700;color:#6b7280;text-decoration:none}
-  .gr-rail-back:hover{background:#f5f6ff;color:#1e1b4b}
+  .gr-rail-back:hover{background:#f1f7f9;color:#1f2937}
   .gr-rail-back svg{width:14px;height:14px;flex:0 0 auto}
   .gr-rail-h{font-size:9px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;
     color:#9ca3af;margin:0 0 10px;padding:0 9px}
-  .gr-rail-track{position:absolute;width:2px;background:#e9e8f5;border-radius:2px}
+  .gr-rail-track{position:absolute;width:2px;background:#eaeef0;border-radius:2px}
   .gr-rail-fill{display:block;width:100%;height:0;border-radius:2px;
-    background:linear-gradient(180deg,#4f46e5,#7c3aed);transition:height .12s linear}
+    background:linear-gradient(180deg,#0a61c9,#a24ee0);transition:height .12s linear}
   .gr-r{display:grid;grid-template-columns:9px minmax(0,1fr);gap:11px;align-items:center;
     padding:8px 9px;border:0;background:transparent;cursor:pointer;font:inherit;
     text-align:left;border-radius:10px;position:relative;z-index:1}
-  .gr-r:hover{background:#f5f6ff}
+  .gr-r:hover{background:#f1f7f9}
   .gr-pip{width:9px;height:9px;border-radius:50%;background:#fff;
-    box-shadow:0 0 0 2px #d9d7ec;transition:box-shadow .18s ease,background .18s ease}
-  .gr-r.on .gr-pip{background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.2)}
+    box-shadow:0 0 0 2px #dae0e4;transition:box-shadow .18s ease,background .18s ease}
+  .gr-r.on .gr-pip{background:#0a61c9;box-shadow:0 0 0 3px rgba(10,97,201,.2)}
   .gr-lab{font-size:12px;font-weight:600;color:#6b7280;letter-spacing:-.01em;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .gr-r.on .gr-lab{color:#1e1b4b;font-weight:800}
+  .gr-r.on .gr-lab{color:#1f2937;font-weight:800}
   .gr-cnt{display:none}
   .gr-metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .gr-mv{padding:20px 22px 24px}
@@ -126,15 +126,15 @@
    does not take off theirs, and at 210 the three cards broke 2+1 and left
    the third stranded beside a gap. */
 .gr-stat{background:#fff;border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;
-  box-shadow:0 1px 2px rgba(30,27,75,.05);border-top:3px solid var(--accent,#4f46e5)}
+  box-shadow:0 1px 2px rgba(31,41,55,.05);border-top:3px solid var(--accent,#0a61c9)}
 .gr-stat-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .gr-stat-icon{font-size:15px}
 .gr-stat-label{font-size:10.5px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.07em}
-.gr-stat-value{font-size:27px;font-weight:800;letter-spacing:-.04em;line-height:1;color:var(--accent,#4f46e5)}
+.gr-stat-value{font-size:27px;font-weight:800;letter-spacing:-.04em;line-height:1;color:var(--accent,#0a61c9)}
 .gr-stat-unit{font-size:14px;font-weight:600;color:#9ca3af}
-.gr-stat-sep{color:#d9d7ec;margin:0 3px}
-.gr-stat-chip{display:inline-flex;align-self:flex-start;margin-top:auto;background:#eef0fe;
-  color:#4f46e5;border-radius:999px;padding:5px 11px;font-size:10.5px;font-weight:800}
+.gr-stat-sep{color:#dae0e4;margin:0 3px}
+.gr-stat-chip{display:inline-flex;align-self:flex-start;margin-top:auto;background:#e8f2fd;
+  color:#0a61c9;border-radius:999px;padding:5px 11px;font-size:10.5px;font-weight:800}
 .gr-stat-note{font-size:11px;color:#6b7280;margin:auto 0 0}
 
 /* Who did the talking. Two rows, because a single number does not say which
@@ -142,76 +142,76 @@
 .gr-bal{display:grid;gap:8px;margin-top:12px}
 .gr-bal-row{display:grid;grid-template-columns:60px 1fr 38px;align-items:center;gap:10px;
   font-size:11px;font-weight:700;color:#6b7280}
-.gr-bal-track{height:7px;border-radius:999px;background:#f0f0f8;overflow:hidden}
-.gr-bal-fill{height:100%;border-radius:999px;background:linear-gradient(135deg,#4f46e5,#7c3aed)}
-.gr-bal-fill.student{background:linear-gradient(135deg,#7c3aed,#facc15)}
+.gr-bal-track{height:7px;border-radius:999px;background:#f4f7f8;overflow:hidden}
+.gr-bal-fill{height:100%;border-radius:999px;background:linear-gradient(135deg,#0a61c9,#a24ee0)}
+.gr-bal-fill.student{background:linear-gradient(135deg,#a24ee0,#f2b705)}
 
 /* The vocabulary spread across levels. */
 .gr-levels{display:grid;gap:9px;margin-top:4px}
 .gr-level{display:grid;grid-template-columns:34px 1fr 30px;align-items:center;gap:10px;
   font-size:11px;font-weight:700;color:#6b7280}
-.gr-level-track{height:8px;border-radius:999px;background:#f0f0f8;overflow:hidden}
+.gr-level-track{height:8px;border-radius:999px;background:#f4f7f8;overflow:hidden}
 .gr-level-fill{height:100%;border-radius:999px}
-.gr-level b{font-weight:800;color:#1e1b4b;font-size:10.5px}
+.gr-level b{font-weight:800;color:#1f2937;font-size:10.5px}
 
 /* Corrections and wins read as quotes, so the student's own words lead. */
-.gr-quote{padding:13px 0;border-bottom:1px solid #eceaf6}
+.gr-quote{padding:13px 0;border-bottom:1px solid #eaeef0}
 .gr-quote:first-child{padding-top:0}
 .gr-quote:last-child{border-bottom:0;padding-bottom:0}
 .gr-said{font-size:13px;color:#9ca3af;text-decoration:line-through;text-decoration-thickness:1px}
-.gr-fixed{font-size:14px;font-weight:700;color:#1e1b4b;margin-top:3px}
+.gr-fixed{font-size:14px;font-weight:700;color:#1f2937;margin-top:3px}
 .gr-why{font-size:11.5px;color:#6b7280;line-height:1.55;margin-top:5px}
 .gr-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
 .gr-tag{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
-  padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.9);color:var(--mv-ink,#4f46e5)}
+  padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.9);color:var(--mv-ink,#0a61c9)}
 
 
 /* ── Practice, words and files inside a movement ──────────────────────── */
 .gr-ex{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px}
 .gr-ex:last-child{margin-bottom:0}
 .gr-ex-kind{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--mv-ink,#4f46e5);margin:0 0 7px}
-.gr-ex-q{font-size:13.5px;font-weight:700;color:#1e1b4b;margin:0 0 4px;line-height:1.45}
+  color:var(--mv-ink,#0a61c9);margin:0 0 7px}
+.gr-ex-q{font-size:13.5px;font-weight:700;color:#1f2937;margin:0 0 4px;line-height:1.45}
 .gr-ex-en{font-size:11.5px;color:#6b7280;margin:0 0 9px}
 .gr-opts{display:grid;gap:6px}
 .gr-opt{display:flex;align-items:center;gap:9px;font-size:12.5px;padding:8px 11px;
-  border-radius:10px;background:#f7f7fc;color:#1e1b4b}
+  border-radius:10px;background:#f4f7f8;color:#1f2937}
 .gr-opt.right{background:#e9f7ef;color:#116343;font-weight:700}
 .gr-opt i{width:16px;height:16px;border-radius:50%;flex:0 0 auto;display:grid;
-  place-items:center;font-size:9px;font-style:normal;background:#e4e3f2;color:#6b7280}
+  place-items:center;font-size:9px;font-style:normal;background:#eaeef0;color:#6b7280}
 .gr-opt.right i{background:#16a34a;color:#fff}
 .gr-hint{font-size:11px;color:#6b7280;margin:8px 0 0;padding-left:11px;
-  border-left:2px solid #e4e3f2}
-.gr-blank{display:inline-block;min-width:76px;border-bottom:2px dashed #c7c5e4;margin:0 4px}
+  border-left:2px solid #eaeef0}
+.gr-blank{display:inline-block;min-width:76px;border-bottom:2px dashed #b3d1f7;margin:0 4px}
 
 .gr-word{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:12px;
-  align-items:baseline;padding:11px 0;border-bottom:1px solid #eceaf6}
+  align-items:baseline;padding:11px 0;border-bottom:1px solid #eaeef0}
 .gr-word:last-child{border-bottom:0}
-.gr-word-w{font-weight:800;color:#1e1b4b;font-size:14px}
+.gr-word-w{font-weight:800;color:#1f2937;font-size:14px}
 .gr-word-r{font-weight:500;color:#9ca3af;font-size:11px;margin-left:5px}
 .gr-word-d{font-size:12.5px;color:#4b5563}
 .gr-word-eg{grid-column:1/-1;font-size:11.5px;font-style:italic;color:#6b7280;
-  margin-top:3px;padding-left:11px;border-left:2px solid #eceaf6}
+  margin-top:3px;padding-left:11px;border-left:2px solid #eaeef0}
 
 .gr-memo{display:flex;align-items:center;gap:13px;background:#fff;border-radius:14px;
   padding:12px 15px}
 .gr-memo-play{width:38px;height:38px;border-radius:999px;flex:0 0 auto;display:grid;
-  place-items:center;color:#fff;font-size:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed)}
-.gr-memo-t{font-size:12.5px;font-weight:800;color:#1e1b4b}
+  place-items:center;color:#fff;font-size:13px;background:linear-gradient(135deg,#0a61c9,#a24ee0)}
+.gr-memo-t{font-size:12.5px;font-weight:800;color:#1f2937}
 .gr-memo-s{font-size:10.5px;color:#9ca3af}
 .gr-memo-wave{flex:1;display:flex;align-items:center;gap:2px;height:26px}
-.gr-memo-wave i{flex:1;border-radius:2px;background:#d9d7ec;min-width:2px;max-width:4px}
+.gr-memo-wave i{flex:1;border-radius:2px;background:#dae0e4;min-width:2px;max-width:4px}
 /* 2px, not 999px: a pill radius on a 3px-wide bar is a circle, and the
    waveform rendered as a row of dots. */
-.gr-memo-wave i.on{background:#7c3aed}
+.gr-memo-wave i.on{background:#a24ee0}
 
 .gr-file{display:flex;align-items:center;gap:11px;background:#fff;border-radius:12px;
-  padding:11px 14px;margin-bottom:8px;font-size:12.5px;font-weight:600;color:#1e1b4b}
+  padding:11px 14px;margin-bottom:8px;font-size:12.5px;font-weight:600;color:#1f2937}
 .gr-file:last-child{margin-bottom:0}
 .gr-file small{margin-left:auto;font-weight:600;color:#9ca3af;font-size:10.5px}
 
 .gr-hw{display:flex;align-items:flex-start;gap:10px;padding:11px 0;
-  border-bottom:1px solid #eceaf6;font-size:13px;color:#1e1b4b}
+  border-bottom:1px solid #eaeef0;font-size:13px;color:#1f2937}
 .gr-hw:last-child{border-bottom:0}
-.gr-hw i{width:17px;height:17px;border-radius:6px;border:2px solid #d9d7ec;
+.gr-hw i{width:17px;height:17px;border-radius:6px;border:2px solid #dae0e4;
   flex:0 0 auto;margin-top:1px}

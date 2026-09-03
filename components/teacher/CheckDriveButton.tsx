@@ -70,7 +70,7 @@ export default function CheckDriveButton() {
             {status === 'loading' && (
               <>
                 <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-                  style={{ background: 'linear-gradient(135deg,#ede9fe,#ddd6fe)' }}>
+                  style={{ background: 'linear-gradient(135deg,#e8f2fd,#d6e7fb)' }}>
                   <FolderSearch className="w-7 h-7 text-brand-600 animate-pulse" />
                 </div>
                 <h2 className="text-lg font-bold text-ink mb-2">Scanning Google Drive…</h2>

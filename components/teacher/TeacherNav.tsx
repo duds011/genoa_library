@@ -2,26 +2,69 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { BookOpen, Users, LayoutDashboard, LogOut, BarChart2, Wallet, StickyNote } from 'lucide-react'
 
-const links = [
-  { href: '/teacher/dashboard', label: 'Dashboard', short: 'Home', icon: LayoutDashboard },
-  { href: '/teacher/students', label: 'Students', short: 'Students', icon: Users },
-  { href: '/teacher/notes', label: 'Notes', short: 'Notes', icon: StickyNote },
-  { href: '/teacher/payments', label: 'Payments', short: 'Pay', icon: Wallet },
-  { href: '/teacher/analytics', label: 'Analytics', short: 'Stats', icon: BarChart2 },
+type IconName = 'home' | 'users' | 'note' | 'wallet' | 'chart' | 'book' | 'import' | 'collapse' | 'menu' | 'close'
+
+function Icon({ name }: { name: IconName }) {
+  const paths: Record<IconName, React.ReactNode> = {
+    home: <><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-7h6v7"/></>,
+    users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></>,
+    note: <><path d="M5 3h14v14l-4 4H5z"/><path d="M15 21v-4h4M9 8h6M9 12h4"/></>,
+    wallet: <><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M21 12a2 2 0 0 0-2-2h-5a2 2 0 0 0 0 4h5a2 2 0 0 0 2-2Z"/></>,
+    chart: <><path d="M3 3v18h18"/><path d="M7 15l4-5 4 3 5-7"/></>,
+    book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></>,
+    import: <><path d="M14 3v5h5M6 3h8l5 5v13H6z"/><path d="M12 11v6M9 14l3 3 3-3"/></>,
+    collapse: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></>,
+    menu: <><path d="M3 6h18M3 12h18M3 18h18"/></>,
+    close: <><path d="M6 6l12 12M18 6 6 18"/></>,
+  }
+  return <svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
+}
+
+export function LogoMark() {
+  return <span className="mark" aria-hidden="true"><Icon name="book" /></span>
+}
+
+const LINKS: { href: string; label: string; icon: IconName }[] = [
+  { href: '/teacher/dashboard', label: 'Overview', icon: 'home' },
+  { href: '/teacher/students', label: 'Students', icon: 'users' },
+  { href: '/teacher/notes', label: 'Notes', icon: 'note' },
+  { href: '/teacher/payments', label: 'Payments', icon: 'wallet' },
+  { href: '/teacher/analytics', label: 'Analytics', icon: 'chart' },
 ]
 
+/** Remembered per browser, and read straight off the root element so the
+ *  --sidebar width the whole layout is built on collapses with it. */
+const NAV_KEY = 'nav-collapsed'
+
 /**
- * Five labelled links in a row don't fit a phone — they used to push the header
- * to 682px and drag every page sideways with them. On mobile the links move to
- * a fixed bottom bar (thumb-reachable, the native pattern); the top bar keeps
- * only the logo and sign-out. From md up it's the original single row.
+ * The teacher's sidebar — Lesson Studio's AppNav, carried over whole. A
+ * floating card on desktop that collapses to an icon rail, a slide-in drawer
+ * behind a slim top bar on a phone: one navigation, two ways to summon it.
  */
-export default function TeacherNav({ teacherName }: { teacherName: string }) {
+export default function TeacherNav({ teacherName, email }: { teacherName: string; email?: string | null }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  useEffect(() => { setMobileOpen(false) }, [pathname])
+
+  useEffect(() => {
+    const saved = localStorage.getItem(NAV_KEY) === '1'
+    setCollapsed(saved)
+    document.documentElement.dataset.nav = saved ? 'collapsed' : ''
+  }, [])
+
+  const toggleNav = () => {
+    setCollapsed((was) => {
+      const next = !was
+      localStorage.setItem(NAV_KEY, next ? '1' : '0')
+      document.documentElement.dataset.nav = next ? 'collapsed' : ''
+      return next
+    })
+  }
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -29,69 +72,76 @@ export default function TeacherNav({ teacherName }: { teacherName: string }) {
     router.push('/login')
   }
 
+  const isActive = (href: string) => pathname.startsWith(href) || (href === '/teacher/students' && pathname.startsWith('/teacher/lessons'))
+  const accountLabel = teacherName || email?.split('@')[0] || 'Teacher'
+
   return (
     <>
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-          {/* Logo */}
-          <Link href="/teacher/dashboard" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
-              <BookOpen className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-ink text-sm hidden sm:block">Teacher Portal</span>
-          </Link>
+      <header className="mobile-topbar">
+        <Link className="logo" href="/teacher/dashboard" aria-label="GENOA Library overview">
+          <LogoMark />
+          <span className="brand-word">GENOA Library</span>
+        </Link>
+        <button
+          type="button"
+          className="mobile-nav-btn"
+          onClick={() => setMobileOpen((v) => !v)}
+          aria-expanded={mobileOpen}
+          aria-controls="teacher-nav"
+          aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+        >
+          <Icon name={mobileOpen ? 'close' : 'menu'} />
+        </button>
+      </header>
+      {mobileOpen && <div className="mobile-nav-scrim" onClick={() => setMobileOpen(false)} aria-hidden />}
 
-          {/* Desktop nav links */}
-          <nav className="hidden md:flex items-center gap-1">
-            {links.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  pathname.startsWith(href)
-                    ? 'bg-brand-50 text-brand-600'
-                    : 'text-muted hover:bg-gray-100 hover:text-ink'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
+      <aside id="teacher-nav" className={`app-sidebar ${mobileOpen ? 'mobile-open' : ''}`} aria-label="Teacher workspace navigation">
+        <div className="sidebar-top">
+          <Link className="logo" href="/teacher/dashboard" aria-label="GENOA Library overview">
+            <LogoMark />
+            <span><span className="brand-word">GENOA Library</span><small>Teacher workspace</small></span>
+          </Link>
+          <button
+            type="button"
+            className="nav-toggle"
+            onClick={toggleNav}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+            title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+          >
+            <Icon name="collapse" />
+          </button>
+        </div>
+
+        <div className="sidebar-scroll">
+          <div className="nav-section-label">Workspace</div>
+          <nav className="side-nav">
+            {LINKS.map((link) => (
+              <Link key={link.href} href={link.href} className={`side-link ${isActive(link.href) ? 'active' : ''}`}>
+                <Icon name={link.icon} /><span>{link.label}</span>
               </Link>
             ))}
           </nav>
 
-          {/* User + sign out */}
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="text-xs text-muted hidden sm:block truncate max-w-[140px]">{teacherName}</span>
-            <button onClick={handleSignOut} className="btn-ghost text-xs shrink-0" title="Sign out">
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sign out</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile bottom bar. pb env(safe-area) keeps it clear of the iPhone home bar. */}
-      <nav
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-100 flex"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-      >
-        {links.map(({ href, short, icon: Icon }) => {
-          const active = pathname.startsWith(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
-                active ? 'text-brand-600' : 'text-muted'
-              }`}
-            >
-              <Icon className="w-5 h-5 shrink-0" />
-              <span className="text-[10px] font-medium leading-none truncate max-w-full px-0.5">{short}</span>
+          <div className="nav-section-label">Manage</div>
+          <nav className="side-nav">
+            <Link href="/teacher/import" className={`side-link ${pathname.startsWith('/teacher/import') ? 'active' : ''}`}>
+              <Icon name="import" /><span>Import transcript</span>
             </Link>
-          )
-        })}
-      </nav>
+          </nav>
+        </div>
+
+        <div className="sidebar-account">
+          <span className="account-avatar">{accountLabel.charAt(0).toUpperCase()}</span>
+          <span className="account-copy">
+            <strong>{accountLabel}</strong>
+            <small><span className="status-dot online" />Drive pipeline on</small>
+          </span>
+          <button type="button" onClick={handleSignOut} className="btn btn-danger-ghost btn-sm" title="Sign out" aria-label="Sign out" style={{ padding: '6px 8px' }}>
+            Sign out
+          </button>
+        </div>
+      </aside>
     </>
   )
 }

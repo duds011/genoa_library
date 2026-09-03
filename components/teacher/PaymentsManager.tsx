@@ -596,7 +596,7 @@ export default function PaymentsManager({
               ) : (
                 <div className="flex items-center gap-2.5 rounded-xl bg-gray-50 px-3.5 py-2.5">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0"
-                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                    style={{ background: 'linear-gradient(135deg, #0a61c9, #a24ee0)' }}>
                     {editing && SPECIAL_ROWS[editing.studentId] ? SPECIAL_ROWS[editing.studentId].icon : editing?.studentName.charAt(0).toUpperCase()}
                   </div>
                   <span className="font-semibold text-ink text-sm">{editing?.studentName}</span>

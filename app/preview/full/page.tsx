@@ -16,7 +16,7 @@ import LessonMetrics from '@/components/student/LessonMetrics'
 export const dynamic = 'force-dynamic'
 
 const LEVELS: [string, number, string][] = [
-  ['N5', 16, '#4f46e5'], ['N4', 11, '#7c3aed'], ['N3', 7, '#a855f7'], ['N2', 3, '#c084fc'],
+  ['N5', 16, '#0a61c9'], ['N4', 11, '#a24ee0'], ['N3', 7, '#a855f7'], ['N2', 3, '#c084fc'],
 ]
 const TOTAL = LEVELS.reduce((n, [, c]) => n + c, 0)
 
@@ -96,7 +96,7 @@ export default function Page() {
       node: (
         <>
           <div className="gr-stats">
-            <Stat accent="#4f46e5" icon="🗣️" label="Speaking balance">
+            <Stat accent="#0a61c9" icon="🗣️" label="Speaking balance">
               <div className="gr-stat-value">
                 {talk}<span className="gr-stat-unit">%</span>
                 <span className="gr-stat-sep">/</span>{100 - talk}<span className="gr-stat-unit">%</span>
@@ -116,8 +116,8 @@ export default function Page() {
             <Stat accent="#16a34a" icon="⭐" label="Score" chip="Confident">
               <div className="gr-stat-value" style={{ color: '#16a34a' }}>8.3<span className="gr-stat-unit">/10</span></div>
             </Stat>
-            <Stat accent="#7c3aed" icon="📚" label="Grammar density" note={`${TOTAL} vocabulary items practised`}>
-              <div className="gr-stat-value" style={{ color: '#7c3aed', fontSize: 22 }}>Medium-High</div>
+            <Stat accent="#a24ee0" icon="📚" label="Grammar density" note={`${TOTAL} vocabulary items practised`}>
+              <div className="gr-stat-value" style={{ color: '#a24ee0', fontSize: 22 }}>Medium-High</div>
             </Stat>
           </div>
 
@@ -197,13 +197,13 @@ export default function Page() {
                 {s.bullets.map(([w, r, d]) => (
                   <div className="gr-term" key={w}
                        style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr)', gap: 9, fontSize: 12.5, padding: '5px 0' }}>
-                    <b style={{ fontWeight: 700, color: '#1e1b4b' }}>{w} <span style={{ color: '#9ca3af', fontWeight: 500, fontSize: 11 }}>{r}</span></b>
+                    <b style={{ fontWeight: 700, color: '#1f2937' }}>{w} <span style={{ color: '#9ca3af', fontWeight: 500, fontSize: 11 }}>{r}</span></b>
                     <span style={{ color: '#6b7280' }}>{d}</span>
                   </div>
                 ))}
               </div>
               <div className="gr-word-eg" style={{ marginBottom: 10 }}>
-                <div style={{ fontStyle: 'normal', fontWeight: 700, color: '#1e1b4b' }}>{s.eg[0]}</div>
+                <div style={{ fontStyle: 'normal', fontWeight: 700, color: '#1f2937' }}>{s.eg[0]}</div>
                 <div>{s.eg[1]}</div>
                 <div>{s.eg[2]}</div>
               </div>
@@ -333,7 +333,7 @@ export default function Page() {
           <div style={{
             width: 78, height: 78, borderRadius: 22, flex: '0 0 auto', display: 'grid',
             placeItems: 'center', color: '#fff', textAlign: 'center',
-            background: 'linear-gradient(135deg,#4f46e5,#7c3aed)',
+            background: 'linear-gradient(135deg,#0a61c9,#a24ee0)',
           }}>
             <div>
               <div style={{ fontSize: 25, fontWeight: 800, lineHeight: 1 }}>8.3</div>

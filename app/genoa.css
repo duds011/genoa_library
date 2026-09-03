@@ -1,0 +1,99 @@
+/* ═══════════════════════════════════════════════════════════════════
+   GENOA Library — the few pieces this portal has that Lesson Studio's
+   stylesheets do not: the student top bar's links, the milestone track
+   with badges, the recap queue rows. Everything else is koku.css/koku2.css
+   verbatim, so the two apps stay one design system.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root{--bg-tint:rgba(10,97,201,.07);--bg-ink:rgba(31,41,55,.08)}
+html{background:var(--bg)}
+
+/* — student top bar: brand · links · tools — */
+.k-bar{margin-bottom:22px;padding:4px 0}
+.k-bar-nav{display:flex;gap:4px;background:var(--surface);border-radius:999px;padding:4px;box-shadow:var(--shadow-soft)}
+.k-bar-nav a{padding:8px 16px;border-radius:999px;font-size:12.5px;font-weight:700;color:var(--muted);transition:.16s ease}
+.k-bar-nav a:hover{color:var(--ink)}
+.k-bar-nav a.on{background:var(--forest);color:#fff}
+.k-bar-tools{display:flex;align-items:center;gap:8px;min-width:0}
+.k-bar-who{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.k-bar-out{border:0;cursor:pointer;font:inherit}
+@container (max-width:640px){
+  .k-bar{flex-wrap:wrap}
+  .k-bar-nav{order:3;width:100%;justify-content:center}
+  .k-bar-who{display:none}
+}
+
+/* — the section head used between dashboard blocks — */
+.g-sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}
+.g-sec-head h2{font-size:17px;font-weight:700;letter-spacing:-.028em;margin:0}
+
+/* — milestone ladder with the badge for each rung — */
+.g-rungs{display:flex;gap:4px;margin-top:10px}
+.g-rung{flex:1;min-width:0;text-align:center;color:var(--muted)}
+.g-rung i{display:block;font-style:normal;font-size:16px;line-height:1;filter:grayscale(1);opacity:.45}
+.g-rung.on i{filter:none;opacity:1}
+.g-rung b{display:block;font-size:12px;font-weight:800;letter-spacing:-.02em;margin-top:5px}
+.g-rung.on b{color:var(--forest)}
+.g-rung small{display:block;font-size:9px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* — recap queue (drafts waiting for review) — */
+.g-queue{display:grid;gap:10px}
+.g-draft{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:14px;align-items:center;
+  background:var(--surface);border-radius:var(--r-lg);padding:14px 16px;box-shadow:var(--shadow-soft);
+  border-left:4px solid var(--c-yellow)}
+.g-draft.unassigned{border-left-color:var(--red)}
+.g-draft-num{height:38px;border-radius:11px;background:var(--amber-soft);color:var(--amber);display:grid;place-items:center;font-size:11px;font-weight:800}
+.g-draft.unassigned .g-draft-num{background:var(--red-soft);color:var(--red)}
+.g-draft-title{font-weight:700;font-size:14px;letter-spacing:-.01em}
+.g-draft-meta{font-size:11.5px;color:var(--muted);margin-top:1px}
+.g-draft-blurb{font-size:12px;color:var(--muted);line-height:1.5;margin:6px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.g-draft-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:640px){.g-draft{grid-template-columns:44px minmax(0,1fr)}.g-draft-actions{grid-column:1/-1;justify-content:flex-start}}
+
+/* — teacher lesson rows (student profile) — */
+.lesson-card{position:relative;color:inherit}
+.g-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px #fff;flex:0 0 auto}
+.lesson-card .lc-tools{display:flex;align-items:center;gap:8px}
+
+/* — student directory: a row per student, wider columns — */
+.student-card.g-cols{grid-template-columns:minmax(200px,1.4fr) 80px 80px 130px minmax(200px,1fr)}
+.student-card.is-archived{opacity:.55}
+.g-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:760px){
+  .student-card.g-cols{grid-template-columns:minmax(0,1fr)}
+  .g-actions{justify-content:flex-start}
+}
+
+/* — a modal for the add-student form, in the app's own dialog chrome — */
+.g-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 24px 0}
+.g-modal-head h3{margin:0;font-size:18px;letter-spacing:-.025em}
+.g-modal-head p{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
+.g-modal-body{padding:16px 24px 24px;overflow:auto}
+
+/* — student dashboard tests as tiles (the KOKU test row, with our states) — */
+.k-test.is-open .k-test-mark{background:var(--amber-soft);color:var(--amber)}
+.k-test-cta{background:var(--brand-soft);color:var(--forest)}
+
+/* — empty states — */
+.k-empty p{margin:0}
+
+/* A grid column takes its child's min-content width unless told otherwise —
+   the notes and payments tables are wider than the page and were dragging
+   the whole column, header included, past the right edge. */
+.k-page>*,.k-overview-main>*,.k-overview-rail>*{min-width:0}
+
+/* An older component that draws its own .card, placed inside a .k-card, was
+   a box inside a box. Inside a KOKU card the inner one goes flat. */
+.k-card .card,.k-card .card.p-4,.k-card .card.p-5,.k-card .card.p-6{box-shadow:none;border:0;background:transparent;padding:0;border-radius:0}
+
+/* — Tailwind's older components sit on the same ground now — */
+.wrap .card,.k-shell .card{border:0;border-radius:var(--r-lg);box-shadow:var(--shadow-soft)}
+.wrap h1.text-2xl,.wrap h1.text-xl{letter-spacing:-.035em}
+/* Recharts tooltips carried the old indigo; let them follow the brand. */
+.recharts-default-tooltip{border-radius:12px!important;border:0!important;box-shadow:var(--shadow-soft)!important}
+
+/* The page wash sits behind the student column too. */
+.k-shell.solo{position:relative;padding:18px 18px 40px}
+.k-shell.solo::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+  background:radial-gradient(ellipse 55% 40% at 50% 0%,rgba(10,97,201,.10) 0%,transparent 70%),
+    radial-gradient(ellipse 40% 34% at 88% 34%,rgba(162,78,224,.07) 0%,transparent 70%)}

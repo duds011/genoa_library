@@ -1,5 +1,5 @@
 import { createClient, getUser } from '@/lib/supabase/server'
-import { BarChart2 } from 'lucide-react'
+import PageHeader from '@/components/PageHeader'
 import ClassAnalyticsCharts, { SummaryItem } from '@/components/teacher/ClassAnalyticsCharts'
 
 export default async function AnalyticsPage() {
@@ -10,13 +10,18 @@ export default async function AnalyticsPage() {
     .from('lessons')
     .select(`
       student_id, lesson_number,
-      students ( full_name ),
+      students!inner ( full_name, archived_at ),
       lesson_summaries ( score, talk_percentage, vocab_level_distribution ),
       vocabulary_items ( jlpt_level )
     `)
     .eq('teacher_id', user!.id)
     .eq('status', 'published')
     .not('student_id', 'is', null)
+    // Archived students are retired, not deleted — they stay out of the class
+    // view the same way they're hidden from the students list, payments and
+    // notes grids. !inner is required: without it PostgREST filters the
+    // embedded student rather than dropping the lesson.
+    .is('students.archived_at', null)
     .order('lesson_number', { ascending: true })
 
   // ── Collect raw per-student data ──────────────────────────────────────────
@@ -114,20 +119,44 @@ export default async function AnalyticsPage() {
     })
     .sort((a, b) => b.avgScore - a.avgScore)
 
-  // ── Build trendData: [{ lesson: 1, Derek: 8.5, Ian: 7.0, ... }, ...] ───────
-  const trendMap = new Map<number, Record<string, number>>()
-  for (const raw of Array.from(rawMap.values())) {
-    const dName = displayName(raw.name)
-    for (const [num, score] of raw.lessonScores) {
-      if (!trendMap.has(num)) trendMap.set(num, { lesson: num })
-      trendMap.get(num)![dName] = score
-    }
-  }
-  const trendData = Array.from(trendMap.values())
-    .sort((a, b) => (a.lesson as number) - (b.lesson as number))
+  // ── Build progressionData ──────────────────────────────────────────────────
+  // One series per student rather than 21 lines on a shared axis. The old chart
+  // was unreadable spaghetti — a student losing 1.5 points was invisible in it.
+  // Sorted by biggest drop first so whoever needs attention is top-left.
+  // Each student's lessons are re-indexed from 1: several were taught for months
+  // before the portal existed and carry lesson numbers in the 20s-60s, so the
+  // real number is kept per point for the tooltip.
+  const progressionData = Array.from(rawMap.values())
+    .map(raw => {
+      const ordered = [...raw.lessonScores].sort((a, b) => a[0] - b[0])
+      const scores = ordered.map(([, s]) => s)
+      const avg = scores.reduce((a, b) => a + b, 0) / scores.length
+      return {
+        name: displayName(raw.name),
+        fullName: raw.name,
+        points: ordered.map(([lesson, score], i) => ({ idx: i + 1, lesson, score })),
+        avg: Math.round(avg * 10) / 10,
+        // First lesson to last. One data point means no trend to report.
+        delta: scores.length > 1 ? Math.round((scores[scores.length - 1] - scores[0]) * 10) / 10 : 0,
+        lessons: scores.length,
+      }
+    })
+    .filter(s => s.lessons > 0)
+    .sort((a, b) => a.delta - b.delta || b.lessons - a.lessons)
+
+  // Zoom the y-axis to the scores that actually exist, and share it across every
+  // card so the sparklines stay comparable. Real scores sit between roughly 5.5
+  // and 9.5, so a fixed 0-10 axis flattens each line into a straight streak.
+  const trendScores = Array.from(rawMap.values()).flatMap(r => r.lessonScores.map(([, s]) => s))
+  const half = (n: number) => Math.round(n * 2) / 2
+  const scoreDomain: [number, number] = trendScores.length
+    ? [
+        Math.max(0, half(Math.floor((Math.min(...trendScores) - 0.2) * 2) / 2)),
+        Math.min(10, half(Math.ceil((Math.max(...trendScores) + 0.2) * 2) / 2)),
+      ]
+    : [0, 10]
 
   // Student names in the same order as summaryData (descending score)
-  const studentNames = summaryData.map(s => s.name)
 
   // ── Class-wide summary stats ────────────────────────────────────────────────
   const allScores    = summaryData.map(s => s.avgScore).filter(s => s > 0)
@@ -154,28 +183,31 @@ export default async function AnalyticsPage() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Page header */}
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <BarChart2 className="w-5 h-5 text-brand-600" />
-          <h1 className="text-2xl font-bold text-ink">Analytics</h1>
-        </div>
-        <p className="text-sm text-muted">Class-wide performance across all students</p>
-      </div>
+    <div className="k-page" style={{ display: 'grid', gap: 18 }}>
+      <PageHeader
+        eyebrow="Teacher"
+        title="Analytics"
+        meta="How the whole class is doing, student by student."
+        figures={[
+          { label: 'Students', value: summaryData.length },
+          { label: 'Lessons', value: classStats.totalLessons },
+          { label: 'Class avg', value: <>{classStats.avgScore || '—'}<i>/10</i></> },
+          { label: 'Talk share', value: <>{classStats.avgTalk || '—'}<i>%</i></> },
+        ]}
+      />
 
       {summaryData.length === 0 ? (
-        <div className="card p-16 text-center">
-          <p className="text-4xl mb-3">📊</p>
-          <p className="font-semibold text-ink mb-1">No data yet</p>
-          <p className="text-sm text-muted">Publish some lessons to see analytics here.</p>
+        <div className="empty">
+          <strong style={{ color: 'var(--ink)' }}>No data yet</strong>
+          <br />
+          Publish some lessons to see analytics here.
         </div>
       ) : (
         <ClassAnalyticsCharts
           summaryData={summaryData}
-          trendData={trendData}
-          studentNames={studentNames}
+          progressionData={progressionData}
           classStats={classStats}
+          scoreDomain={scoreDomain}
         />
       )}
     </div>

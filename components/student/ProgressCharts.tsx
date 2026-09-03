@@ -19,8 +19,8 @@ interface Props {
   lessons: ChartLesson[] // descending order — we reverse for charts
 }
 
-const BRAND  = '#4f46e5'
-const PURPLE = '#7c3aed'
+const BRAND  = '#0a61c9'
+const PURPLE = '#a24ee0'
 
 function CustomTooltip({ active, payload, label, suffix = '', label2 = '' }: any) {
   if (!active || !payload?.length) return null
@@ -63,10 +63,10 @@ export default function ProgressCharts({ lessons }: Props) {
         aria-expanded={open}
         className="w-full flex items-center justify-between gap-2 px-4 sm:px-5 py-3 font-bold text-sm transition-all duration-200"
         style={{
-          background: '#eef2ff',
-          border: '1.5px solid #e0e7ff',
+          background: '#e8f2fd',
+          border: '1.5px solid #d6e7fb',
           borderRadius: '12px',
-          color: '#4f46e5',
+          color: '#0a61c9',
           marginBottom: open ? '0.85rem' : 0,
         }}
       >
@@ -104,7 +104,7 @@ export default function ProgressCharts({ lessons }: Props) {
                   tick={{ fontSize: 10, fill: '#9ca3af' }}
                   axisLine={false} tickLine={false}
                 />
-                <ReferenceLine y={7} stroke="#e0e7ff" strokeDasharray="4 3" />
+                <ReferenceLine y={7} stroke="#d6e7fb" strokeDasharray="4 3" />
                 <Tooltip content={<CustomTooltip suffix="/10" label2="score" />} />
                 <Bar
                   dataKey="score"
@@ -151,7 +151,7 @@ export default function ProgressCharts({ lessons }: Props) {
                   tickFormatter={v => `${v}%`}
                   axisLine={false} tickLine={false}
                 />
-                <ReferenceLine y={50} stroke="#ede9fe" strokeDasharray="4 3" />
+                <ReferenceLine y={50} stroke="#e8f2fd" strokeDasharray="4 3" />
                 <Tooltip content={<CustomTooltip suffix="%" label2="talk time" />} />
                 <Bar
                   dataKey="talkPct"

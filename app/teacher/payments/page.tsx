@@ -1,5 +1,5 @@
 ﻿import { createClient, getUser } from '@/lib/supabase/server'
-import { Wallet } from 'lucide-react'
+import PageHeader from '@/components/PageHeader'
 import PaymentsManager, { ManagedPayment, StudentOption } from '@/components/teacher/PaymentsManager'
 import RevenueChart, { MonthlyRevenue } from '@/components/teacher/RevenueChart'
 import { getRate } from '@/lib/fx'
@@ -80,14 +80,17 @@ export default async function PaymentsPage() {
   const hasRevenue = buckets.some(b => b.revenue > 0)
 
   return (
-    <div className="space-y-8">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <Wallet className="w-5 h-5 text-brand-600" />
-          <h1 className="text-2xl font-bold text-ink">Payments</h1>
-        </div>
-        <p className="text-sm text-muted">All student payments in one place — add, track, and reconcile</p>
-      </div>
+    <div className="k-page" style={{ display: 'grid', gap: 18 }}>
+      <PageHeader
+        eyebrow="Teacher"
+        title="Payments"
+        meta="Every student payment in one place — add, track, and reconcile."
+        figures={[
+          { label: 'Students', value: studentOptions.filter(s => !s.archived).length },
+          { label: 'Payments', value: managedPayments.length },
+          { label: 'Pending', value: managedPayments.filter(p => p.status === 'pending').length },
+        ]}
+      />
 
       {hasRevenue && <RevenueChart data={buckets} currency={currency} />}
 

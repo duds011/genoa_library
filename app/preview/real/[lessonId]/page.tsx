@@ -55,7 +55,7 @@ export default async function Page({ params }: { params: { lessonId: string } })
   // errors, so it would have shipped silently.
   const levels = Array.from(spread.entries()).sort((a, b) => b[0].localeCompare(a[0]))
   const LEVEL_COLOUR: Record<string, string> = {
-    N5: '#4f46e5', N4: '#7c3aed', N3: '#a855f7', N2: '#c084fc', N1: '#d8b4fe',
+    N5: '#0a61c9', N4: '#a24ee0', N3: '#a855f7', N2: '#c084fc', N1: '#d8b4fe',
   }
 
   const movements: Movement[] = [
@@ -66,7 +66,7 @@ export default async function Page({ params }: { params: { lessonId: string } })
         <>
           <div className="gr-stats">
             {studentTalk != null && (
-              <div className="gr-stat" style={{ ['--accent' as any]: '#4f46e5' }}>
+              <div className="gr-stat" style={{ ['--accent' as any]: '#0a61c9' }}>
                 <div className="gr-stat-head">
                   <span className="gr-stat-icon">🗣️</span>
                   <span className="gr-stat-label">Speaking balance</span>
@@ -102,12 +102,12 @@ export default async function Page({ params }: { params: { lessonId: string } })
               </div>
             )}
             {summary.grammar_density && (
-              <div className="gr-stat" style={{ ['--accent' as any]: '#7c3aed' }}>
+              <div className="gr-stat" style={{ ['--accent' as any]: '#a24ee0' }}>
                 <div className="gr-stat-head">
                   <span className="gr-stat-icon">📚</span>
                   <span className="gr-stat-label">Grammar density</span>
                 </div>
-                <div className="gr-stat-value" style={{ color: '#7c3aed', fontSize: 22 }}>{summary.grammar_density}</div>
+                <div className="gr-stat-value" style={{ color: '#a24ee0', fontSize: 22 }}>{summary.grammar_density}</div>
                 <p className="gr-stat-note">{vocab.length} vocabulary items practised</p>
               </div>
             )}

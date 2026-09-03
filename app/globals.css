@@ -1,67 +1,61 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --brand: #4f46e5;
-  --brand-light: #6366f1;
-  --purple: #7c3aed;
-  --ink: #1e1b4b;
-  --muted: #6b7280;
-  --surface: #f3f4f6;
-  --border: #e5e7eb;
-}
-
-* { box-sizing: border-box; }
-
-body {
-  font-family: 'Poppins', system-ui, sans-serif;
-  background-color: var(--surface);
-  color: var(--ink);
-  -webkit-font-smoothing: antialiased;
-}
+/* Design tokens live in koku.css (:root) — this file only carries the
+   Tailwind component layer the older screens still use, restyled so a
+   `.card` or a `.btn-primary` written years ago now renders in the KOKU 2.0
+   look: white surfaces with a soft lift, pill buttons in the brand blue,
+   no hairline borders. */
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-semibold text-white text-sm transition-all duration-200 cursor-pointer;
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    box-shadow: 0 2px 12px rgba(79,70,229,0.35);
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-bold text-white text-[12.5px] transition-all duration-150 cursor-pointer;
+    background: var(--forest);
   }
-  .btn-primary:hover { @apply opacity-90 scale-[1.02]; }
-  .btn-primary:active { @apply scale-[0.98]; }
-  .btn-primary:disabled { @apply opacity-50 cursor-not-allowed scale-100; }
+  .btn-primary:hover { background: var(--forest-deep); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { @apply opacity-50 cursor-not-allowed; transform: none; }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-semibold text-brand-600 text-sm border border-brand-200 bg-white transition-all duration-200 cursor-pointer;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-bold text-[12.5px] transition-all duration-150 cursor-pointer;
+    background: var(--surface);
+    color: var(--muted);
+    box-shadow: var(--shadow-soft);
   }
-  .btn-secondary:hover { @apply bg-brand-50 border-brand-300; }
+  .btn-secondary:hover { color: var(--ink); transform: translateY(-1px); }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-muted text-sm transition-all duration-150 cursor-pointer;
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-muted text-[12.5px] transition-all duration-150 cursor-pointer;
   }
-  .btn-ghost:hover { @apply bg-gray-100 text-ink; }
+  .btn-ghost:hover { background: var(--surface-2); color: var(--ink); }
 
-  .card { @apply bg-white rounded-2xl border border-gray-100 shadow-sm; }
+  .card {
+    background: var(--surface);
+    border: 0;
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-soft);
+  }
 
-  .stat-card { @apply card p-5 flex flex-col gap-1; }
-  .stat-label { @apply text-[10px] font-semibold uppercase tracking-widest text-muted; }
-  .stat-value { @apply text-2xl font-bold text-ink; }
+  .stat-label { @apply text-[10px] font-extrabold uppercase tracking-widest text-muted; }
+  .stat-value { @apply text-2xl font-extrabold text-ink; letter-spacing: -0.04em; }
 
-  .badge { @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold; }
-  .badge-brand { @apply badge bg-brand-50 text-brand-600; }
-  .badge-green { @apply badge bg-green-100 text-green-700; }
-  .badge-amber { @apply badge bg-amber-100 text-amber-700; }
-  .badge-draft { @apply badge bg-orange-100 text-orange-700; }
-  .badge-purple { @apply badge bg-purple-100 text-purple-700; }
+  .badge { @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold; }
+  .badge-brand { @apply badge; background: var(--brand-soft); color: var(--forest); }
+  .badge-green { @apply badge; background: var(--green-soft); color: var(--green); }
+  .badge-amber { @apply badge; background: var(--amber-soft); color: var(--amber); }
+  .badge-draft { @apply badge; background: var(--amber-soft); color: var(--amber); }
+  .badge-purple { @apply badge; background: #f3e3ff; color: #5a1f85; }
 
   .input {
-    @apply w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-ink placeholder:text-gray-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 transition-all bg-white;
+    @apply w-full px-4 py-3 text-sm text-ink placeholder:text-gray-400 focus:outline-none transition-all bg-white;
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
   }
+  .input:focus { border-color: var(--forest); box-shadow: 0 0 0 4px rgba(10, 97, 201, 0.12); }
   .textarea { @apply input resize-none; }
-  .form-label { @apply block text-xs font-semibold text-ink/70 mb-1.5 uppercase tracking-wide; }
-  .section-title { @apply text-base font-bold text-ink; }
+  .form-label { @apply block text-[11.5px] font-bold text-muted mb-1.5; }
+  .section-title { @apply text-base font-bold text-ink; letter-spacing: -0.02em; }
 }
 
 /* iOS Safari auto-zooms the page when you focus a field whose font-size is
@@ -79,6 +73,29 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* Furigana — readings sitting above the kanji in Kanji + kana tests.
+   Browsers position <rt> themselves; these rules only size the reading and
+   reserve the vertical room, otherwise it collides with the line above. */
+ruby > rt {
+  font-size: 0.55em;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: inherit;
+  opacity: 0.75;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.has-furigana {
+  line-height: 2.1;
+  ruby-position: over;
+  -webkit-ruby-position: before;
+}
+/* Back-to-back kanji words (毎朝何時) would otherwise run their readings into
+   one another and read as a single word. */
+ruby + ruby {
+  margin-left: 0.18em;
+}
 
 /* Lesson tab panel entrance animation */
 @keyframes tabIn {

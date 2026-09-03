@@ -31,10 +31,10 @@ export default async function TestReviewPage({
   ])
 
   return (
-    <div className="space-y-6">
+    <div className="k-page" style={{ display: 'grid', gap: 16 }}>
       <div>
-        <Link href={`/teacher/students/${test.student_id}`} className="btn-ghost text-xs mb-3 -ml-1 inline-flex">
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to {(test.students as any)?.full_name ?? 'student'}
+        <Link href={`/teacher/students/${test.student_id}`} className="btn btn-ghost btn-sm">
+          <ArrowLeft className="w-3.5 h-3.5" /> {(test.students as any)?.full_name ?? 'Student'}
         </Link>
       </div>
       <TestReview

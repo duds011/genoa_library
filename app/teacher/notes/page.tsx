@@ -1,5 +1,5 @@
 ﻿import { createClient, getUser } from '@/lib/supabase/server'
-import { StickyNote } from 'lucide-react'
+import PageHeader from '@/components/PageHeader'
 import NotesManager, { ManagedNote, StudentOption } from '@/components/teacher/NotesManager'
 import { EarningsPayment } from '@/lib/earnings'
 
@@ -40,14 +40,16 @@ export default async function NotesPage() {
   }))
 
   return (
-    <div className="space-y-8">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <StickyNote className="w-5 h-5 text-brand-600" />
-          <h1 className="text-2xl font-bold text-ink">Notes</h1>
-        </div>
-        <p className="text-sm text-muted">Your private notes after each lesson — all in one place. Only you can see these.</p>
-      </div>
+    <div className="k-page" style={{ display: 'grid', gap: 18 }}>
+      <PageHeader
+        eyebrow="Teacher"
+        title="Notes"
+        meta="Your private notes after each lesson. Only you can see these."
+        figures={[
+          { label: 'Students', value: studentOptions.filter(s => !s.archived).length },
+          { label: 'Notes', value: managedNotes.length },
+        ]}
+      />
 
       <NotesManager
         students={studentOptions}

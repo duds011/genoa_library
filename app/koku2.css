@@ -1,0 +1,2142 @@
+/* ═══════════════════════════════════════════════════════════════════
+   KOKU 2.0 — student dashboard design system
+   Bright learning-platform look: forest hero, colour-blocked stats,
+   icon rail, calendar + homework rail. All artwork is CSS (no assets).
+   Tokens live in globals.css :root.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* — shell + icon rail — */
+.k-shell{min-height:100vh;background:var(--bg);padding:14px;display:grid;grid-template-columns:var(--rail) minmax(0,1fr);gap:16px}
+.k-rail{position:sticky;top:14px;height:calc(100vh - 28px);background:var(--surface);border-radius:var(--r-xl);display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:6px;box-shadow:var(--shadow-soft)}
+.k-rail-top{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:14px;flex:0 0 auto}
+.k-rail-mark{width:42px;height:42px;border-radius:14px;background-color:var(--forest);background-image:var(--brand-grad);color:#fff;display:grid;place-items:center;font-size:17px;flex:0 0 auto}
+.k-rail-toggle{width:28px;height:28px;border:0;border-radius:9px;background:var(--surface-2);color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:.15s ease;flex:0 0 auto}
+.k-rail-toggle:hover{background:var(--brand-soft);color:var(--forest)}
+.k-rail-toggle .ui-icon{width:15px;height:15px;transition:transform .2s ease}
+.k-rail-link{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:var(--muted);transition:.16s ease;flex:0 0 auto}
+.k-rail-link:hover{background:var(--surface-2);color:var(--ink)}
+.k-rail-link.active{background:var(--brand-soft);color:var(--forest)}
+.k-rail-link .ui-icon{width:20px;height:20px}
+.k-rail-label{display:none}
+.k-rail-name{display:none}
+html[data-rail="expanded"] .k-rail-name{display:block;font-size:12.5px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+.k-rail-spacer{flex:1}
+
+/* ── widened rail ──
+   Icons alone are a guess until you have learned them, and a student opens
+   this far less often than their teacher opens the workspace. Gated to the
+   widths where the rail is a column at all: under 720px it is already a
+   bottom bar, and the toggle is hidden there. */
+@media(min-width:721px){
+  html[data-rail="expanded"]{--rail:206px}
+  html[data-rail="expanded"] .k-rail{align-items:stretch;padding:18px 12px}
+  html[data-rail="expanded"] .k-rail-top{flex-direction:row;align-items:center;justify-content:space-between;padding:0 4px}
+  html[data-rail="expanded"] .k-rail-link{width:auto;height:auto;display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:13px}
+  html[data-rail="expanded"] .k-rail-label{display:block;font-size:12.5px;font-weight:700;letter-spacing:-.01em}
+  html[data-rail="expanded"] .k-rail-toggle .ui-icon{transform:scaleX(-1)}
+}
+.k-shell,.k-rail{transition:grid-template-columns .18s ease,width .18s ease}
+@media(max-width:720px){.k-rail-toggle{display:none}}
+
+/* — top bar — */
+/* Capped and centred: stretched full-bleed across a wide monitor, every row
+   turns into a long thin band with dead space in it. */
+/* `container-type` so the portal's breakpoints measure this column instead of
+   the window — see the @container rules below.
+   CAUTION: it applies layout containment, which makes this element a
+   containing block for position:fixed descendants. Nothing inside the student
+   portal is fixed today (every modal and drawer lives on the teacher side,
+   inside .wrap) and the rail is a sibling, not a child. If a full-screen
+   overlay is ever added under .k-main it will be trapped here — render it in a
+   portal, or move the container onto a wrapper that excludes it. */
+.k-main{min-width:0;width:100%;max-width:1240px;margin:0 auto;container-type:inline-size}
+.k-top{display:flex;align-items:flex-start;justify-content:space-between;gap:22px;margin-bottom:20px}
+.k-hello{color:var(--muted);font-size:13px;font-weight:600;margin:0}
+.k-name{font-size:clamp(28px,3.4vw,40px);font-weight:700;letter-spacing:-.045em;line-height:1.1;margin:2px 0 0}
+.k-top-tools{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+/* Who this portal belongs to, where the dead search box used to be. */
+.k-whoami{display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:999px;padding:7px 16px 7px 7px;max-width:min(290px,40vw);box-shadow:var(--shadow-soft)}
+.k-whoami-mark{flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--brand-soft);color:var(--forest);display:grid;place-items:center;font-size:12px;font-weight:800;letter-spacing:.01em}
+.k-whoami-name{font-size:13px;font-weight:750;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:620px){.k-whoami{padding:5px;gap:0}.k-whoami-name{display:none}}
+/* .k-bell removed with the button it styled: it carried an unread dot that was
+   always on and opened nothing. */
+
+/* — dashboard grid — */
+.k-grid{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(300px,.9fr);gap:16px;align-items:start}
+@media(max-width:1120px){.k-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:720px){
+  .k-shell{grid-template-columns:1fr;padding:12px}
+  .k-rail{position:fixed;bottom:12px;left:12px;right:12px;top:auto;height:auto;flex-direction:row;justify-content:space-around;border-radius:22px;z-index:40;padding:9px 0}
+  .k-rail-mark,.k-rail-spacer{display:none}
+  .k-main{padding-bottom:80px}
+}
+
+/* — decorative props on page headers — */
+.k-hero-art{position:absolute;right:26px;top:50%;transform:translateY(-50%);width:230px;height:170px;pointer-events:none}
+@media(max-width:860px){.k-hero-art{opacity:.25}}
+
+/* — CSS 3D props (stand-ins for the rendered illustrations) — */
+.k-orb{position:absolute;border-radius:50%;background:radial-gradient(circle at 32% 26%,#ffc4de 0%,#f486b8 42%,#d84f92 100%);box-shadow:inset -8px -10px 22px rgba(150,20,80,.36),0 12px 26px rgba(0,0,0,.22)}
+.k-orb::after{content:"";position:absolute;inset:0;border-radius:50%;background-image:radial-gradient(circle at 50% 50%,rgba(255,255,255,.5) 0 1.6px,transparent 2px);background-size:15px 15px;opacity:.5}
+.k-tube{position:absolute;border-radius:50%;border:19px solid transparent;border-top-color:#4a86d8;border-left-color:#0a61c9;box-shadow:0 12px 24px rgba(0,0,0,.2)}
+.k-crystal{position:absolute;background:linear-gradient(145deg,#bdeaff 0%,#7cc9ef 48%,#4aa8d8 100%);clip-path:polygon(50% 0,100% 32%,80% 100%,20% 100%,0 32%);box-shadow:0 12px 24px rgba(0,0,0,.2)}
+.k-ring{position:absolute;border-radius:50%;border:13px solid var(--c-yellow);box-shadow:0 10px 22px rgba(0,0,0,.18)}
+
+/* — colour-blocked stat cards — */
+.k-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}
+/* ── the portal's own breakpoints ──
+   Container, not viewport: the studio's phone canvas is a 390px-wide element
+   inside a desktop window, so a media query there measures the wrong thing and
+   showed a squashed desktop layout where a phone layout belongs. Measuring the
+   column means the preview is the phone. */
+@container (max-width:760px){
+  /* The stats stay three-across as a compact strip. Stacked full-width they
+     were three ~150px slabs and the first phone screen was nothing but them —
+     on a phone they are a glance, not the content. */
+  /* .k-stats-prefixed: the base .k-stat rules sit LATER in this file, and a
+     container-query block does not outrank them — equal specificity loses on
+     order, which is how min-height:158px survived the first try. */
+  .k-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .k-stats .k-stat{min-height:0;padding:12px 12px 13px}
+  .k-stats .k-stat-head{font-size:10.5px;gap:5px}
+  .k-stats .k-stat-head .ui-icon{width:13px;height:13px}
+  .k-stats .k-stat-val{margin-top:8px;gap:5px;flex-wrap:wrap}
+  .k-stats .k-stat-val b{font-size:22px}
+  .k-stats .k-chip{padding:2px 6px;font-size:9px}
+  .k-stats .k-stat-sub{display:none}
+  .k-flow>*{flex-basis:100%}
+  .k-top{flex-direction:column;align-items:stretch;gap:14px}
+  .k-top-tools{justify-content:space-between}
+  .k-whoami{max-width:none}
+}
+@container (max-width:520px){
+  .k-name{font-size:27px}
+  .k-swipe-value{font-size:27px}
+  .k-swipe-chart,.k-swipe-empty{height:158px}
+  .k-card,.k-sec{padding:16px}
+  .vocab-line.plain .vocab-line-chips{gap:10px}
+}
+.k-stat{border-radius:var(--r-lg);padding:20px 22px 22px;color:#fff;position:relative;overflow:hidden;min-height:158px;display:flex;flex-direction:column}
+.k-stat.yellow{background:var(--c-yellow);color:var(--c-yellow-ink)}
+.k-stat.blue{background:var(--c-blue)}
+.k-stat.purple{background:var(--c-purple)}
+.k-stat.green{background:var(--green)}
+.k-stat-head{display:flex;align-items:center;gap:9px;font-weight:700;font-size:14.5px;letter-spacing:-.01em}
+.k-stat-head .ui-icon{width:19px;height:19px;flex:0 0 auto}
+.k-stat-val{display:flex;align-items:center;gap:9px;margin-top:auto}
+.k-stat-val b{font-size:33px;font-weight:800;letter-spacing:-.045em;line-height:1}
+.k-chip{display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.26);border-radius:999px;padding:4px 9px;font-size:10.5px;font-weight:800}
+.k-stat.yellow .k-chip{background:rgba(91,67,2,.16)}
+.k-stat-sub{font-size:12px;margin:7px 0 0;opacity:.82;line-height:1.45}
+
+/* — lesson flashcards — */
+.fc-wrap{display:grid;gap:10px;margin-bottom:18px}
+.fc-meta{display:flex;justify-content:space-between;font-size:11px;font-weight:800;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.05em}
+.fc-card{position:relative;display:grid;place-items:center;min-height:150px;padding:26px 20px 34px;
+  border:1.5px solid var(--line);border-radius:16px;background:var(--surface-2);cursor:pointer;
+  font:inherit;transition:border-color .15s ease,transform .15s ease;width:100%}
+.fc-card:hover{border-color:var(--accent,#0a61c9);transform:translateY(-1px)}
+.fc-card.is-flipped{background:var(--surface);border-color:var(--accent,#0a61c9)}
+.fc-front{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.fc-back{display:grid;gap:5px;justify-items:center}
+.fc-reading{font-size:14px;color:var(--muted)}
+.fc-def{font-size:17px;font-weight:700}
+.fc-hint{position:absolute;bottom:11px;font-size:10px;color:var(--muted);opacity:.7}
+.fc-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fc-btn{border:1.5px solid var(--line);border-radius:999px;padding:11px;font:inherit;font-size:13px;
+  font-weight:800;cursor:pointer;background:var(--surface);transition:.15s ease}
+.fc-btn.ok{color:var(--green,#2f8f5b)}
+.fc-btn.ok:hover{background:var(--green-soft,#e7f5ec);border-color:var(--green,#2f8f5b)}
+.fc-btn.no{color:var(--amber,#9a6b12)}
+.fc-btn.no:hover{background:var(--amber-soft,#fdf4e3);border-color:var(--amber,#9a6b12)}
+.fc-done{display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:12px;
+  background:var(--green-soft,#e7f5ec);font-size:13px;margin-bottom:18px}
+
+/* — guided tour —
+   One element makes both the hole and the darkness: the spotlight's oversized
+   box-shadow is the backdrop, so the dimming can never disagree with the hole
+   it is supposed to leave. */
+.tour-layer{position:fixed;inset:0;z-index:220}
+.tour-spot{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(16,24,32,.62);
+  transition:all .28s cubic-bezier(.3,.8,.3,1);pointer-events:none}
+.tour-card{position:fixed;background:var(--surface);border-radius:16px;padding:18px 20px;
+  box-shadow:0 18px 50px rgba(16,24,32,.35);animation:tour-in .25s ease}
+.tour-card h3{margin:6px 0 6px;font-size:16px;letter-spacing:-.02em}
+.tour-card p{margin:0 0 14px;font-size:13px;line-height:1.6;color:var(--muted)}
+.tour-count{font-size:10.5px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
+.tour-actions{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tour-skip{border:0;background:none;font:inherit;font-size:12px;color:var(--muted);
+  cursor:pointer;text-decoration:underline;padding:0}
+.tour-skip:hover{color:var(--ink)}
+@keyframes tour-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* — student dashboard tabs — */
+.k-dtabs{display:flex;gap:5px;background:var(--surface);border-radius:999px;padding:5px;box-shadow:var(--shadow-soft);margin:16px 0 14px;overflow-x:auto;scrollbar-width:none}
+.k-dtabs::-webkit-scrollbar{display:none}
+.k-dtabs button{border:0;background:transparent;border-radius:999px;padding:10px 20px;font:inherit;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap;transition:.16s ease}
+.k-dtabs button:hover{color:var(--ink)}
+.k-dtabs button.on{background:var(--forest);color:#fff}
+.k-flow[hidden]{display:none}
+
+/* — lesson list — a plain stack, earliest at the top — */
+.k-pillar{display:grid;gap:10px;align-content:start}
+.k-pillar-card{position:relative;display:grid;gap:3px;background:var(--surface);border-radius:var(--r-lg);padding:15px 44px 15px 17px;box-shadow:var(--shadow-soft);transition:.16s ease}
+.k-pillar-card:hover{box-shadow:0 10px 26px rgba(15,18,14,.1);transform:translateY(-1px)}
+.k-pillar-num{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--forest)}
+.k-pillar-title{font-size:14.5px;font-weight:700;letter-spacing:-.02em;line-height:1.3}
+.k-pillar-meta{font-size:11.5px;color:var(--muted)}
+.k-pillar-desc{font-size:12px;color:var(--muted);line-height:1.5;margin:1px 0 2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.k-pillar-foot{display:flex;align-items:center;gap:9px;margin-top:8px}
+.k-pillar-foot .k-hw-track{flex:1}
+.k-pillar-foot .k-hw-track i{display:block;height:100%;border-radius:999px;background:var(--forest)}
+.k-pillar-foot b{font-size:11.5px;font-weight:800}
+.k-pillar-go{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;transition:.16s ease}
+.k-pillar-card:hover .k-pillar-go{color:var(--forest);transform:translate(3px,-50%)}
+
+/* — files tab — */
+.k-file-ic{width:36px;height:36px;flex:0 0 auto;border-radius:11px;background:var(--brand-soft);color:var(--forest);display:grid;place-items:center}
+.k-file-ic .ui-icon{width:17px;height:17px}
+
+/* — speaking habits — the overview's colourful rectangles, sized down — */
+.k-speak-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.k-speak-grid .k-stat{min-height:126px}
+
+/* — milestone ladder — one segment per level the teacher set — */
+.k-track{display:grid;gap:9px}
+.k-track-bar{display:flex;gap:4px}
+.k-track-seg{flex:1;min-width:0;height:10px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.k-track-seg i{display:block;height:100%;border-radius:999px;transition:width .6s cubic-bezier(.2,.75,.3,1)}
+.k-track-legend{display:flex;gap:4px}
+.k-track-rung{flex:1;min-width:0;text-align:center;color:var(--muted)}
+.k-track-rung b{display:block;font-size:12px;font-weight:800;letter-spacing:-.02em;line-height:1.2}
+.k-track-rung small{display:block;font-size:9px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.k-track-rung.on{color:var(--forest)}
+
+/* — right rail cards — */
+.k-card{background:var(--surface);border-radius:var(--r-xl);padding:20px;box-shadow:var(--shadow-soft)}
+.k-card+.k-card{margin-top:14px}
+.k-seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface-2);border-radius:999px;padding:4px;margin-bottom:16px}
+.k-seg button{border:0;background:transparent;border-radius:999px;padding:9px;font-weight:700;font-size:12px;color:var(--muted);cursor:pointer;transition:.16s ease}
+.k-seg button.on{background:var(--forest);color:#fff}
+
+.k-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.k-card-head h3{font-size:14.5px;font-weight:700;letter-spacing:-.02em;margin:0}
+.k-link{color:var(--muted);font-size:11.5px;font-weight:700}
+.k-link:hover{color:var(--forest)}
+.k-btn-pill{display:inline-flex;align-items:center;gap:6px;background:var(--forest);color:#fff;border:0;border-radius:999px;padding:9px 15px;font-weight:700;font-size:11.5px;cursor:pointer;transition:.16s ease}
+.k-btn-pill:hover{background:var(--forest-deep)}
+.k-btn-quiet{display:inline-flex;align-items:center;gap:7px;background:transparent;border:0;color:var(--muted);font-weight:700;font-size:11.5px;cursor:pointer;padding:0}
+
+/* — homework / test progress rows — */
+.k-hw{display:grid;gap:15px}
+.k-hw-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.k-hw-title{font-weight:700;font-size:13px;letter-spacing:-.01em}
+.k-hw-due{font-size:11px;color:var(--muted);margin-top:1px}
+.k-hw-arrow{color:var(--muted);font-size:13px;flex:0 0 auto}
+.k-hw-bar{display:flex;align-items:center;gap:10px;margin-top:9px}
+.k-hw-track{flex:1;height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.k-hw-fill{height:100%;border-radius:999px;background:var(--forest);transition:width .7s ease}
+.k-hw-pct{font-size:11px;font-weight:800;color:var(--muted);min-width:30px;text-align:right}
+
+/* — practice tests —
+   A test used to render as a homework row and read as one more line in a list.
+   It gets a bordered tile and a score medallion instead, so an untaken test is
+   obviously a thing to go and do, and a finished one leads with its result. */
+.k-tests{display:grid;gap:10px}
+.k-test{display:flex;align-items:center;gap:13px;padding:13px 15px;border:1.5px solid var(--line);
+  border-radius:var(--r-md,14px);background:var(--surface);text-decoration:none;color:inherit;
+  transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}
+.k-test:hover{border-color:var(--accent,#0a61c9);transform:translateY(-1px);box-shadow:var(--shadow-soft)}
+/* The medallion: a pencil while it waits, the score once it exists. */
+.k-test-mark{flex:0 0 auto;display:grid;place-items:center;width:46px;height:46px;border-radius:50%;
+  background:var(--surface-2);color:var(--muted);font-weight:800;font-size:13px;letter-spacing:-.02em}
+/* The medallion carries the verdict, not just the number. */
+.k-test.is-good .k-test-mark{background:var(--green-soft,#e7f5ec);color:var(--green,#2f8f5b)}
+.k-test.is-mid  .k-test-mark{background:var(--amber-soft,#fdf4e3);color:var(--amber,#9a6b12)}
+.k-test.is-low  .k-test-mark{background:var(--red-soft,#fff0f0);color:var(--red,#c43d3d)}
+.k-test-body{display:grid;gap:2px;min-width:0;flex:1}
+.k-test-title{font-weight:700;font-size:13.5px;letter-spacing:-.01em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.k-test-meta{font-size:11px;color:var(--muted)}
+.k-test-cta{flex:0 0 auto;font-size:11px;font-weight:800;padding:6px 12px;border-radius:999px;
+  background:var(--accent,#0a61c9);color:#fff}
+.k-test.is-done .k-test-cta{background:var(--surface-2);color:var(--muted)}
+
+/* — course / lesson cards — */
+.k-sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:26px 0 13px}
+.k-sec-head h2{font-size:17px;font-weight:700;letter-spacing:-.028em;margin:0}
+.k-courses{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.k-course{background:var(--surface);border-radius:var(--r-lg);padding:13px;display:flex;flex-direction:column;gap:11px;box-shadow:var(--shadow-soft);transition:.18s ease}
+.k-course:hover{transform:translateY(-3px);box-shadow:var(--shadow-lift)}
+.k-course-thumb{height:104px;border-radius:var(--r-md);position:relative;overflow:hidden;display:grid;place-items:center;font-size:30px}
+.k-course-thumb.c1{background:linear-gradient(150deg,#fde79a,#f2b705)}
+.k-course-thumb.c2{background:linear-gradient(150deg,#bcdcff,#2d7ff9)}
+.k-course-thumb.c3{background:linear-gradient(150deg,#e8c8ff,#a24ee0)}
+.k-course-thumb.c4{background:linear-gradient(150deg,#cfe2f7,#749dc8)}
+.k-course-tag{position:absolute;top:9px;left:9px;background:rgba(255,255,255,.9);border-radius:999px;padding:4px 9px;font-size:10px;font-weight:800;color:var(--ink)}
+.k-course-title{font-weight:700;font-size:13.5px;letter-spacing:-.015em;line-height:1.35}
+.k-course-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.k-course-foot{display:flex;align-items:center;gap:9px;margin-top:auto}
+.k-course-foot .k-hw-track{height:5px}
+.k-score{font-weight:800;font-size:12px;color:var(--forest);white-space:nowrap}
+.k-empty{background:var(--surface);border-radius:var(--r-xl);padding:44px;text-align:center;color:var(--muted);box-shadow:var(--shadow-soft)}
+
+/* ═══════════════════════════════════════════════════════════════════
+   KOKU 2.0 — auth, lesson + test pages, booking
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* — split auth screen — */
+/* White rather than the app's warm grey: these pages sit next to a cool blue
+   gradient panel, and the warm ground read as a different palette beside it.
+   Scoped to auth so the signed-in app keeps its KOKU 2.0 surface. */
+.k-auth{min-height:100vh;background:#fff;padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+/* Centred, not bottom-aligned: the panel carries a carousel now, and pinning
+   that to the floor left a third of the block as empty blue above it. */
+.k-auth-side{position:relative;background:var(--brand-grad-panel);border-radius:var(--r-xl);overflow:hidden;padding:46px;display:flex;flex-direction:column;justify-content:center;color:#fff}
+.k-auth-side h2{font-size:clamp(24px,2.6vw,33px);line-height:1.14;letter-spacing:-.04em;margin:0 0 12px;max-width:16ch;font-weight:700}
+.k-auth-side p{margin:0;color:rgba(255,255,255,.68);font-size:13.5px;line-height:1.6;max-width:40ch}
+/* Corner accents behind the copy. They used to own the top half of the panel;
+   the carousel is the picture now, and two props competing with it read as
+   clutter. */
+.k-auth-art{position:absolute;inset:0;pointer-events:none;opacity:.5}
+.k-auth-copy{position:relative;z-index:1}
+
+/* ── feature carousel ──
+   Pictures of the product, not claims about it. Every slide is markup drawn
+   with the same shapes the real pages use, so nothing here can go stale in the
+   way a screenshot does. See components/AuthAside. */
+/* Sized to the panel, not to a constant: on a large monitor a fixed 520×264
+   card left the aside mostly empty blue. The stage now grows with the
+   viewport (capped so the small-type mocks stay in proportion). */
+.k-ac{margin-top:min(22px,2.5vh);width:100%;max-width:680px}
+.k-ac-stage{position:relative;height:clamp(348px,40vh,404px)}  /* min raised with the slides: at 40vh a 720px laptop gave 288px and
+     clipped the corrections, the vocabulary row and the lesson list. */
+.k-ac-slide{position:absolute;inset:0;opacity:0;transform:translateY(9px) scale(.985);
+  transition:opacity .35s ease,transform .35s ease;pointer-events:none}
+.k-ac-slide.on{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.k-ac-slide{transition:none}}
+
+/* The white "screen" every slide draws inside. */
+.k-ac-screen{height:100%;background:#fff;border-radius:15px;padding:13px 14px;color:var(--ink);
+  box-shadow:0 16px 40px rgba(0,0,0,.22);display:flex;flex-direction:column;gap:9px;overflow:hidden}
+/* The panel paints every <p> inside it white for its own copy, and that reached
+   into the mock — a correction rendered white on white, so the slide showed an
+   underline with nothing above it. Inheriting the screen's ink is not enough
+   here; it has to be said at the same weight. */
+.k-ac-screen p{margin:0;color:var(--ink)}
+
+.k-ac-tabs{display:flex;gap:3px;background:var(--surface-2);border-radius:999px;padding:3px;flex:0 0 auto}
+.k-ac-tabs span{padding:5px 10px;border-radius:999px;font-size:9.5px;font-weight:700;color:var(--muted);white-space:nowrap}
+.k-ac-tabs span.on{background:var(--brand);color:#fff}
+
+.k-ac-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.k-ac-tile{border:1px solid var(--line);border-left:3px solid var(--t);border-radius:9px;padding:8px 9px;min-width:0}
+.k-ac-tile small{display:block;font-size:6.5px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
+.k-ac-tile strong{display:block;font-size:17px;font-weight:800;letter-spacing:-.035em;margin-top:3px}
+.k-ac-tile strong.sm{font-size:11.5px;letter-spacing:-.02em;margin-top:5px}
+.k-ac-tile strong i{font-size:9px;font-style:normal;color:var(--muted);font-weight:700}
+.k-ac-tile em{display:block;font-style:normal;font-size:7px;color:var(--muted);margin-top:4px}
+.k-ac-bal{height:3px;border-radius:999px;background:#ececeb;margin-top:5px}
+.k-ac-bal u{display:block;height:100%;border-radius:999px;background:#be123c}
+.k-ac-bal.alt u{background:#f0b429}
+.k-ac-chip{display:inline-block;margin-top:5px;padding:2px 6px;border-radius:999px;background:#e7f5ec;color:#1c6b40;font-size:7px;font-weight:800}
+
+.k-ac-note{border:1px solid var(--line);border-radius:9px;padding:9px 10px;flex:1;min-height:0}
+.k-ac-note small{display:block;font-size:6.5px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin-bottom:5px}
+.k-ac-note p{margin:0 0 3px;font-size:10px;line-height:1.5}
+.k-ac-note s{color:var(--muted)}
+.k-ac-note p.ok b{border-bottom:2px solid var(--brand)}
+.k-ac-note p.why{margin-top:7px;padding-top:7px;border-top:1px solid var(--line);font-size:8.5px;color:var(--muted)}
+.k-ac-note p.why b{color:var(--ink)}
+.k-ac-note p.gap{margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+
+.k-ac-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.k-ac-head b{font-size:11px;font-weight:800;letter-spacing:-.02em}
+.k-ac-head span{font-size:8px;font-weight:700;color:var(--muted)}
+
+/* Grows into whatever the screen has left, so a slide with less to say does
+   not end in a band of empty white. */
+.k-ac-bars{display:flex;align-items:flex-end;gap:9px;flex:1 1 auto;min-height:74px;max-height:132px;padding:15px 4px 0}
+.k-ac-bars span{position:relative;flex:1;border-radius:5px 5px 2px 2px;background:#bcd6f2;min-width:0}
+.k-ac-bars span.now{background:var(--brand)}
+.k-ac-bars b{position:absolute;top:-13px;left:0;right:0;text-align:center;font-size:8px;font-weight:800;color:var(--muted)}
+
+.k-ac-track{display:flex;gap:4px}
+.k-ac-track span{flex:1;min-width:0;text-align:center}
+.k-ac-track u{display:block;height:3px;border-radius:999px;background:#ececeb;text-decoration:none}
+.k-ac-track i{display:block;height:100%;border-radius:999px;background:var(--brand)}
+.k-ac-track b{display:block;font-size:8.5px;font-weight:800;color:var(--brand);margin-top:4px}
+.k-ac-track em{display:block;font-style:normal;font-size:7px;color:var(--muted)}
+
+.k-ac-words{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.k-ac-words span{border:1px solid var(--line);border-radius:7px;padding:4px 8px;font-size:9px;font-weight:600;white-space:nowrap}
+.k-ac-words i{font-style:normal;color:var(--line-strong,var(--line-strong))}
+.k-ac-words em{font-style:normal;font-size:8px;color:var(--muted);font-weight:700}
+
+.k-ac-langs{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.k-ac-langs span{border:1px solid var(--line);border-radius:999px;padding:4px 9px;font-size:9.5px;font-weight:700;
+  background:var(--surface-2);white-space:nowrap}
+.k-ac-langs span:nth-child(1),.k-ac-langs span:nth-child(2),.k-ac-langs span:nth-child(7){
+  background:var(--brand-soft);border-color:#cfe0f6;color:var(--brand)}
+
+.k-ac-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;flex:1;min-height:0;margin-top:10px}
+.k-ac-pair>div{border:1px solid var(--line);border-radius:10px;padding:10px 11px;min-width:0;display:flex;
+  flex-direction:column;justify-content:center}
+.k-ac-pair p.why{margin-top:7px;padding-top:7px;border-top:1px solid var(--line);font-size:8.5px;color:var(--muted);line-height:1.45}
+.k-ac-pair p.why b{color:var(--ink)}
+.k-ac-pair small{display:block;font-size:6.5px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+.k-ac-pair p{margin:0 0 3px;font-size:10px;line-height:1.5}
+.k-ac-pair s{color:var(--muted)}
+.k-ac-pair p.ok b{border-bottom:2px solid var(--brand)}
+
+.k-ac-practice{display:grid;grid-template-columns:38% minmax(0,1fr);gap:9px;flex:1;min-height:0}
+.k-ac-card{border:1px solid var(--line);border-radius:11px;padding:12px 10px;text-align:center;background:var(--surface-2);
+  display:flex;flex-direction:column;justify-content:center;min-width:0}
+.k-ac-lvl{align-self:center;padding:2px 7px;border-radius:999px;background:var(--brand-soft);color:var(--brand);font-size:7px;font-weight:800}
+.k-ac-card b.jp{display:block;font-size:23px;font-weight:700;letter-spacing:-.02em;margin-top:7px}
+.k-ac-card em{display:block;font-style:normal;font-size:9px;color:var(--muted);margin-top:2px}
+.k-ac-card p{margin:7px 0 0;font-size:10.5px;font-weight:600}
+.k-ac-card q{display:block;quotes:none;margin-top:9px;padding-top:9px;border-top:1px solid var(--line);
+  font-size:9.5px;line-height:1.55;color:var(--muted)}
+.k-ac-card q u{text-decoration:none;border-bottom:2px solid var(--brand);color:var(--ink)}
+.k-ac-card q b{display:block;margin-top:5px;font-weight:600;font-size:8.5px;color:var(--muted)}
+.k-ac-deck{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:12px;padding-top:9px}
+.k-ac-deck i{width:14px;height:3px;border-radius:999px;background:var(--line)}
+.k-ac-deck i:first-child{background:var(--brand)}
+.k-ac-deck span{margin-left:4px;font-size:7px;font-weight:800;color:var(--muted)}
+
+.k-ac-q{border:1px solid var(--line);border-radius:11px;padding:11px 12px;display:grid;gap:5px;min-width:0;align-content:center}
+.k-ac-q small{font-size:6.5px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin-bottom:2px}
+.k-ac-q>span{border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:10px}
+.k-ac-q>span.right{border-color:#8fd0aa;background:#e7f5ec;color:#1c6b40;font-weight:700;display:flex;justify-content:space-between}
+.k-ac-q i{font-style:normal}
+.k-ac-fill{border:1px solid var(--line);border-radius:8px;padding:8px 9px;margin-top:2px}
+.k-ac-fill small{margin-bottom:4px}
+.k-ac-fill p{margin:0;font-size:10px}
+.k-ac-fill u{text-decoration:none;border-bottom:2px solid var(--brand);padding:0 2px}
+.k-ac-qfoot{margin-top:4px;padding-top:9px;border-top:1px solid var(--line)}
+.k-ac-qfoot b{display:block;font-size:9px;font-weight:800}
+.k-ac-qfoot em{display:block;font-style:normal;font-size:8px;color:var(--muted);margin-top:3px;line-height:1.45}
+
+.k-ac-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.k-ac-top small{display:block;font-size:8px;color:var(--muted);font-weight:700}
+.k-ac-top b{display:block;font-size:17px;font-weight:800;letter-spacing:-.035em}
+.k-ac-mark{padding:5px 10px;border-radius:999px;background:var(--surface-2);font-size:9px;font-weight:700;white-space:nowrap}
+.k-ac-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;flex:0 0 auto;height:clamp(58px,9vh,74px)}
+.k-ac-lessons{display:flex;flex-direction:column;gap:5px;flex:1;min-height:0;margin-top:9px}
+.k-ac-lessons span{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:9px;padding:7px 10px;min-width:0}
+.k-ac-lessons b{font-size:9px;font-weight:800;color:var(--muted);white-space:nowrap}
+.k-ac-lessons em{flex:1;min-width:0;font-style:normal;font-size:10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.k-ac-lessons i{font-style:normal;font-size:10.5px;font-weight:800;color:var(--brand)}
+.k-ac-stats div{background:var(--s);border-radius:10px;padding:9px 10px;color:#fff;display:flex;flex-direction:column;justify-content:center}
+.k-ac-stats small{font-size:8px;font-weight:800;opacity:.85}
+.k-ac-stats b{font-size:21px;font-weight:800;letter-spacing:-.04em;margin-top:2px}
+
+/* The claim under the picture. Re-keyed per slide so it fades in with it. */
+/* No fill-mode: `both` holds the caption at opacity 0 until the animation
+   actually runs, and a caption that depends on an animation having fired to be
+   readable is one dropped frame away from being invisible. */
+.k-ac-cap{margin-top:14px;min-height:52px;animation:k-ac-in .5s ease}
+.k-ac-cap b{display:block;font-size:14px;font-weight:700;letter-spacing:-.02em;color:#fff}
+.k-ac-cap small{display:block;font-size:12px;line-height:1.55;color:rgba(255,255,255,.68);margin-top:3px;max-width:46ch}
+@keyframes k-ac-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.k-ac-cap{animation:none}}
+
+/* Round dots; the active one carries a ring that fills over HOLD_MS — the
+   fill is the countdown to the next slide (see AuthAside). */
+.k-ac-dots{display:flex;gap:8px;margin-top:12px;align-items:center}
+.k-ac-dots button{position:relative;width:10px;height:10px;border:0;border-radius:50%;background:rgba(255,255,255,.28);padding:0;cursor:pointer;transition:background .2s ease,width .2s ease,height .2s ease}
+.k-ac-dots button:hover{background:rgba(255,255,255,.5)}
+.k-ac-dots button.on{width:20px;height:20px;background:transparent}
+.k-ac-dots button.on::after{content:"";position:absolute;inset:6px;border-radius:50%;background:#fff}
+.k-ac-dots svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.k-dot-track{fill:none;stroke:rgba(255,255,255,.25);stroke-width:2}
+.k-dot-fill{fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-dasharray:50.27;stroke-dashoffset:50.27;animation-name:k-dot-fill;animation-timing-function:linear;animation-fill-mode:forwards}
+@keyframes k-dot-fill{to{stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){.k-dot-fill{animation:none;stroke-dashoffset:0}}
+
+/* A short window loses the picture before it loses the words. */
+/* Short laptops.
+   The stage used to drop to 216px, which just clipped whatever did not fit —
+   and hiding rows instead only traded a cut edge for a thinner slide. So the
+   mock is laid out at its full size and scaled down to whatever height is
+   going: every feature stays on screen, in proportion, and the only thing
+   that changes is how big it is. */
+@media(max-height:780px){
+  .k-ac{margin-top:14px}
+  .k-auth-side{padding:34px}
+  .k-ac-stage{height:300px}
+  .k-ac-screen{width:calc(100% / .82);height:calc(100% / .82);
+    transform:scale(.82);transform-origin:top left}
+}
+/* Merged with the older short-screen rule, which set 170px and won on order —
+   so the scaling above was silently undone on exactly the screens that needed
+   it most. One block now, one stage height. */
+@media(max-height:660px){
+  .k-ac-stage{height:266px}
+  .k-ac-screen{width:calc(100% / .72);height:calc(100% / .72);transform:scale(.72)}
+  .k-ac-cap small{display:none}
+  .k-ac-cap{min-height:0}
+  .k-auth-side{padding:28px}
+}
+
+/* Signing up is the other half of this page, not a footnote to it. */
+.k-auth-alt{display:flex;align-items:center;gap:12px;margin:24px 0 14px;
+  font-size:11.5px;font-weight:700;color:var(--muted)}
+.k-auth-alt::before,.k-auth-alt::after{content:"";flex:1;height:1px;background:var(--line)}
+.k-auth-main{display:grid;place-items:center;padding:20px}
+.k-auth-card{width:min(410px,100%)}
+/* Must come AFTER .k-auth-side, or the base display:flex wins the tie. */
+@media(max-width:900px){.k-auth{grid-template-columns:1fr}.k-auth-side{display:none}}
+.k-auth-mark{width:52px;height:52px;border-radius:17px;background:var(--brand-soft);color:var(--forest);display:grid;place-items:center;font-size:23px;margin-bottom:22px}
+.k-auth-card h1{font-size:31px;letter-spacing:-.04em;margin:0 0 7px;font-weight:700;background-image:var(--brand-grad);-webkit-background-clip:text;background-clip:text;color:transparent;width:fit-content}
+.k-auth-card>p{margin:0 0 26px;color:var(--muted);font-size:13.5px;line-height:1.6}
+.k-field{display:block;margin-bottom:14px}
+.k-field span{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:7px}
+.k-field input,.k-input{width:100%;border:1.5px solid var(--line);background:var(--surface);border-radius:14px;padding:13px 16px;font-size:14px;color:var(--ink);outline:0;transition:.16s ease}
+.k-field input:focus,.k-input:focus{border-color:var(--forest);box-shadow:0 0 0 4px rgba(10,97,201,.12)}
+.k-btn-block{width:100%;justify-content:center;background-color:var(--forest);background-image:var(--brand-grad);color:#fff;border:0;border-radius:14px;padding:14px;font-weight:700;font-size:14px;cursor:pointer;transition:.16s ease;display:inline-flex;align-items:center;gap:8px}
+.k-btn-block:hover:not(:disabled){background-image:var(--brand-grad-hover);transform:translateY(-1px)}
+.k-btn-block:disabled{opacity:.55;cursor:not-allowed;transform:none}
+/* The secondary of the pair. Must follow .k-btn-block — same specificity, and
+   the one that loses the tie is the one that gets ignored. */
+.k-btn-outline{background:transparent;color:var(--forest);border:1.5px solid var(--line-strong)}
+.k-btn-outline:hover:not(:disabled){background:var(--brand-soft);border-color:var(--forest);color:var(--forest)}
+.k-error{background:var(--red-soft);border:1px solid #f0cece;color:var(--red);border-radius:13px;padding:11px 14px;font-size:12.5px;font-weight:600;margin:14px 0 0}
+.k-fine{text-align:center;color:var(--muted);font-size:11.5px;margin:20px 0 0;line-height:1.6}
+.k-fine a{font-weight:800;color:var(--forest)}
+
+/* ── voice memo in the recap hero ──
+   The teacher speaking to this student opens the page, under the date — not a
+   section buried in a tab. It renders only when a memo exists: on a published
+   lesson there is no recorder, no prompt and no placeholder, because the page
+   is the finished product. Recording lives in review/edit.
+
+   No card. A white panel on the brand-coloured band read as something pasted
+   onto the header instead of part of it, so this is painted in white-on-brand,
+   spans the band edge to edge, and is separated by a hairline rather than an
+   edge. The header stacks for it — see .k-phead.has-memo — which puts the
+   score beside the title rather than beside the player. */
+.k-phead-top{display:flex;align-items:center;justify-content:space-between;gap:24px;width:100%;min-width:0}
+.k-phead.has-memo{flex-direction:column;align-items:stretch}
+.k-phead-memo{position:relative;z-index:1;width:100%;
+  margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.22)}
+.k-memo{color:#fff;display:grid;gap:11px}
+
+.k-memo-head{display:flex;align-items:center;gap:10px;min-width:0}
+.k-memo-ic{flex:0 0 auto;width:27px;height:27px;border-radius:8px;background:rgba(255,255,255,.17);color:#fff;display:grid;place-items:center}
+.k-memo-ic svg{width:15px;height:15px}
+.k-memo-t{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.k-memo-t b{font-size:12.5px;font-weight:700;letter-spacing:-.01em;color:#fff}
+.k-memo-t small{font-size:11px;color:rgba(255,255,255,.6)}
+.k-memo-rate{flex:0 0 auto;border:1px solid rgba(255,255,255,.32);background:transparent;border-radius:7px;
+  padding:3px 8px;font:inherit;font-size:10.5px;font-weight:800;color:rgba(255,255,255,.82);cursor:pointer;transition:.14s ease}
+.k-memo-rate:hover{background:rgba(255,255,255,.16);color:#fff;border-color:transparent}
+
+/* Transport, wave and clock on one line; the wave takes what is left. */
+.k-memo-row{display:flex;align-items:center;gap:11px;min-width:0}
+.k-memo-play{flex:0 0 auto;width:34px;height:34px;border:0;border-radius:999px;background:#fff;color:var(--forest);
+  display:grid;place-items:center;cursor:pointer;transition:.15s ease}
+.k-memo-play:hover{transform:scale(1.06)}
+.k-memo-play svg{width:14px;height:14px;margin-left:1px}
+.k-memo-skip{flex:0 0 auto;border:0;background:transparent;color:rgba(255,255,255,.66);cursor:pointer;padding:0;
+  display:grid;justify-items:center;font:inherit;transition:.14s ease}
+.k-memo-skip:hover{color:#fff}
+.k-memo-skip svg{width:17px;height:17px}
+.k-memo-skip em{font-style:normal;font-size:7.5px;font-weight:800;letter-spacing:.04em;margin-top:-2px}
+
+/* The scrubber. Bars are a fixed pseudo-random envelope, not a decode of the
+   file — see makeBars in MemoPlayer. Vertically tight on purpose: this sits
+   inside a page header, not on a page of its own. */
+/* Bars are capped narrow and spread with space-between rather than left to
+   share the width: at flex:1 across a full-width header each one came out
+   ~13px wide, so a quiet bar was wider than it was tall and the wave read as
+   a row of dots. */
+.k-memo-wave{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:2px;height:32px;cursor:pointer}
+.k-memo-wave i{flex:1 1 0;min-width:0;max-width:3px;min-height:2px;border-radius:999px;background:rgba(255,255,255,.34);transition:background .12s ease}
+.k-memo-wave i.on{background:#fff}
+.k-memo-wave:hover i{background:rgba(255,255,255,.46)}
+.k-memo-wave:hover i.on{background:#fff}
+
+.k-memo-time{flex:0 0 auto;font-size:11.5px;font-weight:600;color:rgba(255,255,255,.62);font-variant-numeric:tabular-nums}
+.k-memo-time b{color:#fff;font-weight:800}
+
+/* The tab strip scrolls rather than wraps, so on a phone the last tab is cut
+   by the frame edge and reads as broken rather than as "swipe for more".
+   Fade it out instead. */
+@container (max-width:430px){
+  .k-dtabs{-webkit-mask-image:linear-gradient(90deg,#000 84%,transparent 100%);
+    mask-image:linear-gradient(90deg,#000 84%,transparent 100%)}
+
+  .k-memo-wave{height:24px}
+  .k-memo-t small{display:none}
+  .k-memo-row{gap:8px}
+}
+
+/* — detail page header — */
+.k-back{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border-radius:999px;padding:9px 16px;font-size:12px;font-weight:700;color:var(--muted);box-shadow:var(--shadow-soft);margin-bottom:14px;transition:.16s ease}
+.k-back:hover{color:var(--ink);transform:translateX(-2px)}
+.k-phead{position:relative;background:var(--forest);border-radius:var(--r-xl);padding:30px 34px;color:#fff;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:16px}
+.k-phead-eyebrow{font-size:10.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+.k-phead h1{font-size:clamp(22px,2.6vw,31px);letter-spacing:-.04em;line-height:1.18;margin:8px 0 14px;font-weight:700;max-width:22ch}
+.k-pmeta{display:flex;flex-wrap:wrap;gap:8px}
+.k-pmeta span{background:rgba(255,255,255,.14);border-radius:999px;padding:6px 13px;font-size:11.5px;font-weight:700}
+/* position+z-index: the decorative hero art paints after the score in the DOM
+   and floats over the band's right edge — the score must sit above it. */
+/* Solid white, brand-coloured figure. At 13% white on the brand band the score
+   was the lowest-contrast thing in a header built to lead with it, and the
+   decorative orb drifting behind only thinned it further. Inverting makes it
+   the one opaque object up there. */
+.k-pscore{flex:0 0 auto;width:96px;height:96px;border-radius:50%;background:#fff;color:var(--forest);
+  display:grid;place-items:center;text-align:center;line-height:1;position:relative;z-index:2;
+  box-shadow:0 6px 20px rgba(0,0,0,.16)}
+.k-pscore b{display:block;font-size:31px;font-weight:800;letter-spacing:-.04em;color:var(--forest)}
+.k-pscore small{display:block;font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--muted);margin-top:5px}
+@media(max-width:640px){.k-phead{flex-direction:column;align-items:flex-start;padding:24px}.k-pscore{width:74px;height:74px}}
+
+/* — pill tabs (LessonPageTabs) — */
+.tabs{display:flex;gap:6px;background:var(--surface);border-radius:999px;padding:5px;margin-bottom:16px;overflow-x:auto;box-shadow:var(--shadow-soft)}
+.tab{border:0;background:transparent;border-radius:999px;padding:10px 20px;font-weight:700;font-size:12.5px;color:var(--muted);cursor:pointer;white-space:nowrap;transition:.16s ease}
+.tab:hover{color:var(--ink)}
+.tab.sel{background:var(--forest);color:#fff}
+/* All four tabs fit a 375px phone without sideways scrolling. */
+@media(max-width:430px){.tabs{gap:3px;padding:4px}.tab{padding:10px 11px;font-size:11.5px}}
+
+/* — content blocks on lesson pages — */
+.lesson-block,.corrections-card,.ex-card{background:var(--surface);border:0;border-radius:var(--r-lg);padding:24px 26px;box-shadow:var(--shadow-soft);margin-bottom:14px}
+.lesson-block h3{font-size:15.5px;font-weight:700;letter-spacing:-.02em;margin:0 0 12px}
+.lesson-block ul{margin:0;padding-left:19px}
+.lesson-block li{margin-bottom:8px;line-height:1.65}
+.tab-panel{display:block}
+.dashboard-title{font-size:15.5px;font-weight:700;letter-spacing:-.02em;margin:0 0 13px}
+
+.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:13px;margin-bottom:14px}
+.stat-card{background:var(--surface);border:0;border-radius:var(--r-lg);padding:19px 21px;box-shadow:var(--shadow-soft);display:flex;flex-direction:column;min-height:148px}
+.stat-card-head{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.stat-icon{font-size:16px}
+.stat-card-label{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.stat-card-value{font-size:27px;font-weight:800;letter-spacing:-.04em;line-height:1}
+.stat-unit{font-size:14px;font-weight:600;color:var(--muted)}
+.stat-sep{color:var(--line-strong);margin:0 3px}
+.stat-chip{display:inline-flex;align-self:flex-start;background:var(--brand-soft);color:var(--forest);border-radius:999px;padding:5px 11px;font-size:10.5px;font-weight:800}
+.stat-card-note{font-size:11.5px;color:var(--muted);margin:0}
+
+.balance-bars{display:grid;gap:9px}
+.balance-row{display:grid;grid-template-columns:64px 1fr 38px;align-items:center;gap:10px;font-size:11px;font-weight:700;color:var(--muted)}
+.balance-track{height:7px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.balance-fill{height:100%;border-radius:999px;background:var(--c-yellow)}
+.balance-fill.student{background:var(--forest)}
+
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:12px}
+.metric{background:var(--surface-2);border-radius:var(--r-md);padding:14px 15px}
+.metric .mv{font-size:21px;font-weight:800;letter-spacing:-.035em;line-height:1}
+.metric .mk{font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:6px}
+.metric .mn{font-size:10.5px;color:var(--muted);margin-top:2px}
+
+.example{background:var(--surface-2);border-radius:var(--r-md);padding:14px 16px;margin-bottom:9px;line-height:1.7;font-size:13.5px}
+.jp{font-size:15px;font-weight:700}
+.romaji{color:var(--muted);font-size:12.5px}
+.jlpt{background:var(--brand-soft);color:var(--forest)}
+
+/* — booking — */
+.book-card{border:0!important;border-radius:var(--r-xl)!important;box-shadow:var(--shadow-soft);padding:24px}
+.k-slot{border:1.5px solid var(--line);background:var(--surface);border-radius:13px;padding:11px 15px;font-weight:700;font-size:12.5px;cursor:pointer;transition:.16s ease}
+.k-slot:hover{border-color:var(--forest);background:var(--brand-soft)}
+.k-slot.sel{background:var(--forest);border-color:var(--forest);color:#fff}
+
+/* — shared primitives, restyled ONLY inside the student shell (.k-shell) and
+     the public booking page (.k-scope), so the teacher app keeps its current
+     look until it gets rebuilt too — */
+.k-shell .btn,.k-scope .btn{border-radius:999px;padding:10px 17px;font-size:12.5px;box-shadow:none}
+.k-shell .btn-primary,.k-scope .btn-primary{background:var(--forest);color:#fff}
+.k-shell .btn-primary:hover,.k-scope .btn-primary:hover{background:var(--forest-deep)}
+.k-shell .btn-ghost,.k-scope .btn-ghost{background:var(--surface);border-color:transparent;box-shadow:var(--shadow-soft);color:var(--muted)}
+.k-shell .btn-ghost:hover,.k-scope .btn-ghost:hover{color:var(--ink)}
+.k-shell .eyebrow,.k-shell .section-label,.k-scope .eyebrow,.k-scope .section-label{color:var(--forest)}
+.k-shell .title,.k-shell h1,.k-scope .title,.k-scope h1{letter-spacing:-.045em}
+.k-shell .empty,.k-scope .empty{border:0;background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--shadow-soft);padding:38px}
+.k-shell .analytics-card,.k-shell .surface,.k-shell .summary-panel,.k-shell .settings-card,.k-scope .analytics-card,.k-scope .surface{border:0;border-radius:var(--r-lg);box-shadow:var(--shadow-soft)}
+.k-shell .pill,.k-scope .pill{border-radius:999px;font-weight:800}
+.k-shell .warn-box,.k-scope .warn-box{border-radius:14px}
+.k-shell .section-heading,.k-scope .section-heading{font-size:17px;letter-spacing:-.028em}
+.k-shell .field label,.k-scope .field label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:7px}
+.k-shell .field,.k-scope .field{margin-bottom:14px}
+.k-shell .field input,.k-scope .field input{width:100%;border:1.5px solid var(--line);background:var(--surface);border-radius:14px;padding:13px 16px;font-size:14px;color:var(--ink);outline:0;transition:.16s ease}
+.k-shell .field input:focus,.k-scope .field input:focus{border-color:var(--forest);box-shadow:0 0 0 4px rgba(10,97,201,.12)}
+
+/* booking grid — student (.booking-layout) and public (.book-grid) */
+.k-shell .booking-layout{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,1fr);gap:16px;align-items:start}
+.k-scope .book-grid{display:grid;grid-template-columns:minmax(240px,320px) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:900px){.k-shell .booking-layout,.k-scope .book-grid{grid-template-columns:1fr}}
+.booking-shell.k-scope{max-width:1080px;margin:0 auto;padding:34px 22px 70px}
+.k-shell .book-main,.k-scope .book-main{border:0!important;border-radius:var(--r-xl)!important;background:var(--surface);box-shadow:var(--shadow-soft);padding:22px}
+.k-shell .booking-duration,.k-scope .booking-duration{background:var(--brand-soft);color:var(--forest);border-radius:999px;padding:6px 13px;font-size:11.5px;font-weight:800;display:inline-block}
+.k-shell .slot-grid,.k-scope .slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:9px}
+.k-shell .slot,.k-scope .slot{border:1.5px solid var(--line);background:var(--surface);border-radius:13px;padding:11px 8px;font-weight:700;font-size:12.5px;cursor:pointer;transition:.16s ease}
+.k-shell .slot:hover,.k-scope .slot:hover{border-color:var(--forest);background:var(--brand-soft)}
+.k-shell .slot.sel,.k-scope .slot.sel{background:var(--forest);border-color:var(--forest);color:#fff}
+.k-scope .book-days{display:grid;gap:8px}
+.k-scope .day-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;border:1.5px solid var(--line);background:var(--surface);border-radius:15px;padding:13px 16px;font-weight:700;font-size:12.5px;cursor:pointer;transition:.16s ease}
+.k-scope .day-btn:hover{border-color:var(--forest);background:var(--brand-soft)}
+.k-scope .day-btn.sel{background:var(--forest);border-color:var(--forest);color:#fff}
+.k-scope .day-count{background:var(--surface-2);color:var(--muted);border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:800}
+.k-scope .day-btn.sel .day-count{background:rgba(255,255,255,.22);color:#fff}
+.k-scope .booking-intro{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px;flex-wrap:wrap}
+
+/* ═══════════════════════════════════════════════════════════════════
+   KOKU 2.0 — teacher workspace
+   The teacher shell is AppNav (fixed sidebar) + .wrap, applied per page.
+   Those classes are teacher-only, so they are restyled directly here.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.app-sidebar{inset:14px auto 14px 14px;width:236px;background:var(--surface);border:0;border-radius:var(--r-xl);box-shadow:var(--shadow-soft);overflow:hidden}
+.sidebar-top{padding:22px 20px 14px}
+.mark{background:var(--forest);border-radius:13px;width:34px;height:34px}
+.logo{gap:11px}
+.logo small{color:var(--muted)}
+.sidebar-scroll{padding:6px 12px}
+.nav-section-label{padding:15px 10px 7px;color:var(--muted)}
+.side-nav{gap:4px}
+.side-link{border-radius:14px;padding:11px 12px;color:#5d635e;font-weight:700;font-size:12.5px}
+.side-link:hover{background:var(--surface-2);color:var(--ink)}
+.side-link.active{background:var(--brand-soft);color:var(--forest)}
+.sidebar-account{border-top:1px solid var(--line);padding:14px 16px}
+.account-avatar,.avatar{background:var(--brand-soft);color:var(--forest);border-radius:12px}
+.status-dot.online{background:var(--green)}
+.wrap{margin-left:264px;padding:30px clamp(20px,3vw,42px) 70px}
+@media(max-width:860px){
+  /* The sidebar used to flatten into a horizontal bar across the top here.
+     Now it keeps its desktop shape and hides off-canvas: a slim top bar holds
+     the logo and one menu button, and tapping it slides the same rail in from
+     the left. One navigation, summoned two ways. */
+  .mobile-topbar{display:flex;position:sticky;top:0;z-index:40;height:56px;align-items:center;justify-content:space-between;padding:0 14px;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .mobile-topbar .logo{display:flex;align-items:center;gap:9px;font-weight:800;letter-spacing:-.02em}
+  .mobile-nav-btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;width:38px;height:38px;display:grid;place-items:center;color:var(--ink);cursor:pointer}
+  .mobile-nav-scrim{position:fixed;inset:0;background:rgba(31,41,55,.38);backdrop-filter:blur(2px);z-index:88}
+  .app-sidebar{position:fixed;inset:0 auto 0 0;width:min(300px,86vw);height:100%;margin:0;border-radius:0 18px 18px 0;flex-direction:column;transform:translateX(-104%);transition:transform .22s ease;z-index:89;box-shadow:24px 0 60px rgba(31,41,55,.18)}
+  .app-sidebar.mobile-open{transform:translateX(0)}
+  .sidebar-top{padding:20px 18px 14px}
+  .sidebar-scroll{padding:6px 12px;flex:1;overflow-y:auto}
+  .side-link{justify-content:flex-start;padding:11px 12px}
+  .sidebar-account{justify-content:flex-start;padding:15px 16px}
+  /* The 900px icon rail hides labels; the drawer is full width, bring them back. */
+  .app-sidebar .logo>span:not(.mark){display:inline}
+  .app-sidebar .nav-section-label{display:block}
+  .app-sidebar .side-link span{display:inline}
+  .app-sidebar .sidebar-account .account-copy{display:flex}
+  .wrap{margin-left:0;padding:20px 16px 60px}
+  .wrap::before{inset:0}
+  .k-thead{padding:24px 22px}
+}
+@media(max-width:860px) and (prefers-reduced-motion:reduce){.app-sidebar{transition:none}}
+/* .settings-stack is display:grid with no explicit columns, so its implicit
+   track sizes to the widest child's max-content and overflows narrow screens.
+   Pin it to the container instead. */
+.settings-stack{grid-template-columns:minmax(0,1fr)}
+/* Availability day rows: label + time ranges, stacking on narrow screens. */
+.avail-row{display:grid;grid-template-columns:minmax(0,140px) minmax(0,1fr)}
+@media(max-width:560px){.avail-row{grid-template-columns:minmax(0,1fr);gap:6px}}
+
+/* Teacher student rows. These columns used to be an inline style on the
+   element, which no media query could override — hence the class. */
+.student-card.sc-cols{grid-template-columns:minmax(170px,1.3fr) 70px 70px 96px minmax(150px,1fr)}
+/* Cards, not stripes: without a fill the rows show the warm page canvas and
+   merge into one grey slab. White fill + hover ring makes each student a
+   distinct, clickable-looking card. */
+.student-grid>.student-card{background:#fff}
+.student-grid>.student-card:hover{background:#fff;border-color:var(--brand);box-shadow:0 2px 10px rgba(10,97,201,.10)}
+
+/* The student directory is a 5-column table (~736px min) — stack it. */
+@media(max-width:760px){
+  .directory-head{display:none}
+  .student-card,.student-card.sc-cols{grid-template-columns:minmax(0,1fr);gap:9px}
+  .profile-layout{grid-template-columns:minmax(0,1fr)}
+  .profile-rail{position:static}
+  .analytics-grid,.mini-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .page-head{gap:12px}
+  .page-actions{flex-wrap:wrap}
+  .connector-grid{grid-template-columns:minmax(0,1fr)}
+}
+
+/* teacher page header — matches the student hero */
+.k-thead{position:relative;background:var(--forest);border-radius:var(--r-xl);padding:30px 34px;color:#fff;overflow:hidden;margin-bottom:16px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.k-thead .k-phead-eyebrow{color:rgba(255,255,255,.6)}
+.k-thead h1{font-size:clamp(23px,2.6vw,32px);letter-spacing:-.042em;line-height:1.16;margin:8px 0 8px;font-weight:700}
+.k-thead p{margin:0;color:rgba(255,255,255,.72);font-size:13px;line-height:1.6;max-width:56ch}
+.k-thead-actions{display:flex;gap:9px;flex-wrap:wrap}
+/* Opt-in (PageHeader wideActions): the actions claim a full row of the band,
+   so a child with margin-left:auto can sit against the right edge. */
+.k-thead-actions.wide{flex:1 1 100%;align-items:center}
+
+/* …but on a page whose whole job is the thing underneath it, the header is a
+   strip. One line, no description, so the calendar starts above the fold. */
+.k-thead.slim{padding:12px 20px;border-radius:var(--r-lg);margin-bottom:14px;align-items:center;gap:16px}
+.k-thead.slim .k-thead-title{display:flex;align-items:baseline;gap:11px;min-width:0}
+.k-thead.slim .k-phead-eyebrow{color:rgba(255,255,255,.55);font-size:9.5px}
+.k-thead.slim h1{font-size:17px;letter-spacing:-.03em;line-height:1.2;margin:0}
+.k-thead.slim .btn{padding:8px 14px;font-size:12px}
+/* Content sits above the drifting geometry behind it. */
+.k-thead.slim .k-thead-title,.k-thead.slim .k-thead-actions{position:relative;z-index:1}
+.k-thead.slim .k-hero-art{width:150px;height:120px}
+
+/* …and on a page that opens with numbers, the band carries them. Title left,
+   figures in the middle, actions right — one line instead of a panel, a
+   sentence, and a row of stat cards repeating what the panel just said. */
+.k-thead.one{padding:16px 24px;border-radius:var(--r-lg);margin-bottom:0;align-items:center;gap:18px 24px;flex-wrap:wrap}
+.k-thead.one>*{position:relative;z-index:1}
+.k-thead.one .k-thead-title{display:flex;align-items:center;gap:13px;min-width:0}
+.k-thead.one .k-phead-eyebrow{color:rgba(255,255,255,.58);font-size:9.5px}
+.k-thead.one h1{font-size:22px;letter-spacing:-.035em;line-height:1.2;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.k-thead.one .k-thead-meta{margin:3px 0 0;font-size:11.5px;color:rgba(255,255,255,.62);line-height:1.4}
+.k-thead.one .btn{padding:8px 14px;font-size:12px}
+.k-thead.one .avatar{background:rgba(255,255,255,.16);color:#fff;flex:0 0 auto}
+/* A select that belongs on the band rather than on the page under it. */
+.k-thead-select{border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:999px;padding:9px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;outline:0}
+.k-thead-select:disabled{opacity:.6;cursor:not-allowed}
+.k-thead-select option{color:var(--ink)}
+.k-thead.one .k-hero-art{width:150px;height:120px;opacity:.32}
+
+/* The numbers. Separated by a rule rather than boxed, so they read as one row
+   of figures and not as three more cards. */
+.k-thead-figures{display:flex;align-items:flex-end;flex-wrap:wrap;margin-left:auto}
+.k-thead-figures>div{padding:0 22px;border-left:1px solid rgba(255,255,255,.22)}
+.k-thead-figures>div:first-child{border-left:0;padding-left:0}
+.k-thead-figures>div:last-child{padding-right:0}
+.k-thead-figures span{display:block;font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);white-space:nowrap}
+.k-thead-figures b{display:block;font-size:23px;font-weight:800;letter-spacing:-.045em;line-height:1.1;margin-top:4px;white-space:nowrap}
+/* Units ride the number without competing with it — "/10", "%". */
+.k-thead-figures b i{font-style:normal;font-size:14px;font-weight:600;color:rgba(255,255,255,.6);margin-left:1px}
+/* Once the figures wrap under the title they stop being a right-hand column. */
+@media(max-width:1080px){
+  .k-thead-figures{margin-left:0;width:100%;border-top:1px solid rgba(255,255,255,.16);padding-top:14px}
+  .k-thead-figures>div:first-child{padding-left:0}
+}
+@media(max-width:560px){
+  .k-thead.one{padding:14px 16px}
+  .k-thead-figures>div{padding:0 14px}
+  .k-thead-figures b{font-size:19px}
+  .k-thead.one .k-thead-actions{width:100%}
+}
+
+/* Calendar on the left at full height, the numbers beside it on the right. */
+.k-overview{display:grid;grid-template-columns:minmax(0,1fr) 264px;gap:14px;align-items:start}
+@media(max-width:1100px){.k-overview{grid-template-columns:minmax(0,1fr)}}
+.k-overview-main{min-width:0;display:grid;gap:16px}
+.k-overview-rail{min-width:0;display:grid;gap:12px;position:sticky;top:14px}
+@media(max-width:1100px){.k-overview-rail{position:static}}
+/* Stacked in the rail, so the three stats read as a column of numbers. */
+.k-overview-rail .k-tstats{grid-template-columns:minmax(0,1fr);gap:10px;margin-bottom:0}
+.k-overview-rail .k-stat{padding:14px 16px;min-height:0}
+.k-overview-rail .k-stat-val b{font-size:26px}
+.k-overview-rail .k-stat-sub{font-size:11px}
+.k-rail-card{padding:14px 16px}
+.k-rail-card .analytics-label{margin:0 0 9px}
+@media(max-width:1100px){
+  .k-overview-rail .k-tstats{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .k-overview-rail .k-tstats{grid-template-columns:minmax(0,1fr)}
+}
+/* Scoped under .wrap as well, because `.wrap .btn-primary` further down this
+   file is the same specificity and would otherwise win on source order —
+   painting a blue button onto the blue band, which is invisible. */
+.k-thead .btn,.wrap .k-thead .btn{border-radius:999px;font-size:12.5px;padding:11px 18px;border:0}
+.k-thead .btn-ghost,.wrap .k-thead .btn-ghost{background:rgba(255,255,255,.15);color:#fff;box-shadow:none}
+.k-thead .btn-ghost:hover,.wrap .k-thead .btn-ghost:hover{background:rgba(255,255,255,.24);color:#fff}
+.k-thead .btn-primary,.wrap .k-thead .btn-primary{background:#fff;color:var(--forest-deep)}
+.k-thead .btn-primary:hover,.wrap .k-thead .btn-primary:hover{background:#eef2f7}
+
+/* ── sidebar collapse ──
+   Same shape as the <=900px responsive rules, but driven by the toggle in the
+   sidebar header. It sets data-nav on <html> because --sidebar lives on :root
+   and the whole layout's left margin is built on it. */
+.sidebar-top{display:flex;align-items:center;gap:10px}
+.sidebar-top .logo{flex:1 1 auto;min-width:0}
+.nav-toggle{flex:0 0 auto;width:28px;height:28px;border:0;border-radius:9px;background:var(--surface-2);color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:.15s ease}
+.nav-toggle:hover{background:var(--brand-soft);color:var(--forest)}
+.nav-toggle .ui-icon{width:15px;height:15px;transition:transform .2s ease}
+
+.app-sidebar,.wrap{transition:width .18s ease,margin-left .18s ease}
+
+/* Every collapse rule is gated to the widths where the sidebar is actually a
+   fixed rail. `html[data-nav=…] .app-sidebar` is specificity (0,2,1) and the
+   responsive rules below are (0,1,0), so ungated they won every media query:
+   a window narrowed while collapsed kept a 76px-wide card, but the card had
+   already gone `position:static`, which dropped the content underneath it and
+   still pushed it 104px to the right. Below 900px the sidebar is a rail
+   already and the toggle is hidden, so there is nothing to collapse. */
+@media(min-width:901px){
+  html[data-nav="collapsed"]{--sidebar:76px}
+  /* The KOKU shell floats the sidebar as an inset card and pins .wrap to a
+     literal margin, so collapsing has to move both — setting --sidebar alone
+     shrinks the rail and leaves the content where it was. */
+  html[data-nav="collapsed"] .app-sidebar{width:76px}
+  html[data-nav="collapsed"] .wrap{margin-left:104px}
+  /* Collapsed, the mark and the toggle stack — as two same-size filled squares
+     they read as one broken double-logo. Space them out and let the toggle be
+     a quiet icon until hovered, so the mark is clearly the only logo. */
+  html[data-nav="collapsed"] .sidebar-top{flex-direction:column;gap:14px;padding:18px 0 8px}
+  html[data-nav="collapsed"] .sidebar-top .logo{flex:0 0 auto}
+  html[data-nav="collapsed"] .nav-toggle{background:transparent;color:var(--muted);width:32px;height:32px}
+  html[data-nav="collapsed"] .nav-toggle:hover{background:var(--surface-2);color:var(--forest)}
+  html[data-nav="collapsed"] .nav-toggle .ui-icon{transform:rotate(180deg)}
+  html[data-nav="collapsed"] .logo>span:not(.mark),
+  html[data-nav="collapsed"] .nav-section-label,
+  html[data-nav="collapsed"] .side-link span,
+  html[data-nav="collapsed"] .sidebar-account .account-copy,
+  html[data-nav="collapsed"] .sidebar-account .btn,
+  html[data-nav="collapsed"] .side-link>.ui-icon:last-child:not(:first-child){display:none}
+  html[data-nav="collapsed"] .side-link{justify-content:center;padding:11px}
+  html[data-nav="collapsed"] .sidebar-account{justify-content:center;padding:15px}
+}
+/* Below 900px the sidebar is already a rail, and under 680px it becomes a top
+   bar — the toggle has nothing to collapse there. */
+@media(max-width:900px){.nav-toggle{display:none}}
+
+/* 861–900px was a mismatch between the two stylesheets: globals.css strips the
+   sidebar down to an icon rail there, but this file's `.app-sidebar` carries a
+   literal 236px that wins on source order — leaving a full-width card holding
+   a column of centred icons and 160px of nothing.
+   The window is 880px: there is room for the real sidebar and still ~615px of
+   content, so the labels come back rather than the card shrinking. Shrinking
+   it would also have taken Sign out with it, and the collapse toggle is hidden
+   at this width, so there would be no way to get it back. Written as an
+   explicit band so the <=860px top bar below still wins whatever the order. */
+@media(min-width:861px) and (max-width:900px){
+  .sidebar-top{padding:22px 20px 14px}
+  .logo>span:not(.mark),
+  .nav-section-label,
+  .side-link span,
+  .side-link>.ui-icon:last-child:not(:first-child){display:block}
+  .sidebar-account .account-copy{display:flex}
+  .side-link{justify-content:flex-start;padding:11px 12px}
+  .sidebar-account{justify-content:flex-start;padding:14px 16px}
+}
+
+/* teacher primitives — same treatment the student shell gets */
+.wrap .btn{border-radius:999px;padding:10px 17px;font-size:12.5px;box-shadow:none}
+.wrap .btn-primary{background:var(--forest);color:#fff}
+.wrap .btn-primary:hover{background:var(--forest-deep)}
+.wrap .btn-ghost{background:var(--surface);border-color:transparent;box-shadow:var(--shadow-soft);color:var(--muted)}
+.wrap .btn-ghost:hover{color:var(--ink)}
+.wrap .eyebrow,.wrap .section-label,.wrap .analytics-label{color:var(--forest)}
+.wrap .empty{border:0;background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--shadow-soft);padding:38px}
+.wrap .surface,.wrap .analytics-card,.wrap .summary-panel,.wrap .settings-card,.wrap .directory,.wrap .book-card{border:0;border-radius:var(--r-lg);box-shadow:var(--shadow-soft)}
+.wrap .connect-card{border:0;border-radius:var(--r-xl);box-shadow:var(--shadow-soft)}
+.wrap .pill{border-radius:999px;font-weight:800}
+.wrap .field label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:7px}
+.wrap .field input,.wrap .field select,.wrap .field textarea{width:100%;border:1.5px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 15px;font-size:13.5px;color:var(--ink);outline:0}
+.wrap .field input:focus,.wrap .field select:focus,.wrap .field textarea:focus{border-color:var(--forest);box-shadow:0 0 0 4px rgba(10,97,201,.12)}
+.wrap .lesson-row{border-left:0;border-right:0}
+.wrap .lesson-row:first-of-type{border-radius:var(--r-md) var(--r-md) 0 0}
+.wrap .lesson-row:last-child{border-radius:0 0 var(--r-md) var(--r-md)}
+.wrap .cal-opt{border-radius:999px;border:1.5px solid var(--line);background:var(--surface);padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer}
+.wrap .cal-opt.sel{background:var(--forest);border-color:var(--forest);color:#fff}
+.wrap .avatar{border-radius:13px}
+
+/* teacher colour-blocked stats — replaces .dashboard-summary */
+.k-tstats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}
+@media(max-width:760px){.k-tstats{grid-template-columns:1fr}}
+
+/* ═══════════════════════════════════════════════════════════════════
+   KOKU 2.0 — settings, availability, payments
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* A single column of cards, capped and centred. Full-bleed on a wide monitor
+   stretches every card into a band of empty space. */
+.k-page{max-width:1160px;margin:0 auto}
+/* The stack's own gap does the spacing — section headings need no run-up. */
+.k-page .section-heading{margin:0 0 10px}
+.k-page .analytics-card{padding:15px 16px}
+.k-page .analytics-value{font-size:22px;margin-top:4px}
+.k-page .empty{padding:24px}
+
+/* Settings is one view at a time: a rail of tabs beside the active panel.
+   Capped width — full-bleed cards on a wide monitor read as empty space. */
+.settings-wrap{max-width:1080px}
+.settings-layout{display:grid!important;grid-template-columns:190px minmax(0,1fr);gap:18px;align-items:start}
+@media(max-width:860px){.settings-layout{grid-template-columns:minmax(0,1fr);gap:12px}}
+.settings-index{position:sticky;top:14px;display:grid;gap:3px;background:var(--surface);border-radius:var(--r-lg);padding:7px;box-shadow:var(--shadow-soft)}
+.settings-index a,.settings-index button{display:block;width:100%;text-align:left;border:0;background:transparent;font:inherit;cursor:pointer;padding:10px 13px;border-radius:12px;font-size:12.5px;font-weight:700;color:var(--muted);transition:.16s ease}
+.settings-index a:hover,.settings-index button:hover{background:var(--surface-2);color:var(--ink)}
+.settings-index a.active,.settings-index button.active{background:var(--forest);color:#fff}
+@media(max-width:860px){
+  .settings-index{position:static;grid-auto-flow:column;grid-auto-columns:max-content;overflow-x:auto;gap:6px}
+  .settings-index a,.settings-index button{white-space:nowrap;width:auto}
+}
+.settings-stack{gap:14px}
+.settings-view{display:grid;gap:14px}
+.settings-view[hidden]{display:none}
+
+/* section card */
+.k-sec{background:var(--surface);border:0;border-radius:var(--r-xl);padding:22px 24px;box-shadow:var(--shadow-soft)}
+/* Dismiss control for an explainer panel. First shipped as a near-invisible ×
+   and a real teacher looked for a way to close the panel and missed it — so it
+   is a proper labelled button now. Discoverability beats subtlety on the one
+   control whose whole job is being found. */
+.k-sec-close{position:absolute;top:14px;right:16px;display:flex;align-items:center;gap:6px;
+  border:1.5px solid var(--line);border-radius:999px;padding:6px 13px;background:var(--surface);
+  color:var(--ink);font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+  transition:border-color .15s ease,background .15s ease}
+.k-sec-close:hover{border-color:var(--brand);background:var(--surface-2)}
+.k-sec-close:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+@media(max-width:560px){.k-sec{padding:18px 16px}}
+.k-sec-head{display:flex;align-items:flex-start;justify-content:flex-start;gap:12px;margin:0 0 16px}
+.k-sec-icon{flex:0 0 auto;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:17px;background:var(--brand-soft)}
+.k-sec-icon.y{background:#fdf1cd}.k-sec-icon.b{background:#dbeafe}.k-sec-icon.p{background:#f3e3ff}
+.k-sec h3{font-size:17px;font-weight:700;letter-spacing:-.028em;margin:0 0 3px}
+.k-sec .desc,.k-sec p.desc{font-size:12.5px;color:var(--muted);margin:0;line-height:1.6;max-width:62ch}
+
+/* connector cards — tighter than the stock .connector-card in globals */
+.k-sec .connector-grid{margin-top:0;gap:12px}
+.k-sec .connector-card{min-height:0;padding:16px;gap:8px}
+.k-sec .connector-logo{width:40px;height:40px;border-radius:10px}
+
+/* selectable option cards (calendar, platform) */
+.k-choices{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.k-choice{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:1.5px solid var(--line);background:var(--surface);border-radius:16px;padding:14px 16px;font:inherit;font-weight:700;font-size:13px;cursor:pointer;transition:.16s ease}
+.k-choice:hover{border-color:var(--forest);background:var(--brand-soft)}
+.k-choice.sel{border-color:var(--forest);background:var(--brand-soft);box-shadow:0 0 0 1px var(--forest)}
+.k-choice-tick{flex:0 0 auto;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line-strong);display:grid;place-items:center;font-size:11px;color:transparent}
+.k-choice.sel .k-choice-tick{background:var(--forest);border-color:var(--forest);color:#fff}
+.k-choice small{display:block;font-weight:500;font-size:11px;color:var(--muted);margin-top:1px}
+
+/* availability */
+.k-avail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:10px 12px;margin-bottom:16px}
+.k-week{display:grid;grid-template-columns:minmax(0,1fr);margin-bottom:6px}
+.avail-row{border-top:1px solid var(--line);padding:8px 0;align-items:center;gap:12px}
+.avail-row:first-child{border-top:0;padding-top:0}
+.k-day-toggle{display:flex;align-items:center;gap:10px;font-weight:700;font-size:13px}
+.k-ranges{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.k-chip-x{border:0;background:transparent;color:var(--muted);font:inherit;font-size:10px;line-height:1;padding:4px;border-radius:6px;cursor:pointer;transition:.14s ease}
+.k-chip-x:hover{color:var(--red);background:var(--surface)}
+
+/* sub-section header inside a card */
+.k-subhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0 10px;padding-top:16px;border-top:1px solid var(--line)}
+.k-subhead h4{margin:0;font-size:13.5px;font-weight:700;letter-spacing:-.02em}
+.k-subhead span{font-size:11.5px;color:var(--muted)}
+.k-subhead .btn{margin-left:auto}
+
+/* save row pinned to the bottom of a settings card */
+.k-save-bar{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.k-switch{position:relative;width:38px;height:22px;border-radius:999px;background:var(--line-strong);border:0;cursor:pointer;transition:.18s ease;flex:0 0 auto}
+.k-switch.on{background:var(--forest)}
+.k-switch::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.18s ease}
+.k-switch.on::after{transform:translateX(16px)}
+.k-time-chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border-radius:11px;padding:4px 6px}
+.k-time-chip input{border:1.5px solid transparent;background:var(--surface);border-radius:8px;padding:5px 7px;font:inherit;font-size:12.5px;font-weight:600;width:82px;outline:0}
+.k-time-chip input:focus{border-color:var(--forest)}
+.k-unavail{color:var(--muted);font-size:12.5px}
+
+/* payments */
+.k-pay-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media(max-width:760px){.k-pay-stats{grid-template-columns:1fr}}
+.k-table{background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--shadow-soft);overflow:hidden}
+.k-table-head{display:grid;gap:14px;padding:13px 20px;background:var(--surface-2);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.k-row{display:grid;gap:14px;align-items:center;padding:15px 20px;border-top:1px solid var(--line);font-size:13px;transition:.14s ease}
+.k-row:hover{background:var(--surface-2)}
+.k-row:first-child{border-top:0}
+@media(max-width:760px){
+  .k-table-head{display:none}
+  .k-row{grid-template-columns:minmax(0,1fr)!important;gap:7px}
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   KOKU 2.0 — onboarding + student-view studio
+   ═══════════════════════════════════════════════════════════════════ */
+
+.k-onb{min-height:100vh;background:var(--bg);padding:14px;display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px}
+.k-onb-side{position:relative;background:var(--forest);border-radius:var(--r-xl);overflow:hidden;padding:38px 34px;color:#fff;display:flex;flex-direction:column}
+.k-onb-brandline{display:flex;align-items:center;gap:11px;font-size:15px;font-weight:700;margin-bottom:38px}
+.k-onb-side h2{font-size:27px;line-height:1.16;letter-spacing:-.04em;margin:0 0 10px;font-weight:700;max-width:16ch}
+.k-onb-side>p{margin:0 0 30px;color:rgba(255,255,255,.68);font-size:13px;line-height:1.6;max-width:34ch}
+.k-onb-steps{list-style:none;margin:0;padding:0;display:grid;gap:4px;position:relative;z-index:1}
+.k-onb-steps li{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:14px;font-size:13px;font-weight:600;color:rgba(255,255,255,.6);transition:.16s ease}
+.k-onb-steps li.now{background:rgba(255,255,255,.14);color:#fff;font-weight:700}
+.k-onb-steps li.done{color:rgba(255,255,255,.85)}
+.k-onb-dot{flex:0 0 auto;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;background:rgba(255,255,255,.16)}
+.k-onb-steps li.done .k-onb-dot{background:#fff;color:var(--forest)}
+.k-onb-main{display:grid;place-items:center;padding:20px;min-width:0}
+.k-onb-card{width:min(560px,100%)}
+.k-onb-count{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--forest);margin-bottom:10px}
+.k-onb-card h1{font-size:clamp(24px,3vw,32px);letter-spacing:-.042em;margin:0 0 8px;font-weight:700}
+.k-onb-lead{color:var(--muted);font-size:13.5px;line-height:1.65;margin:0 0 22px;max-width:56ch}
+.k-onb-actions{display:flex;align-items:center;gap:10px;margin-top:24px;flex-wrap:wrap}
+.k-onb-ok{display:flex;align-items:center;gap:13px;background:var(--green-soft);border-radius:16px;padding:16px 18px}
+.k-onb-ok>span{width:30px;height:30px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:800;flex:0 0 auto}
+.k-onb-ok strong{display:block;font-size:13.5px}
+.k-onb-ok small{color:var(--muted);font-size:11.5px}
+.k-onb-preview{margin-top:18px;border-radius:var(--r-lg);padding:22px;color:#fff}
+.k-onb-preview span{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.k-onb-preview strong{display:block;font-size:20px;letter-spacing:-.03em;margin-top:7px}
+@media(max-width:900px){
+  .k-onb{grid-template-columns:minmax(0,1fr)}
+  .k-onb-side{padding:26px 24px}
+  .k-onb-side h2,.k-onb-side>p{max-width:100%}
+  .k-onb-side .k-hero-art{display:none}
+  .k-onb-steps{grid-auto-flow:column;grid-auto-columns:max-content;overflow-x:auto}
+}
+
+/* ── student-portal background presets (pure CSS, no assets) ── */
+.k-bg-plain{background:var(--bg)}
+.k-bg-dots{background-color:var(--bg);background-image:radial-gradient(var(--bg-ink) 1.1px,transparent 1.2px);background-size:20px 20px}
+.k-bg-grid{background-color:var(--bg);background-image:linear-gradient(var(--bg-ink) 1px,transparent 1px),linear-gradient(90deg,var(--bg-ink) 1px,transparent 1px);background-size:34px 34px}
+.k-bg-blobs{background-color:var(--bg);background-image:radial-gradient(circle at 12% 8%,var(--bg-tint) 0,transparent 34%),radial-gradient(circle at 88% 22%,var(--bg-tint) 0,transparent 30%),radial-gradient(circle at 62% 88%,var(--bg-tint) 0,transparent 32%);background-attachment:fixed}
+.k-bg-rings{background-color:var(--bg);background-image:repeating-radial-gradient(circle at 50% 0,transparent 0 38px,var(--bg-ink) 38px 39px);background-size:100% 100%;background-attachment:fixed}
+.k-bg-waves{background-color:var(--bg);background-image:repeating-linear-gradient(135deg,var(--bg-ink) 0 1px,transparent 1px 16px)}
+.k-bg-wash{background-image:linear-gradient(160deg,var(--bg-tint) 0%,var(--bg) 52%)}
+/* Preview swatches use the same recipes at a smaller scale. */
+.k-bg-chip{height:46px;border-radius:12px;border:1.5px solid var(--line);overflow:hidden}
+
+.k-field-label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin:16px 0 9px}
+.k-preset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px}
+.k-preset{border:1.5px solid var(--line);background:var(--surface);border-radius:14px;padding:7px;cursor:pointer;transition:.16s ease;text-align:center;font:inherit}
+.k-preset:hover{border-color:var(--forest)}
+.k-preset.sel{border-color:var(--forest);box-shadow:0 0 0 1px var(--forest)}
+.k-preset span{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-top:6px}
+.k-preset.sel span{color:var(--forest)}
+.k-shape-chip{height:46px;background:var(--surface-2);border:1.5px solid var(--line-strong)}
+
+
+/* ── the block flow ──
+   Blocks wrap left to right, each `--w` of 12 columns wide. Narrow one and the
+   next block moves up beside it, so there are no columns to keep in sync.
+   Width formula: for a row whose spans total 12 with (k-1) gaps between them,
+   w/12*(100% + gap) - gap sums back to exactly 100%. */
+.k-flow{--g:12px;display:flex;flex-wrap:wrap;align-items:stretch;gap:var(--g)}
+/* `--w` is the share of the row a block asks for, not a hard width: blocks on
+   a row that don't add up to 12 grow to fill it, in proportion to what they
+   asked for. A block that ends up alone on its row is full width rather than
+   two thirds of one with a hole beside it — which is what a layout written for
+   one long column did once the page became tabbed. */
+.k-flow>*{flex:var(--w,12) 1 calc((100% + var(--g)) * var(--w,12) / 12 - var(--g));min-width:0}
+/* Blocks on the same row share its height. Left to itself a short block beside
+   a tall one leaves a hole underneath it — the row is as tall as its tallest
+   block either way, so the short one may as well fill it. */
+.k-flow>*{display:flex;flex-direction:column}
+.k-flow>*>:only-child,
+.k-flow>*>:last-child:not(:only-child){flex:1 1 auto;min-height:0}
+.k-flow.narrow>*{flex-basis:100%}
+@media(max-width:760px){.k-flow>*{flex-basis:100%}}
+.k-flow-empty{width:100%!important;border:1.5px dashed var(--line-strong);border-radius:11px;padding:14px;text-align:center;font-size:10px;color:var(--muted)}
+
+/* ── directly-draggable preview blocks ── */
+/* The dragged block, shown where it would land. The rest of the flow has
+   already reflowed around it, so the drop target is the layout itself. */
+
+/* ── the studio menu: one drawer at a time ── */
+.k-tool{padding:0;overflow:hidden}
+.k-tool-head{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer;padding:13px 14px}
+.k-tool-head:hover{background:var(--surface-2)}
+.k-tool.open .k-tool-head{background:transparent;padding-bottom:6px}
+.k-tool-title{display:grid;gap:2px;min-width:0}
+.k-tool-title strong{font-size:13.5px;font-weight:700;letter-spacing:-.02em}
+.k-tool-title .desc{font-size:11px;line-height:1.45;color:var(--muted)}
+.k-tool-chev{margin-left:auto;color:var(--muted);font-size:12px;transition:transform .2s ease}
+.k-tool.open .k-tool-chev{transform:rotate(180deg)}
+.k-tool-body{padding:2px 14px 15px}
+.k-studio-controls .k-tool .k-sec-icon{width:30px;height:30px;border-radius:10px;font-size:14px;flex:0 0 auto}
+
+/* ── a block's own settings, folded under its switch ── */
+.k-toggle-block{border-top:1px solid var(--line)}
+.k-toggle-block:first-child{border-top:0}
+.k-toggle-block .k-toggle-row{border-top:0}
+.k-opt-btn{border:0;background:var(--surface-2);border-radius:999px;padding:5px 10px;font:inherit;font-size:10.5px;font-weight:800;color:var(--muted);cursor:pointer;white-space:nowrap;transition:.14s ease}
+.k-opt-btn:hover{color:var(--ink)}
+.k-toggle-block.open .k-opt-btn{background:var(--brand-soft);color:var(--forest)}
+.k-toggle-block.open .k-opt-btn span{display:inline-block;transform:rotate(180deg)}
+.k-toggle-opts{padding:2px 0 12px;display:grid;gap:2px}
+
+/* ── sections editor: one group per student-facing tab ──
+   A switch on its own says nothing about consequence. Grouped under the tab
+   they land on, with a live count beside it, turning the last one off reads as
+   what it is: that tab is gone. */
+/* Each student-facing tab is its own boxed card, so the boundary between one
+   tab's sections and the next is a drawn edge rather than an inferred one —
+   the flat list read as one undifferentiated run of switches. */
+.k-sgroup{margin-bottom:11px;border:1.5px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.k-sgroup:last-child{margin-bottom:0}
+.k-sgroup-head{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+  border:0;border-bottom:1px solid var(--line);background:var(--surface-2);padding:9px 13px;font:inherit;cursor:pointer;transition:.14s ease}
+.k-sgroup-head span{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.k-sgroup-head small{font-size:9.5px;font-weight:800;color:var(--muted);flex:0 0 auto;
+  background:var(--surface);border-radius:999px;padding:3px 8px}
+.k-sgroup-head:hover{background:var(--brand-soft)}
+.k-sgroup-head:hover span{color:var(--forest)}
+.k-sgroup-head.sel{background:var(--brand-soft);border-bottom-color:transparent}
+.k-sgroup-head.sel span{color:var(--forest)}
+.k-sgroup-head.sel small{color:var(--forest)}
+/* Every section off — the tab itself stops existing, so say so. */
+.k-sgroup-head small.gone{color:#fff;background:var(--red,#b4232a)}
+.k-sgroup .k-toggles{padding:0 12px}
+/* A section switched off stays legible but stops competing for attention. */
+.k-toggle-block.off .k-hw-title,.k-toggle-block.off .k-hw-due{opacity:.5}
+
+/* ── milestone ladder editor ── */
+.k-levels{display:grid;gap:7px}
+.k-level-row{display:grid;grid-template-columns:minmax(0,1fr) 68px auto;gap:6px;align-items:center}
+.k-level-row input{width:100%;border:1.5px solid var(--line);background:var(--surface);border-radius:11px;padding:9px 11px;font:inherit;font-size:12.5px;color:var(--ink);outline:0}
+.k-level-row input:focus{border-color:var(--forest)}
+
+/* studio: controls + live preview */
+/* The student view is the subject of this page: it takes the stage, and the
+   options sit in a narrow menu on the right. DOM order stays controls-then-
+   preview; grid `order` puts the preview first visually. */
+.k-studio{display:grid;grid-template-columns:minmax(0,1fr) 316px;gap:16px;align-items:start;max-width:1360px;margin:0 auto}
+/* The canvas scales instead of reflowing, so the two columns survive a narrow
+   window; below this the menu goes under the preview and neither may stick,
+   or the sticky one floats over the other as the page scrolls. */
+@media(max-width:820px){
+  .k-studio{grid-template-columns:minmax(0,1fr)}
+  .k-studio-preview,.k-studio-controls{position:static;max-height:none;overflow:visible}
+}
+.k-studio-preview{order:1}
+.k-studio-controls{order:2;display:grid;gap:10px;min-width:0;position:sticky;top:14px;max-height:calc(100vh - 28px);overflow-y:auto;padding-right:2px}
+
+/* Compact the options menu — it is secondary to the preview. */
+.k-studio-controls .k-sec{padding:16px}
+.k-studio-controls .k-sec-head{gap:10px;margin-bottom:12px}
+.k-studio-controls .k-sec-icon{width:34px;height:34px;border-radius:11px;font-size:15px}
+.k-studio-controls .k-sec h3{font-size:14px}
+.k-studio-controls .k-sec .desc{font-size:11px;line-height:1.5}
+.k-studio-controls .k-field{margin-bottom:10px}
+.k-studio-controls .k-field span{font-size:10.5px;margin-bottom:5px}
+.k-studio-controls .k-field input,.k-studio-controls .k-input{padding:9px 11px;font-size:12.5px;border-radius:11px}
+.k-studio-controls .k-field-label{font-size:10.5px;margin:12px 0 7px}
+.k-studio-controls .k-choice{padding:10px 12px;font-size:12px;border-radius:12px}
+.k-studio-controls .k-choices{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:7px}
+/* Accent swatches — the BASE rules, shared by onboarding step 4 and the
+   branding studio. These went missing in a stylesheet rewrite and only the
+   studio's size override survived, so onboarding rendered the buttons with no
+   size at all: a strip of unpickable slivers. */
+.k-swatches{display:flex;flex-wrap:wrap;gap:9px;margin:6px 0 2px}
+.k-swatch{width:34px;height:34px;border-radius:50%;border:2.5px solid transparent;padding:0;
+  cursor:pointer;flex:0 0 auto;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55);
+  transition:transform .12s ease,border-color .12s ease}
+.k-swatch:hover{transform:scale(1.12)}
+.k-swatch.sel{border-color:var(--ink,var(--ink));transform:scale(1.08)}
+.k-swatch:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.k-studio-controls .k-swatch{width:30px;height:30px;border-radius:10px}
+.k-studio-controls .k-preset-grid{grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:7px}
+.k-studio-controls .k-bg-chip{height:34px}
+.k-studio-controls .k-preset span{font-size:9.5px;margin-top:4px}
+.k-studio-controls .k-toggle-row{padding:9px 0}
+.k-studio-controls .k-hw-title{font-size:12px}
+.k-studio-controls .k-hw-due{font-size:10px}
+.k-studio-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.k-saved{font-size:12px;font-weight:700;color:var(--green)}
+.k-toggles{display:grid;gap:4px}
+.k-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 0;border-top:1px solid var(--line)}
+.k-toggle-row:first-child{border-top:0}
+
+.k-studio-preview{position:sticky;top:14px;min-width:0}
+.k-preview-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.k-preview-label{font-size:15px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+/* The canvas holds a fixed-width page scaled down to fit — see CANVAS_WIDTH in
+   BrandStudio. The wrapper's height is set from JS to the scaled height, so the
+   page below it doesn't sit under a full-size gap. */
+.k-canvas{position:relative;z-index:1}
+.k-preview-frame{container-type:inline-size;border-radius:var(--r-xl);padding:22px;box-shadow:var(--shadow-soft);display:grid;
+  /* An implicit auto column sizes to its widest child's min-content, and the
+     metric tabs are a nowrap row — on the phone canvas that pushed the whole
+     page 30px past the frame. Pin the column and let the children scroll. */
+  grid-template-columns:minmax(0,1fr);gap:14px;overflow:hidden;
+  width:var(--canvas-w,1180px);transform:scale(var(--canvas-scale,1));transform-origin:top left}
+
+/* The phone canvas is 390px and the pane is far wider, so its scale is pinned
+   at 1 and it was left-aligned against a wide empty gutter — which read as a
+   broken layout rather than as a phone. Centre it and give it a bezel, so the
+   narrow column is obviously the device and not the page falling over.
+   The bezel is a box-shadow ring, not a border: the frame is the container for
+   the @container queries inside it, and a border would shrink that width and
+   move the breakpoints. */
+.k-preview-frame.mobile{
+  margin-inline:auto;
+  border-radius:30px;
+  box-shadow:0 0 0 9px #1f2937,0 0 0 10px rgba(255,255,255,.14),0 30px 70px -20px rgba(31,41,55,.5)}
+
+/* A card given a whole row's height spends it, rather than clumping its
+   content at the top of an empty rectangle: charts grow into it, lists sit in
+   the middle of it. */
+.k-flow .k-card{display:flex;flex-direction:column}
+.k-flow .k-card>.k-hw{flex:1;align-content:center}
+/* Bounded on both sides: a percentage-height chart inside an auto-height card
+   has nothing to take a percentage of, and Recharts keeps growing into the gap
+   until the card is a screen tall. Between these two it fills spare row height
+   and then stops. */
+.k-chart-fill{flex:1;min-height:150px;max-height:250px;display:flex;flex-direction:column}
+.k-chart-fill>*{flex:1;min-height:0}
+
+/* ── charts ── */
+/* Recharts measures its parent, so every chart host has to be allowed to
+   shrink below its content width or it never gives width back on a phone. */
+.k-chart-card{min-width:0}
+.k-chart-card .recharts-wrapper{margin-top:8px}
+.k-gauge{position:relative;min-width:0}
+.k-gauge-mid{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none;line-height:1.1}
+.k-gauge-mid b{font-size:22px;font-weight:800;letter-spacing:-.035em}
+.k-gauge-mid small{display:block;font-size:9.5px;font-weight:700;color:var(--muted);margin-top:3px}
+/* A block the teacher gave a fixed height keeps it and scrolls its overflow. */
+
+/* Height chips — a resized block is listed so it can be handed back. */
+
+.k-preview-switches{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* ── remove-on-the-page ──
+   The studio wraps every previewed section in .k-zap. Hovering it names the
+   section and offers one ✕; pressing it switches the section off, and the
+   flow layout closes the gap on its own — three tiles become two that share
+   the row, a full-width band just leaves. The student's page never renders
+   these wrappers. */
+/* No outline on hover — a dashed box over the whole section read as a broken
+   grey rectangle, not an affordance. The named tag and the ✕ are enough. */
+.k-zap{position:relative}
+.k-zap-x{position:absolute;top:-9px;right:-9px;z-index:7;width:30px;height:30px;border-radius:50%;border:0;
+  background:#fff;color:var(--red);font:inherit;font-size:13px;font-weight:800;line-height:1;cursor:pointer;
+  display:grid;place-items:center;box-shadow:0 3px 10px rgba(0,0,0,.22);
+  opacity:0;transform:scale(.75);transition:.15s ease}
+.k-zap:hover .k-zap-x{opacity:1;transform:none}
+.k-zap-x:hover{background:var(--red);color:#fff}
+/* The per-tile ✕ inside "Your speaking, measured" — smaller, and tucked into
+   the tile's own corner so six of them don't crowd the card. All six appear
+   as soon as the card is hovered, not one at a time under the cursor: the
+   per-tile control has to be seen to be believed in. */
+.k-zap-x-sm{width:22px;height:22px;font-size:10px;top:4px;right:4px;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.corrections-card:hover .k-zap-x-sm,
+.k-stats:hover .k-zap-x-sm,
+.k-speak-grid:hover .k-zap-x-sm{opacity:1;transform:none}
+.k-zap-tag{position:absolute;top:-9px;right:28px;z-index:7;background:var(--ink);color:#fff;border-radius:999px;
+  padding:6px 12px;font-size:11px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;
+  opacity:0;transition:.15s ease;pointer-events:none}
+.k-zap:hover .k-zap-tag{opacity:1}
+
+/* What has been taken off, offered back as chips above the canvas. */
+.k-zap-tray{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:-4px 0 12px}
+.k-zap-tray>span{font-size:11px;font-weight:800;color:var(--muted)}
+.k-zap-tray button{border:1.5px dashed var(--line-strong);background:var(--surface);border-radius:999px;
+  padding:6px 12px;font:inherit;font-size:11.5px;font-weight:700;color:var(--muted);cursor:pointer;transition:.14s ease}
+.k-zap-tray button:hover{color:var(--forest);border-color:var(--forest);background:var(--brand-soft)}
+
+/* ── the teacher's font pairing ──
+   Scoped to the branded surfaces only, so the teacher's own tooling keeps its
+   own type. Both vars come from brandVars(). */
+.k-shell,.k-preview-frame{font-family:var(--font-body,"Plus Jakarta Sans",system-ui,sans-serif)}
+.k-shell :is(h1,h2,h3,h4),.k-preview-frame :is(h1,h2,h3,h4),
+.k-shell :is(.k-name,.k-stat-val,.k-course-title,.k-pscore b,.stat-card-value,.metric .mv),
+.k-preview-frame :is(.k-name,.k-stat-val,.k-pscore b,.stat-card-value,.metric .mv,.tab)
+{font-family:var(--font-head,"Outfit",system-ui,sans-serif)}
+
+/* ── full presets ── */
+.k-presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.k-preset-card{position:relative;border:1.5px solid var(--line);background:var(--surface);border-radius:14px;padding:0;overflow:hidden;cursor:pointer;font:inherit;text-align:left;transition:.16s ease}
+.k-preset-card:hover{border-color:var(--forest);transform:translateY(-1px)}
+.k-preset-card.sel{border-color:var(--forest);box-shadow:0 0 0 1px var(--forest)}
+.k-preset-swatch{height:42px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.k-preset-swatch b{position:relative;z-index:1;color:#fff;font-size:15px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.k-preset-swatch i{position:absolute;right:7px;bottom:-9px;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.3)}
+.k-preset-card>span{display:block;padding:7px 9px 8px}
+.k-preset-card strong{display:block;font-size:11px;font-weight:800;letter-spacing:-.01em}
+.k-preset-card small{display:block;font-size:9px;color:var(--muted);line-height:1.35;margin-top:2px}
+
+/* ── recap preview: sections arrange like dashboard blocks ──
+   Direct children only. Descendant-matched, this handed height:100% to every
+   card nested inside a section too, so a tab holding two lesson notes gave the
+   first one the whole row and pushed the second off the bottom. */
+.k-lpview .k-flow>*>.lesson-block,.k-lpview .k-flow>*>.corrections-card,
+.k-lpview .k-flow>*>.stat-card,.k-lpview .k-flow>*>.lesson-stack{margin-bottom:0;height:100%}
+.k-lpview .k-flow{width:100%}
+/* A section that is itself a stack of cards: they share the row, they don't
+   each claim it. Used by the lesson notes, the memo and the file drawer. */
+.lesson-stack{display:grid;gap:12px;align-content:start}
+.lesson-stack>.lesson-block{margin-bottom:0}
+.k-lpview .lesson-stack{gap:10px}
+
+/* ── lesson-recap preview ──
+   Real page classes at preview scale, so the accent, corners and background
+   are whatever the student would actually see. */
+.k-lpview .k-back{display:inline-block;font-size:11px;margin:0 0 10px}
+.k-lpview .k-phead{padding:18px 20px;margin-bottom:12px;gap:14px}
+.k-lpview .k-phead-eyebrow{font-size:9px}
+.k-lpview .k-phead h1{font-size:19px;margin:6px 0 10px;max-width:20ch}
+.k-lpview .k-pmeta{gap:6px}
+.k-lpview .k-pmeta span{padding:4px 9px;font-size:9.5px}
+.k-lpview .k-pscore{width:64px;height:64px}
+.k-lpview .k-pscore b{font-size:21px}
+.k-lpview .k-pscore small{font-size:7px;letter-spacing:.08em;margin-top:3px}
+.k-lpview .tabs{padding:4px;margin-bottom:12px}
+.k-lpview .tab{padding:7px 13px;font-size:11px}
+.k-lpview .dashboard-title{font-size:13px;margin:0 0 10px}
+.k-lpview .stat-cards{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:10px}
+.k-lpview .stat-card{padding:12px 13px;min-height:0;gap:8px}
+.k-lpview .stat-card-head{margin-bottom:7px;gap:6px}
+.k-lpview .stat-card-label{font-size:8.5px;letter-spacing:.05em}
+.k-lpview .stat-card-value{font-size:18px}
+.k-lpview .stat-card-note{font-size:9.5px}
+.k-lpview .stat-chip{font-size:9px;padding:3px 8px}
+.k-lpview .balance-bars{gap:6px}
+.k-lpview .balance-row{grid-template-columns:44px minmax(0,1fr) 26px;gap:6px;font-size:9px}
+.k-lpview .balance-track{height:5px}
+.k-lpview .lesson-block,.k-lpview .corrections-card{padding:14px 16px;margin-bottom:10px}
+.k-lpview .lesson-block h3{font-size:12.5px;margin-bottom:8px}
+.k-lpview .lesson-block p,.k-lpview .lesson-block li,.k-lpview .analytics-note{font-size:11px;line-height:1.6;margin:0}
+.k-lpview .lesson-block li{margin-bottom:5px}
+.k-lpview .metric-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.k-lpview .metric{padding:9px 10px}
+.k-lpview .metric .mv{font-size:15px}
+.k-lpview .metric .mk{font-size:8px;margin-top:4px}
+.k-lpview .metric .mn{font-size:8px}
+.k-lpview .example{font-size:11px;line-height:1.6}
+@container (max-width:620px){
+  /* .k-lpview's own rules above are (0,2,0), so match that weight or they win
+     and the recap stays four tiles wide on a phone. */
+  .stat-cards,.k-lpview .stat-cards{grid-template-columns:minmax(0,1fr)}
+  .metric-grid,.k-lpview .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .k-phead{flex-wrap:wrap;padding:20px 22px}
+  .k-phead h1{font-size:21px}
+  .lesson-block,.corrections-card,.ex-card{padding:18px 18px}
+}
+@container (max-width:430px){
+  .tabs{gap:0}
+  .tab{padding:10px 10px;font-size:11.5px}
+  .k-dtabs button{padding:10px 13px;font-size:12px}
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Public booking — real month calendar, times on the right
+   ═══════════════════════════════════════════════════════════════════ */
+.k-book-grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:820px){.k-book-grid{grid-template-columns:minmax(0,1fr)}}
+
+.k-cal-card{background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--shadow-soft);padding:20px;min-width:0}
+.k-cal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
+.k-cal-head strong{font-size:16px;font-weight:700;letter-spacing:-.025em}
+.k-cal-nav{width:32px;height:32px;border-radius:50%;border:0;background:var(--surface-2);color:var(--ink);font-size:17px;line-height:1;cursor:pointer;transition:.15s ease}
+.k-cal-nav:hover:not(:disabled){background:var(--brand-soft);color:var(--forest)}
+.k-cal-nav:disabled{opacity:.35;cursor:not-allowed}
+
+.k-cal-dows{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:6px}
+.k-cal-dows span{text-align:center;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+
+.k-cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.k-cal-cell{position:relative;aspect-ratio:1;min-width:0;display:grid;place-items:center;border:0;background:transparent;border-radius:11px;font:inherit;font-size:13px;font-weight:600;color:var(--line-strong);cursor:default;transition:.14s ease}
+.k-cal-cell.empty{visibility:hidden}
+.k-cal-cell.open{color:var(--ink);background:var(--surface-2);cursor:pointer;font-weight:700}
+.k-cal-cell.open:hover{background:var(--brand-soft);color:var(--forest);transform:translateY(-1px)}
+.k-cal-cell.sel{background:var(--forest);color:#fff}
+.k-cal-cell i{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--forest)}
+.k-cal-cell.sel i{background:#fff}
+.k-cal-legend{display:flex;align-items:center;gap:7px;margin:16px 0 0;font-size:11px;color:var(--muted)}
+.k-cal-legend i{width:5px;height:5px;border-radius:50%;background:var(--forest);flex:0 0 auto}
+
+.k-slot-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:14px}
+.k-slot-head strong{font-size:15.5px;font-weight:700;letter-spacing:-.02em}
+.k-slot-head span{font-size:11.5px;color:var(--muted);font-weight:700;white-space:nowrap}
+.k-slot-empty{display:grid;place-items:center;gap:5px;padding:52px 20px;text-align:center;border:1.5px dashed var(--line-strong);border-radius:var(--r-lg)}
+.k-slot-empty strong{font-size:14px}
+.k-slot-empty span{font-size:12px;color:var(--muted)}
+.k-book-form{margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+
+/* ── centred dialog ── */
+.k-modal{position:fixed;inset:0;z-index:80;background:rgba(20,32,25,.45);backdrop-filter:blur(3px);display:grid;place-items:start center;padding:24px 16px;overflow-y:auto;animation:kfade .16s ease both}
+.k-modal-card{width:min(480px,100%);background:var(--surface);border-radius:var(--r-xl);box-shadow:0 24px 60px rgba(20,32,25,.28);padding:24px;animation:kpop .18s ease both}
+@keyframes kfade{from{opacity:0}}
+@keyframes kpop{from{opacity:0;transform:translateY(10px) scale(.98)}}
+@media(prefers-reduced-motion:reduce){.k-modal,.k-modal-card{animation:none}}
+.k-modal-card .field input,.k-modal-card .field select{width:100%;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:11px 13px;font:inherit;font-size:13.5px;color:var(--ink);outline:0}
+.k-modal-card .field input:focus,.k-modal-card .field select:focus{border-color:var(--forest);box-shadow:0 0 0 4px rgba(10,97,201,.12)}
+.k-modal-card .field label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:6px}
+.k-modal-card .field{margin-bottom:12px}
+
+/* — test page — */
+.test-scorebar{border:0;border-radius:999px;box-shadow:var(--shadow-soft);background:rgba(255,255,255,.94)}
+.test-opt{border-radius:13px;border-width:1.5px}
+.test-opt:hover:not(:disabled){border-color:var(--forest);background:var(--brand-soft)}
+.test-gap{color:var(--forest);border-bottom-color:var(--forest)}
+.test-passage{border-radius:var(--r-md);font-size:14.5px}
+.script-opt{border-radius:14px;border-width:1.5px}
+.script-opt.sel{border-color:var(--forest);background:var(--brand-soft);box-shadow:0 0 0 1px var(--forest)}
+.script-opt.sel strong{color:var(--forest)}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOTION — the portal should feel alive, not decorated
+   ═══════════════════════════════════════════════════════════════════
+   Two rules kept throughout:
+
+   1. Only `translate`, `rotate`, `scale` and `opacity` are animated. The
+      individual transform properties matter: the decorative props carry
+      per-instance `transform: rotate(...)` inline, and animations beat inline
+      styles in the cascade — animating `transform` would throw those away.
+      These compose with it instead.
+   2. Entrances use fill-mode `backwards`, never `both`. A finished `both`
+      animation leaves the element a containing block forever, which is what
+      trapped position:fixed modals inside .wrap once already.
+
+   The global prefers-reduced-motion rule in globals.css switches all of it
+   off with `*{animation:none!important}`. */
+
+@keyframes k-float{0%,100%{translate:0 0}50%{translate:0 -11px}}
+@keyframes k-float-wide{0%,100%{translate:0 0}50%{translate:-9px 7px}}
+@keyframes k-sway{0%,100%{rotate:-5deg}50%{rotate:6deg}}
+@keyframes k-breathe{0%,100%{scale:1}50%{scale:1.055}}
+@keyframes k-rise{from{opacity:0;translate:0 14px}}
+@keyframes k-grow{from{transform:scaleX(0)}}
+
+/* ── ambient drift on the decorative geometry ── */
+.k-orb{animation:k-float 7.5s ease-in-out infinite,k-breathe 9s ease-in-out infinite}
+.k-tube{animation:k-float-wide 9.5s ease-in-out infinite,k-sway 12s ease-in-out infinite}
+.k-crystal{animation:k-float 8.5s ease-in-out infinite,k-sway 13.5s ease-in-out infinite}
+.k-ring{animation:k-float-wide 11s ease-in-out infinite,k-breathe 7s ease-in-out infinite}
+/* Negative delays so a cluster never moves in lockstep. A single delay value
+   applies to every animation on the element, which is what we want here. */
+:is(.k-hero-art,.k-preview-props)>*:nth-child(2){animation-delay:-2.6s}
+:is(.k-hero-art,.k-preview-props)>*:nth-child(3){animation-delay:-5.1s}
+:is(.k-hero-art,.k-preview-props)>*:nth-child(4){animation-delay:-7.4s}
+
+/* ── entrances ──
+   Cards arrive in sequence rather than all at once. */
+:is(.k-stats,.k-tstats,.stat-cards,.k-courses,.metric-grid,.k-flow,.k-hw)>*{
+  animation:k-rise .5s cubic-bezier(.2,.75,.3,1) backwards;
+}
+:is(.k-stats,.k-tstats,.stat-cards,.k-courses,.metric-grid,.k-flow,.k-hw)>*:nth-child(2){animation-delay:.06s}
+:is(.k-stats,.k-tstats,.stat-cards,.k-courses,.metric-grid,.k-flow,.k-hw)>*:nth-child(3){animation-delay:.12s}
+:is(.k-stats,.k-tstats,.stat-cards,.k-courses,.metric-grid,.k-flow,.k-hw)>*:nth-child(4){animation-delay:.18s}
+:is(.k-stats,.k-tstats,.stat-cards,.k-courses,.metric-grid,.k-flow,.k-hw)>*:nth-child(5){animation-delay:.24s}
+:is(.k-stats,.k-tstats,.stat-cards,.k-courses,.metric-grid,.k-flow,.k-hw)>*:nth-child(n+6){animation-delay:.3s}
+/* Dragging is a live reorder — re-running entrances mid-drag would fight it. */
+
+.k-phead,.k-thead{animation:k-rise .55s cubic-bezier(.2,.75,.3,1) backwards}
+
+/* ── bars fill instead of appearing full ── */
+.k-hw-fill,.balance-fill,.vocab-line-bar>div{transform-origin:left center;animation:k-grow .9s cubic-bezier(.2,.8,.25,1) .12s backwards}
+
+/* ── hover life ── */
+.k-stat,.stat-card{transition:translate .18s ease,box-shadow .18s ease}
+.k-stat:hover,.stat-card:hover{translate:0 -3px;box-shadow:var(--shadow-lift)}
+.tab{transition:background .16s ease,color .16s ease,translate .16s ease}
+.tab:hover:not(.sel){translate:0 -1px}
+
+/* A number that has just counted up gets a beat of the accent behind it. */
+@keyframes k-tick{from{color:var(--forest)}}
+.k-count.done{animation:k-tick 1.1s ease}
+
+/* — vocabulary — every word, and the lesson it first came from — */
+.k-vocab-list{display:grid;gap:2px}
+.k-vocab-row{padding:13px 0;border-top:1px solid var(--line)}
+.k-vocab-row:first-child{border-top:0;padding-top:0}
+.k-vocab-main{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.k-vocab-word{font-size:15px;font-weight:750;letter-spacing:-.01em}
+.k-vocab-reading{font-size:12px;color:var(--muted);font-style:italic}
+.k-vocab-level{font-size:10px;font-weight:800;letter-spacing:.04em;background:var(--brand-soft);color:var(--forest);border-radius:999px;padding:2px 8px}
+.k-vocab-def{margin:3px 0 0;font-size:13px;line-height:1.5}
+.k-vocab-when{margin:5px 0 0;font-size:11.5px;color:var(--muted)}
+
+/* — student portal without the rail: one column, and a slim header — */
+.k-shell.solo{grid-template-columns:minmax(0,1fr)}
+.k-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:6px}
+.k-bar-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.k-bar-mark{width:34px;height:34px;flex:0 0 auto;border-radius:11px;background:var(--forest);color:#fff;display:grid;place-items:center}
+.k-bar-mark .ui-icon{width:17px;height:17px}
+.k-bar-name{font-weight:750;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.k-bar-out{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:999px;background:var(--surface);color:var(--muted);font-size:12px;font-weight:700;box-shadow:var(--shadow-soft);transition:.15s ease}
+.k-bar-out:hover{color:var(--ink)}
+.k-bar-out .ui-icon{width:16px;height:16px}
+@media(max-width:560px){.k-bar-out span{display:none}.k-bar-out{padding:9px}}
+
+/* — vocabulary by level: a bar you can open — */
+.k-vlv-bar{display:flex;gap:3px;height:14px;border-radius:999px;overflow:hidden}
+.k-vlv-seg{border:0;padding:0;cursor:pointer;transition:.16s ease;opacity:.92}
+.k-vlv-seg:hover{opacity:1}
+.k-vlv-seg.sel{opacity:1;box-shadow:inset 0 0 0 2px rgba(255,255,255,.75)}
+.k-vlv-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.k-vlv-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font:inherit;font-size:11.5px;font-weight:700;color:var(--muted);cursor:pointer;transition:.15s ease}
+.k-vlv-chip i{width:8px;height:8px;border-radius:999px;background:var(--lv);flex:0 0 auto}
+.k-vlv-chip b{font-weight:800;color:var(--ink)}
+.k-vlv-chip:hover{border-color:var(--line-strong)}
+.k-vlv-chip.sel{border-color:var(--lv);color:var(--ink);background:var(--surface-2)}
+.k-vlv-hint{margin:12px 0 0;font-size:11.5px;color:var(--muted)}
+
+/* — onboarding: the recorder step — */
+.k-onb-list{margin:18px 0 0;padding-left:20px;display:grid;gap:9px;font-size:13px;line-height:1.55}
+.k-onb-list strong{font-weight:750}
+.k-onb-cta{display:inline-flex;align-items:center;justify-content:center;margin-top:20px;padding:12px 20px;border-radius:999px;background:var(--forest);color:#fff;font-weight:750;font-size:13px}
+.k-onb-cta:hover{background:var(--forest-deep)}
+.k-onb-fine{margin:14px 0 0;font-size:11.5px;color:var(--muted)}
+
+/* ═══════════════════════════════════════════════════════════════════
+   iOS focus-zoom
+   ═══════════════════════════════════════════════════════════════════
+   Safari on iOS magnifies the whole page whenever a focused control's text
+   measures under 16px — and it never zooms back out. One tap on the sign-in
+   field (14px) left the student magnified through login and into their
+   portal, with no way back but a manual pinch.
+
+   16px on touch devices is the whole cure. It has to be !important because
+   the rules it corrects are more specific than any bare element selector
+   (.k-studio-controls .k-field input, .wrap .field input, and eight more) —
+   raising each of them separately would leave the next new field to fall into
+   the same trap.
+
+   The other way to stop the zoom is maximum-scale in the viewport meta, which
+   works by forbidding zoom entirely, for everyone, everywhere. Not that.
+
+   Keyed on pointer:coarse rather than a width, because this is a property of
+   touch input, not of a small screen: an iPad in landscape is 1024px wide and
+   zooms exactly the same way. */
+@media (pointer: coarse) {
+  input, select, textarea,
+  .k-field input, .k-input, .review-input,
+  .k-shell .field input, .k-scope .field input,
+  .wrap .field input, .wrap .field select, .wrap .field textarea,
+  .k-modal-card .field input, .k-modal-card .field select,
+  .k-studio-controls .k-field input, .k-studio-controls .k-input,
+  .k-level-row input, .k-time-chip input {
+    font-size: 16px !important;
+  }
+}
+
+/* ══ Trial welcome — the first thing a new account sees ══
+   One card, one number. The conic ring and the staggered rise are the
+   whole show; it should feel like a gift, not a popup. */
+.tw-layer{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:16px;
+  background:rgba(10,16,13,.45);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);animation:tw-fade .4s ease both}
+@keyframes tw-fade{from{opacity:0}}
+.tw-card{position:relative;width:min(460px,100%);background:var(--surface);border-radius:26px;
+  padding:42px 38px 34px;text-align:center;box-shadow:0 30px 90px rgba(0,0,0,.4);
+  animation:tw-pop .6s .1s cubic-bezier(.18,1.2,.32,1) both;overflow:hidden}
+@keyframes tw-pop{from{opacity:0;transform:translateY(26px) scale(.93)}}
+.tw-ring{position:relative;width:112px;height:112px;margin:0 auto 20px;border-radius:50%;display:grid;place-items:center}
+.tw-ring::before{content:"";position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,var(--forest),#7cc0ff,#a24ee0,var(--forest));
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 9px),#000 calc(100% - 8px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 9px),#000 calc(100% - 8px));
+  animation:tw-spin 6s linear infinite}
+@keyframes tw-spin{to{transform:rotate(360deg)}}
+.tw-num{font-size:46px;font-weight:800;letter-spacing:-.05em;animation:tw-rise .5s .35s ease both}
+.tw-kicker{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--forest);
+  animation:tw-rise .5s .25s ease both}
+.tw-title{font-size:24px;font-weight:700;letter-spacing:-.035em;line-height:1.15;margin:6px 0 8px;
+  animation:tw-rise .5s .35s ease both}
+.tw-sub{font-size:13.5px;line-height:1.6;color:var(--muted);max-width:34ch;margin:0 auto;
+  animation:tw-rise .5s .45s ease both}
+.tw-actions{display:flex;gap:10px;justify-content:center;margin-top:24px;flex-wrap:wrap;
+  animation:tw-rise .5s .55s ease both}
+@keyframes tw-rise{from{opacity:0;transform:translateY(12px)}}
+.tw-spark{position:absolute;border-radius:50%;pointer-events:none;opacity:0;animation:tw-spark 2.6s ease-in-out infinite}
+@keyframes tw-spark{0%,100%{opacity:0;transform:translateY(6px) scale(.6)}40%{opacity:.9;transform:translateY(-4px) scale(1)}}
+@media(prefers-reduced-motion:reduce){
+  .tw-layer,.tw-card,.tw-num,.tw-kicker,.tw-title,.tw-sub,.tw-actions{animation:none}
+  .tw-ring::before{animation:none}
+  .tw-spark{display:none}
+}
+
+/* ══ Recorder guide — steps that reveal as you reach them ══ */
+.rg-reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.rg-reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.rg-reveal{opacity:1;transform:none;transition:none}}
+
+.rg-step{display:grid;grid-template-columns:44px minmax(0,1fr);gap:16px;position:relative;padding-bottom:34px}
+.rg-step:not(:last-child)::before{content:"";position:absolute;left:21px;top:48px;bottom:6px;width:2px;
+  background:var(--line-strong);border-radius:999px}
+.rg-n{width:44px;height:44px;border-radius:50%;background:var(--forest);color:#fff;display:grid;place-items:center;
+  font-weight:800;font-size:16px;flex:0 0 auto;box-shadow:0 6px 16px rgba(10,97,201,.3)}
+.rg-body h3{margin:8px 0 6px;font-size:17px;letter-spacing:-.02em}
+.rg-body>p{margin:0 0 14px;color:var(--muted);font-size:13.5px;line-height:1.6;max-width:52ch}
+
+/* The drawn "screenshots" — markup, so they can't go stale. */
+.rg-art{background:var(--surface);border-radius:16px;padding:16px;box-shadow:var(--shadow-soft);max-width:460px}
+.rg-browser{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.rg-chrome{display:flex;align-items:center;gap:8px;background:var(--surface-2);padding:8px 10px;border-bottom:1px solid var(--line)}
+.rg-dots{display:flex;gap:4px}
+.rg-dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.rg-url{flex:1;background:#fff;border-radius:999px;font-size:10.5px;font-weight:600;color:var(--muted);padding:4px 12px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rg-puzzle{font-size:13px}
+.rg-pin{width:20px;height:20px;border-radius:6px;background:var(--forest);color:#fff;display:grid;place-items:center;
+  font-size:10px;font-weight:800}
+.rg-page{padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.rg-store-name{font-size:13px;font-weight:800;letter-spacing:-.02em}
+.rg-store-sub{font-size:10px;color:var(--muted);font-weight:600}
+.rg-cta{border-radius:999px;background:var(--forest);color:#fff;font-size:11.5px;font-weight:700;padding:8px 14px;white-space:nowrap}
+
+.rg-popup{border:1px solid var(--line);border-radius:14px;max-width:250px;overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.1)}
+.rg-pop-head{display:flex;align-items:center;gap:8px;background:var(--forest);color:#fff;padding:9px 12px;
+  font-size:11.5px;font-weight:800;letter-spacing:-.01em}
+.rg-pop-head .rg-pin{background:rgba(255,255,255,.2)}
+.rg-pop-body{padding:12px;display:grid;gap:8px}
+.rg-field{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:10.5px;color:var(--muted);font-weight:600;background:#fff}
+.rg-field b{color:var(--ink)}
+.rg-rec-btn{border-radius:999px;padding:9px 12px;text-align:center;font-size:11.5px;font-weight:800;color:#fff}
+.rg-rec-btn.start{background:#c43d3d}
+.rg-rec-btn.send{background:var(--green)}
+.rg-timer{display:flex;align-items:center;justify-content:center;gap:7px;font-size:16px;font-weight:800;letter-spacing:.02em;padding:4px 0}
+.rg-timer i{width:9px;height:9px;border-radius:50%;background:#c43d3d;animation:rg-blink 1.2s steps(1) infinite}
+@keyframes rg-blink{50%{opacity:.25}}
+@media(prefers-reduced-motion:reduce){.rg-timer i{animation:none}}
+.rg-queue-row{display:flex;align-items:center;gap:10px;background:var(--surface-2);border-radius:12px;padding:10px 12px}
+.rg-queue-row .num{width:26px;height:26px;border-radius:8px;background:var(--brand-soft);color:var(--forest);
+  display:grid;place-items:center;font-size:10px;font-weight:800}
+.rg-queue-row .who{flex:1;min-width:0}
+.rg-queue-row .who b{display:block;font-size:12px}
+.rg-queue-row .who span{display:block;font-size:10px;color:var(--muted);font-weight:600}
+.rg-queue-row .go{border-radius:999px;background:var(--forest);color:#fff;font-size:10px;font-weight:800;padding:6px 11px;white-space:nowrap}
+
+/* Onboarding language step: the question worn as a sentence. */
+.k-onb-sentence{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+  font-size:clamp(24px,3vw,32px);font-weight:700;letter-spacing:-.04em;margin:2px 0 10px}
+.k-onb-sentence select{font:inherit;font-weight:800;color:var(--forest);border:0;
+  border-bottom:3px solid var(--forest);border-radius:0;background:transparent;
+  padding:0 2px 3px;cursor:pointer;max-width:100%}
+.k-onb-sentence select:focus{outline:none;border-bottom-color:var(--forest-deep)}
+
+/* The recaps-left tile drains as the month is spent, and clicks through to
+   Settings -> Subscription. */
+.k-stat-bar{height:6px;border-radius:999px;background:rgba(255,255,255,.28);margin-top:10px;overflow:hidden}
+.k-stat-bar i{display:block;height:100%;border-radius:999px;background:#fff;transition:width .6s ease}
+a.k-stat{text-decoration:none;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+a.k-stat:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(31,41,55,.16)}
+
+/* ═══════════════════════════════════════════════════════════════════
+   THE RECAP, AS MOVEMENTS
+   One scroll instead of five tabs. Every class here is prefixed `kr-`
+   on purpose: the movement tints (kr-mv--fix, kr-mv--covered …) share a
+   namespace with nothing, because the prototype hit the same collision
+   three times — a tint class called `cov` also matched the master/detail
+   grid called `cov` and turned the wrapper into a two-column grid.
+   ═══════════════════════════════════════════════════════════════════ */
+/* The recap measures itself, not the window: the same page renders inside
+   the branding studio's narrow preview panel, where a media query would
+   report the desktop and lay out the wrong thing.
+   CAUTION, as with .k-main: container-type applies containment, making
+   this a containing block for position:fixed descendants. Nothing inside
+   the recap is fixed today; render any future modal in a portal. */
+.kr{container-type:inline-size;position:relative}
+
+/* — narrow: a hairline that fills, naming the movement under it — */
+/* Stuck to the BOTTOM of the screen, not the top: this is a control you reach
+   for while reading, and the top of a phone is a stretch every time.
+   Bleeds to the screen edge so it reads as chrome rather than another card —
+   -12px because that is .k-shell's padding at phone widths (14px above 720,
+   where this strip is replaced by the rail anyway).
+   The student portal is .k-shell.solo, one column with a top bar and no fixed
+   bottom rail, so bottom:0 is free. If a bottom rail is ever added to these
+   pages this has to clear it. */
+.kr-strip{position:sticky;top:auto;bottom:0;z-index:20;margin:2px -12px 0;
+  padding:0 12px env(safe-area-inset-bottom,0px);background:var(--bg);
+  box-shadow:0 -10px 20px -12px rgba(20,32,25,.18)}
+.kr-bar{height:3px;background:var(--line);overflow:hidden}
+.kr-bar span{display:block;height:100%;width:0;border-radius:0 2px 2px 0;background:var(--mv-ink,var(--brand));
+  transition:width .1s linear,background-color .45s ease}
+/* Back sits beside the section picker, not above the page: a back link that
+   scrolls away means scrolling all the way up again just to leave. */
+.kr-row{display:flex;align-items:center;gap:9px;padding:7px 0 8px}
+.kr-back-btn{flex:0 0 auto;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;
+  background:var(--surface);color:var(--muted);box-shadow:var(--shadow-soft);transition:.16s ease}
+.kr-back-btn:hover,.kr-back-btn:active{color:var(--ink)}
+.kr-back-btn svg{width:15px;height:15px}
+.kr-now{display:flex;align-items:center;gap:10px;flex:1;min-width:0;padding:2px;
+  min-height:34px;border:0;background:none;cursor:pointer;font:inherit;color:inherit;text-align:left}
+.kr-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kr-caret{width:13px;height:13px;color:var(--muted);flex:0 0 auto;margin-left:-2px;
+  transform:rotate(180deg);transition:transform .22s ease}
+.kr-now.open .kr-caret{transform:rotate(0deg);color:var(--mv-ink,var(--brand))}
+/* The list of movements, for going straight to one instead of scrolling. */
+.kr-picker{position:absolute;left:12px;right:12px;bottom:100%;top:auto;z-index:22;
+  background:var(--surface);border-radius:var(--r-md);box-shadow:0 10px 34px rgba(20,32,25,.18);
+  padding:6px;display:grid;gap:1px;animation:kr-drop .16s ease both}
+@keyframes kr-drop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.kr-picker button{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;
+  border:0;background:none;border-radius:11px;font:inherit;color:inherit;text-align:left;
+  cursor:pointer;font-size:13px;font-weight:600}
+.kr-picker button:hover{background:var(--surface-2)}
+.kr-picker button.on{background:var(--brand-soft);color:var(--brand);font-weight:800}
+.kr-picker button>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kr-picker s{flex:0 0 auto;text-decoration:none;font-size:10px;font-weight:700;white-space:nowrap;
+  letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.kr-picker button.on s{color:var(--brand)}
+.kr-name{font-size:12.5px;font-weight:800;letter-spacing:-.015em;color:var(--mv-ink,var(--ink));
+  transition:color .45s ease}
+.kr-count{margin-left:auto;font-size:9.5px;font-weight:800;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted)}
+
+/* — the rail only exists once there is room for it — */
+.kr-rail{display:none}
+.kr-flow{display:grid;gap:12px}
+
+/* — a movement — */
+.kr-mv{border-radius:var(--r-lg);padding:15px 15px 18px;scroll-margin-top:70px}
+.kr-mv--spoke{background:#e9f1fd;--mv-ink:#0a4a99}
+.kr-mv--won{background:#e9f6ef;--mv-ink:#0f5738}
+.kr-mv--fix{background:#fdf3e1;--mv-ink:#6b4507}
+.kr-mv--covered{background:#eef1f6;--mv-ink:#2c3b54}
+.kr-mv--words{background:#f4ecfd;--mv-ink:#5b2a90}
+.kr-mv--practice{background:#e6f4f3;--mv-ink:#0b6a63}
+.kr-mv--files{background:#f2f5f7;--mv-ink:#41536b}
+/* Named by the strip on a phone, so saying it again inside the block only
+   costs a line. The wide layout brings it back — see the container query. */
+.kr-mv-h{display:none}
+
+/* — words: one box, not three —
+   The movement is already a panel and every word is already a card, so the
+   .lesson-block between them was a third box around a box around a box. Its
+   heading said "Words from this lesson" directly under the movement's own
+   "Words from today", too. */
+/* Doubled class on purpose: the generic `.kr-mv .lesson-block` rule below is
+   the same weight and comes later, so a single class here lost and put the
+   middle box straight back. */
+.kr-mv.kr-mv--words .lesson-block{background:none;box-shadow:none;padding:0;margin:0}
+.kr-mv.kr-mv--words .lesson-block>h3{display:none}
+.kr-mv.kr-mv--words .example{background:var(--surface);margin-bottom:9px}
+.kr-mv.kr-mv--words .example:last-child{margin-bottom:0}
+
+/* — how you spoke: one panel, not three cards —
+   The three stat cards this replaces were the reason the old recap read as a
+   stack of white boxes, and one of them repeated the header's score. */
+.kr-spoke{background:rgba(255,255,255,.8);border-radius:18px;padding:15px 17px 17px}
+.kr-spoke-head{display:flex;align-items:center;gap:12px}
+.kr-spoke-head .kr-sublab{margin:0}
+.kr-verdict{margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;background:var(--green-soft);color:var(--green);
+  padding:4px 10px;border-radius:999px}
+.kr-talk{display:flex;height:10px;border-radius:999px;overflow:hidden;
+  background:var(--surface-2);margin:9px 0 9px}
+.kr-talk i{display:block}
+.kr-talk i:first-child{background:var(--brand)}
+.kr-talk i:last-child{background:var(--yellow)}
+.kr-talk-key{display:flex;gap:16px;font-size:11.5px;font-weight:700;color:#5b6b85;margin-bottom:15px}
+.kr-talk-key span{display:flex;align-items:center;gap:6px}
+.kr-talk-key b{width:9px;height:9px;border-radius:50%;display:block}
+.kr-talk-key span:first-child b{background:var(--brand)}
+.kr-talk-key span:last-child b{background:var(--yellow)}
+.kr-mv--spoke .metric-grid{margin-top:0}
+.kr-mv--spoke .metric{background:var(--surface-2)}
+.kr-grammar{margin:14px 0 0;padding-top:12px;font-size:12px;color:#5b6b85;
+  border-top:1px solid rgba(70,86,117,.12)}
+.kr-grammar b{color:var(--ink);font-weight:700;margin-right:9px}
+
+/* The blocks inside a movement keep their own chrome, minus the card
+   background the movement now provides. */
+.kr-mv .k-flow{margin:0}
+.kr-mv .lesson-block,.kr-mv .corrections-card,.kr-mv .stat-card,.kr-mv .ex-card{
+  background:rgba(255,255,255,.78);box-shadow:none}
+.kr-mv .lesson-block:last-child{margin-bottom:0}
+
+/* — "what we covered": accordion here, master/detail once there is room — */
+.kr-md{display:block}
+.kr-sec-btn{width:100%;display:grid;grid-template-columns:21px minmax(0,1fr) 13px;gap:9px;
+  align-items:center;padding:11px 2px;border:0;background:none;cursor:pointer;text-align:left;
+  border-bottom:1px solid rgba(44,59,84,.12);font:inherit;color:inherit}
+.kr-sec-btn:last-of-type{border-bottom:0}
+.kr-sec-n{font-size:9.5px;font-weight:700;color:#9db3d0;font-variant-numeric:tabular-nums}
+.kr-sec-t{font-size:12.5px;font-weight:600;line-height:1.35;letter-spacing:-.01em}
+.kr-sec-chev{width:13px;height:13px;color:#8fa9cc;transition:transform .28s ease;justify-self:end}
+.kr-sec-btn.open .kr-sec-chev{transform:rotate(90deg);color:var(--mv-ink)}
+.kr-sec-btn.open .kr-sec-t{color:var(--mv-ink)}
+.kr-sec-body{overflow:hidden;transition:max-height .32s cubic-bezier(.3,.8,.35,1)}
+.kr-sec-in{padding:2px 0 15px 30px}
+.kr-sec-title{display:none}
+.kr-prose{font-size:11.5px;line-height:1.6;color:#43536c;margin:0 0 12px}
+/* Not .kr-lab: that is the rail's movement label, and sharing the name gave
+   the rail this rule's uppercase. Prefix by component, not by feature. */
+.kr-sublab{font-size:8.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+  color:#93a8c4;margin:0 0 6px}
+.kr-terms{margin:0 0 12px}
+.kr-term{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;font-size:11.5px;
+  padding:4px 0;align-items:baseline;border-bottom:1px solid rgba(70,86,117,.1)}
+.kr-term:last-child{border-bottom:0}
+.kr-term b{font-weight:700;color:#16233a}
+.kr-term span{color:#5b6b85}
+.kr-eg{font-size:12px;font-style:italic;line-height:1.5;padding:4px 0 4px 10px;
+  border-left:2px solid rgba(10,97,201,.28);margin:0 0 6px;color:#22324c}
+.kr-note{font-size:10.5px;line-height:1.5;background:rgba(10,97,201,.07);border-radius:9px;
+  padding:8px 10px;margin-top:9px;color:#3c4d68}
+.kr-note b{font-weight:800;color:#0a4a99}
+
+/* ── wide: the strip unrolls into a rail, the accordion into two panes ── */
+@container (min-width:860px){
+  .kr-strip{display:none}
+  .kr-body{display:grid;grid-template-columns:222px minmax(0,1fr);gap:16px;align-items:start}
+
+  .kr-rail{display:flex;flex-direction:column;gap:2px;position:sticky;top:16px;
+    background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--shadow-soft);
+    padding:16px 14px}
+  .kr-rail-back{display:flex;align-items:center;gap:8px;padding:8px 9px;margin:0 0 8px;
+    border-radius:11px;font-size:12.5px;font-weight:700;color:var(--muted);transition:.16s ease}
+  .kr-rail-back:hover{background:var(--surface-2);color:var(--ink)}
+  .kr-rail-back svg{width:14px;height:14px;flex:0 0 auto}
+  .kr-rail-h{font-size:9.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--muted);padding:0 8px 10px;margin:0}
+  /* The track sits behind the pips, which are 9px wide inside 8px of row
+     padding and 14px of rail padding — hence 26px to the centre. */
+  /* Placed by JS from the first and last pip — anything above the list (the
+     back link, a longer heading) would otherwise slide it off the dots. Starts
+     with no height so a mis-measured line is never painted; the fill it holds
+     needs JS anyway, so there is nothing to lose if that never runs. */
+  .kr-rail-track{position:absolute;left:26px;top:0;bottom:auto;height:0;width:2px;
+    background:#e3e8ef;border-radius:2px;overflow:hidden}
+  .kr-rail-fill{display:block;width:100%;height:0;border-radius:2px;
+    background:var(--mv-ink,var(--brand));transition:height .1s linear,background-color .45s ease}
+  .kr-r{display:grid;grid-template-columns:9px minmax(0,1fr);gap:11px;align-items:center;
+    padding:9px 8px;border:0;background:none;border-radius:12px;cursor:pointer;
+    position:relative;z-index:1;font:inherit;color:inherit;text-align:left;transition:background .18s ease}
+  .kr-r:hover{background:var(--surface-2)}
+  .kr-pip{width:9px;height:9px;border-radius:50%;background:var(--line-strong);
+    box-shadow:0 0 0 3px var(--surface);transition:transform .22s ease,background-color .22s ease}
+  .kr-r.on .kr-pip{background:var(--mv-ink,var(--brand));transform:scale(1.5)}
+  .kr-lab{font-size:12.5px;font-weight:600;color:var(--muted);letter-spacing:-.01em;transition:.2s ease}
+  .kr-r.on .kr-lab{font-weight:800;color:var(--ink)}
+  .kr-cnt{grid-column:2;font-size:10px;font-weight:700;color:#a4b0bf;margin-top:1px}
+
+  /* Six tiles, one row — auto-fit fitted five and orphaned the sixth. */
+  .kr-mv--spoke .metric-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .kr-mv.kr-mv--words .lesson-block{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .kr-mv.kr-mv--words .example{margin-bottom:0}
+  .kr-mv{padding:20px 22px 24px}
+  .kr-mv-h{display:flex;align-items:baseline;gap:11px;font-size:16px;font-weight:800;
+    letter-spacing:-.03em;margin:0 0 14px;color:var(--mv-ink)}
+  .kr-mv-h s{text-decoration:none;font-size:9.5px;font-weight:800;letter-spacing:.09em;
+    text-transform:uppercase;opacity:.6}
+
+  /* Buttons pin to column one; the open body fills column two beside them, so
+     opening a part never pushes the other thirteen down the page. */
+  .kr-md{display:grid;grid-template-columns:312px minmax(0,1fr);gap:14px;align-items:start}
+  .kr-sec-btn{grid-column:1;padding:10px 11px;border-radius:12px;border-bottom:0}
+  .kr-sec-btn:hover{background:rgba(255,255,255,.7)}
+  .kr-sec-btn.open{background:#fff;box-shadow:0 1px 3px rgba(20,32,25,.1)}
+  .kr-sec-body{grid-column:2;grid-row:1/-1;max-height:none !important;
+    background:#fff;border-radius:18px;display:none;position:sticky;top:16px}
+  .kr-sec-body.open{display:block}
+  .kr-sec-in{padding:20px 22px}
+  .kr-sec-title{display:block;font-size:15.5px;font-weight:800;letter-spacing:-.028em;margin:0 0 11px}
+  .kr-prose{font-size:12.5px;margin-bottom:15px}
+  .kr-terms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px;margin-bottom:15px}
+  .kr-eg{font-size:12.5px}
+}
+
+/* On a phone the movements sit edge to edge with the page, not inset twice. */
+@container (max-width:859px){
+  .kr-mv{margin:0 -2px}
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   THE CLIMB — the dashboard's answer to "am I getting better?"
+   Replaces three stat tiles that never answered it. The arc is where
+   the student is now; the mark on it is where they began, and the gap
+   between the two is the whole point.
+   Named k-climb, not k-gauge: .k-gauge is already the vocabulary donut
+   further up this file, and .k-gauge-mid would have been overwritten.
+   ═══════════════════════════════════════════════════════════════════ */
+.k-climb{background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--shadow-soft);
+  padding:20px 24px;display:grid;grid-template-columns:330px minmax(0,1fr);
+  gap:30px;align-items:center;position:relative}
+.k-climb-arc{position:relative;width:100%;max-width:330px;justify-self:center}
+.k-climb-arc svg{display:block;width:100%;height:auto}
+.k-climb-fill{stroke-dasharray:100 100;animation:k-climb-draw 1.2s cubic-bezier(.3,.8,.35,1) both}
+@keyframes k-climb-draw{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){.k-climb-fill{animation:none;stroke-dashoffset:0}}
+.k-climb-mid{position:absolute;left:0;right:0;bottom:2px;text-align:center;pointer-events:none}
+.k-climb-mid b{display:block;font-size:clamp(38px,7vw,56px);font-weight:800;letter-spacing:-.05em;line-height:1}
+.k-climb-mid b span{font-size:.46em;color:var(--muted);margin-left:1px}
+.k-climb-mid s{display:block;text-decoration:none;font-size:11px;font-weight:800;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.k-climb-eyebrow{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.k-climb-line{font-size:clamp(22px,3vw,30px);line-height:1.16;letter-spacing:-.04em;
+  font-weight:800;margin:9px 0 10px;max-width:19ch;text-wrap:balance}
+.k-climb-line em{font-style:normal;color:var(--forest)}
+.k-climb-sub{margin:0 0 16px;font-size:13px;color:var(--muted);line-height:1.55;max-width:46ch}
+.k-climb-sub b{color:var(--ink);font-weight:700}
+.k-climb-delta{display:inline-flex;align-items:center;gap:7px;background:var(--green-soft);
+  color:var(--green);font-size:12px;font-weight:800;padding:7px 14px;border-radius:999px}
+.k-climb-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin-top:18px}
+.k-climb-stat{background:var(--surface-2);border-radius:15px;padding:12px 14px;position:relative}
+.k-climb-stat b{display:block;font-size:21px;font-weight:800;letter-spacing:-.04em;line-height:1}
+.k-climb-stat s{display:block;text-decoration:none;font-size:9.5px;font-weight:800;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+
+/* Stacked and centred on a phone — the arc is the headline there. */
+@container (max-width:760px){
+  .k-climb{grid-template-columns:minmax(0,1fr);gap:4px;padding:16px 18px 18px;text-align:center}
+  .k-climb-copy{display:flex;flex-direction:column;align-items:center}
+  /* The centred column shrinks its children to content, which collapsed the
+     two-up strip into a stack. */
+  .k-climb-strip{align-self:stretch}
+  .k-climb-line{margin:8px auto 9px;max-width:22ch}
+  .k-climb-sub{margin-bottom:13px}
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PRACTICE — decks on the dashboard, and the cards themselves
+   Decks come from the part of speech the recap records; the block
+   only ever shows the ones with cards in them.
+   ═══════════════════════════════════════════════════════════════════ */
+.k-decks-card{display:block}
+.k-decks-sub{margin:0 0 14px;font-size:12px;color:var(--muted);line-height:1.55;max-width:58ch}
+.k-decks{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px}
+.k-deck{display:block;border-radius:var(--r-md);padding:15px 16px 16px;transition:.16s ease}
+.k-deck:hover{transform:translateY(-2px)}
+.k-deck.blue{background:#e9f1fd}
+.k-deck.green{background:#e9f6ef}
+.k-deck.amber{background:#fdf3e1}
+.k-deck.teal{background:#e6f4f3}
+.k-deck.purple{background:#f4ecfd}
+.k-deck.slate{background:#eef1f6}
+.k-deck-n{display:block;font-size:28px;font-weight:800;letter-spacing:-.045em;line-height:1}
+.k-deck.blue .k-deck-n{color:#0a4a99}
+.k-deck.green .k-deck-n{color:#0f5738}
+.k-deck.amber .k-deck-n{color:#6b4507}
+.k-deck.teal .k-deck-n{color:#0b6a63}
+.k-deck.purple .k-deck-n{color:#5b2a90}
+.k-deck.slate .k-deck-n{color:#2c3b54}
+.k-deck-k{display:block;font-size:13px;font-weight:800;letter-spacing:-.015em;margin-top:8px}
+.k-deck-s{display:block;font-size:10.5px;color:var(--muted);margin-top:2px}
+.k-deck-all{display:flex;align-items:center;gap:10px;margin-top:11px;background:var(--brand);
+  color:#fff;border-radius:var(--r-md);padding:14px 17px;font-size:13.5px;font-weight:800;transition:.16s ease}
+.k-deck-all:hover{background:var(--forest-deep)}
+.k-deck-all span{margin-left:auto;font-size:12px;font-weight:700;opacity:.82}
+
+/* — the session — */
+.k-prac{display:flex;flex-direction:column;gap:12px}
+.k-prac-top{display:flex;align-items:flex-start;gap:14px}
+.k-prac-title{font-size:clamp(22px,3vw,30px);font-weight:800;letter-spacing:-.04em;margin:0;line-height:1.1}
+.k-prac-sub{margin:4px 0 0;font-size:12.5px;color:var(--muted)}
+.k-prac-count{margin-left:auto;font-size:11px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);white-space:nowrap;padding-top:6px}
+.k-prac-bar{height:3px;border-radius:2px;background:var(--line);overflow:hidden}
+.k-prac-bar i{display:block;height:100%;background:var(--brand);border-radius:2px;transition:width .25s ease}
+.k-prac-card{position:relative;width:100%;min-height:min(52vh,380px);background:var(--surface);
+  border-radius:var(--r-xl);box-shadow:var(--shadow-soft);padding:30px 24px;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:0;
+  border:0;cursor:pointer;font:inherit;color:inherit}
+.k-prac-pos{position:absolute;top:16px;left:18px;font-size:9.5px;font-weight:800;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.k-prac-lvl{position:absolute;top:14px;right:16px;font-size:10px;font-weight:800;letter-spacing:.04em;
+  background:var(--brand-soft);color:var(--brand);padding:4px 9px;border-radius:999px}
+.k-prac-word{font-size:clamp(26px,5.5vw,34px);font-weight:800;letter-spacing:-.04em;line-height:1.18;
+  text-wrap:balance;max-width:18ch}
+.k-prac-reading{font-size:13px;color:var(--muted);margin-top:6px}
+.k-prac-tap{margin-top:16px;font-size:11px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted)}
+.k-prac-def{font-size:16px;font-weight:600;line-height:1.45;margin-top:14px;max-width:28ch}
+.k-prac-eg{font-size:13.5px;font-style:italic;line-height:1.5;color:#4b5c70;margin-top:16px;
+  padding-top:14px;border-top:1px solid var(--line);max-width:30ch}
+.k-prac-from{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--line-strong);margin-top:14px}
+.k-prac-acts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.k-prac-act{border-radius:var(--r-md);padding:15px;text-align:center;font-size:13.5px;
+  font-weight:800;border:0;cursor:pointer;font-family:inherit;transition:.16s ease}
+.k-prac-act.again{background:var(--surface);color:var(--muted);box-shadow:var(--shadow-soft)}
+.k-prac-act.again:hover{color:var(--ink)}
+.k-prac-act.knew{background:var(--green);color:#fff}
+.k-prac-act.knew:hover{filter:brightness(1.06)}
+.k-prac-hint{margin:0;text-align:center;font-size:11.5px;color:var(--muted)}
+.k-prac-empty{text-align:center;padding:36px 24px}
+.k-prac-empty h2{font-size:20px;letter-spacing:-.03em;margin:0 0 8px;font-weight:800}
+.k-prac-tick{display:block;width:46px;height:46px;margin:0 auto 14px;border-radius:50%;
+  background:var(--green-soft);color:var(--green);font-size:20px;font-weight:800;line-height:46px}
+.k-prac-empty .k-prac-acts{margin-top:18px;justify-content:center}
+
+/* ── Voice-memo invitation (recap review, first tab) ──
+   NB: not .k-memo — that is the student portal's memo PLAYER above, which
+   sets color:#fff for its dark band. Reusing the name rendered this card's
+   heading white on white. ──────────────────────
+   The one part of a recap that only exists if the teacher decides to make it,
+   so it opens the review rather than sitting under the section editors. The
+   moving gradient is the whole point: a static card reads as another field to
+   fill in, and this is an invitation. */
+.k-askmemo{position:relative;padding:2px;border-radius:18px;
+  background:linear-gradient(115deg,#0a61c9,#4da3ff,#7a3fd1,#4da3ff,#0a61c9);
+  background-size:300% 100%;animation:k-askmemo-drift 9s linear infinite;
+  box-shadow:0 14px 34px rgba(10,97,201,.16)}
+.k-askmemo-in{border-radius:16px;background:var(--surface);padding:20px 22px}
+@keyframes k-askmemo-drift{to{background-position:300% 0}}
+.k-askmemo h4{margin:0 0 5px;font-size:16.5px;letter-spacing:-.02em}
+.k-askmemo-lead{margin:0 0 14px;font-size:12.5px;color:var(--muted);line-height:1.55}
+/* Collapsed by default — it is a prompt for the teacher who wants one, not
+   half a page of Japanese between her and the record button. */
+.k-askmemo-script{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.k-askmemo-script>summary{cursor:pointer;font-size:12px;font-weight:700;
+  color:var(--brand);list-style:none;display:flex;align-items:center;gap:6px}
+.k-askmemo-script>summary::-webkit-details-marker{display:none}
+.k-askmemo-script>summary::before{content:'▸';font-size:10px;transition:transform .15s ease}
+.k-askmemo-script[open]>summary::before{transform:rotate(90deg)}
+.k-askmemo-script p{white-space:pre-wrap;font-size:13px;color:var(--muted);
+  margin:10px 0 0;line-height:1.6}
+@media (prefers-reduced-motion:reduce){
+  .k-askmemo{animation:none}
+  .k-askmemo-script>summary::before{transition:none}
+}
+
+/* ── Publishing a recap: progress, not a greyed-out button ────────────────
+   Publishing writes the lesson, its summary, the vocabulary rows, the
+   teacher's note, the student's email and any attachments. That is a few
+   seconds in which the page used to do nothing visible. */
+.k-pub{position:fixed;inset:0;z-index:80;display:grid;place-items:center;
+  background:rgba(17,20,24,.42);backdrop-filter:blur(3px);padding:24px}
+.k-pub-card{width:min(380px,100%);background:var(--surface);border-radius:20px;
+  padding:28px 26px 24px;box-shadow:0 26px 70px rgba(0,0,0,.26);text-align:center}
+.k-pub-pct{font-size:44px;font-weight:800;letter-spacing:-.04em;line-height:1;
+  font-variant-numeric:tabular-nums;color:var(--brand)}
+.k-pub-pct span{font-size:19px;font-weight:700;margin-left:2px;color:var(--muted)}
+.k-pub-track{height:7px;border-radius:999px;background:var(--surface-2);
+  overflow:hidden;margin:16px 0 12px}
+.k-pub-track i{display:block;height:100%;border-radius:999px;
+  background:linear-gradient(90deg,#0a61c9,#4da3ff);transition:width .45s cubic-bezier(.22,.61,.36,1)}
+.k-pub-label{margin:0;font-size:12.5px;font-weight:600;color:var(--muted);min-height:17px}
+/* Standing in for the recap being assembled on the other side. */
+.k-pub-skel{display:grid;gap:8px;margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.k-pub-skel i{height:9px;border-radius:999px;
+  background:linear-gradient(90deg,var(--surface-2) 25%,rgba(10,97,201,.12) 50%,var(--surface-2) 75%);
+  background-size:220% 100%;animation:k-pub-shine 1.4s ease-in-out infinite}
+.k-pub-skel i:nth-child(2){animation-delay:.16s}
+.k-pub-skel i:nth-child(3){animation-delay:.32s}
+@keyframes k-pub-shine{to{background-position:-220% 0}}
+@media (prefers-reduced-motion:reduce){
+  .k-pub-skel i{animation:none}
+  .k-pub-track i{transition:none}
+}
+
+/* ── Materials: the teacher's library of links ────────────────────────────
+   Files had a home already (one lesson each). The things she reuses are
+   mostly links, and they had none — they lived in her bookmarks. */
+.k-mat-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.k-mat{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;
+  overflow:hidden;background:var(--surface)}
+.k-mat-thumb{display:grid;place-items:center;aspect-ratio:16/9;background:var(--surface-2);
+  color:var(--muted);font-size:26px;text-decoration:none;overflow:hidden}
+.k-mat-thumb img{width:100%;height:100%;object-fit:cover}
+.k-mat-body{padding:11px 13px 12px;display:grid;gap:6px}
+.k-mat-title{font-size:13px;font-weight:700;line-height:1.35;color:var(--ink);text-decoration:none;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.k-mat-title:hover{color:var(--brand)}
+.k-mat-meta{display:flex;gap:5px;flex-wrap:wrap;font-size:11px;color:var(--muted);font-weight:600}
+.k-mat-acts{display:flex;gap:6px;margin-top:2px}
+
+/* Picking from the library while reviewing a recap. */
+.k-pick{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+.k-pick-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.k-pick-count{font-size:11.5px;font-weight:700;color:var(--brand)}
+.k-pick-chosen{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.k-pick-chosen li{display:flex;align-items:center;gap:8px;font-size:12.5px;
+  background:var(--brand-soft);border-radius:9px;padding:7px 10px}
+.k-pick-chosen li button{margin-left:auto;border:0;background:transparent;cursor:pointer;
+  color:var(--muted);font-size:12px;line-height:1}
+.k-pick-name{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.k-pick-panel{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:12px;
+  background:var(--surface-2)}
+.k-pick-list{list-style:none;margin:0;padding:0;display:grid;gap:5px;max-height:260px;overflow:auto}
+.k-pick-row{width:100%;display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer;
+  border:1px solid transparent;border-radius:9px;padding:8px 10px;background:var(--surface);font:inherit}
+.k-pick-row:hover{border-color:var(--line-strong)}
+.k-pick-row.on{border-color:var(--brand);background:var(--brand-soft)}
+.k-pick-row small{display:block;font-size:10.5px;color:var(--muted);font-weight:600}
+.k-pick-ic{flex:0 0 auto;width:24px;height:24px;border-radius:7px;display:grid;place-items:center;
+  background:var(--surface-2);font-size:11px}
+.k-pick-tick{margin-left:auto;font-weight:800;color:var(--brand)}
+
+/* A link on the student's lesson page: opened, not downloaded. */
+.k-matrow{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface-2)}
+.k-matrow-embed{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}
+.k-matrow-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px}
+.k-matrow-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

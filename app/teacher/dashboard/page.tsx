@@ -1,29 +1,33 @@
 import { createClient, getUser } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { Users, BookOpen, Clock, PenLine } from 'lucide-react'
 import { formatDateShort } from '@/lib/utils'
 import DeleteLessonButton from '@/components/teacher/DeleteLessonButton'
 import CheckDriveButton from '@/components/teacher/CheckDriveButton'
+import PageHeader from '@/components/PageHeader'
 
+/**
+ * The teacher's overview — Lesson Studio's home page, in this portal's terms.
+ *
+ * The band carries the numbers. The main column is the work queue: recaps
+ * that arrived from Drive and are waiting to be reviewed, then who has
+ * handed something in. The rail on the right is the three colour-blocked
+ * stats and the latest published lessons.
+ */
 export default async function TeacherDashboard() {
   const supabase = await createClient()
   const user = await getUser() // memoized — shared with the layout
 
-  // These three queries are independent, so fire them in parallel rather than
-  // waiting on each Supabase round-trip in sequence.
   const [
     { data: students },
     { data: draftLessons },
     { data: recentLessons },
   ] = await Promise.all([
-    // Active students only — archived ones are retired, not deleted.
     supabase
       .from('students')
       .select('*')
       .eq('teacher_id', user!.id)
       .is('archived_at', null)
       .order('full_name'),
-    // Draft lessons (need review)
     supabase
       .from('lessons')
       .select(`
@@ -34,7 +38,6 @@ export default async function TeacherDashboard() {
       .eq('teacher_id', user!.id)
       .eq('status', 'draft')
       .order('created_at', { ascending: false }),
-    // All published lessons, newest first
     supabase
       .from('lessons')
       .select(`
@@ -48,10 +51,15 @@ export default async function TeacherDashboard() {
   ])
 
   const totalStudents = students?.length ?? 0
-  const totalLessons = (draftLessons?.length ?? 0) + (recentLessons?.length ?? 0)
+  const publishedCount = recentLessons?.length ?? 0
+  const totalLessons = (draftLessons?.length ?? 0) + publishedCount
   const unassignedDrafts = draftLessons?.filter((l: any) => !l.student_id) ?? []
   const assignedDrafts = draftLessons?.filter((l: any) => l.student_id) ?? []
   const pendingDrafts = draftLessons?.length ?? 0
+
+  // Lessons in the last 30 days — the "recent" chip on the lessons stat.
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
+  const recentCount = (recentLessons ?? []).filter((l: any) => l.lesson_date && new Date(l.lesson_date).getTime() >= cutoff).length
 
   // Build lesson → student map for unreviewed submission lookup
   const allLessons = [...(draftLessons ?? []), ...(recentLessons ?? [])]
@@ -61,251 +69,235 @@ export default async function TeacherDashboard() {
   }
   const lessonIds = Object.keys(lessonIdToStudentId)
 
-  // Find students with unreviewed homework or audio submissions
-  const studentsWithUpdates = new Set<string>()
+  // Students with unreviewed homework or audio submissions
+  const studentsWithUpdates = new Map<string, { hw: number; audio: number; lessonId: string }>()
   if (lessonIds.length > 0) {
     const [{ data: unreviewedHw }, { data: unreviewedAudio }] = await Promise.all([
       supabase.from('homework_submissions').select('lesson_id').in('lesson_id', lessonIds).is('reviewed_at', null),
       supabase.from('student_audio_submissions').select('lesson_id').in('lesson_id', lessonIds).is('reviewed_at', null),
     ])
-    for (const row of [...(unreviewedHw ?? []), ...(unreviewedAudio ?? [])]) {
+    for (const row of unreviewedHw ?? []) {
       const sid = lessonIdToStudentId[(row as any).lesson_id]
-      if (sid) studentsWithUpdates.add(sid)
+      if (!sid) continue
+      const cur = studentsWithUpdates.get(sid) ?? { hw: 0, audio: 0, lessonId: (row as any).lesson_id }
+      cur.hw += 1
+      studentsWithUpdates.set(sid, cur)
+    }
+    for (const row of unreviewedAudio ?? []) {
+      const sid = lessonIdToStudentId[(row as any).lesson_id]
+      if (!sid) continue
+      const cur = studentsWithUpdates.get(sid) ?? { hw: 0, audio: 0, lessonId: (row as any).lesson_id }
+      cur.audio += 1
+      studentsWithUpdates.set(sid, cur)
     }
   }
 
+  // Names from the roster, then from the lessons' own join — a submission can
+  // belong to a student who has since been archived off the roster.
+  const studentName = new Map<string, string>()
+  for (const l of allLessons) {
+    const name = (l.students as any)?.full_name
+    if (l.student_id && name) studentName.set(l.student_id, name)
+  }
+  for (const s of students ?? []) studentName.set(s.id, s.full_name)
+  const initials = (name: string) => name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
+
+  const queue = [...unassignedDrafts, ...assignedDrafts]
+  const latest = (recentLessons ?? []).slice(0, 8)
+
   return (
-    <div className="space-y-8">
-      {/* Page header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Dashboard</h1>
-          <p className="text-sm text-muted mt-0.5">Overview of your students and lessons</p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <Link href="/teacher/students" className="btn-primary">
-            <Users className="w-4 h-4" /> Manage Students
-          </Link>
-          <CheckDriveButton />
-        </div>
-      </div>
+    <div style={{ display: 'grid', gap: 18 }}>
+      <PageHeader
+        eyebrow="Teacher"
+        title="Overview"
+        meta={pendingDrafts > 0 ? `${pendingDrafts} recap${pendingDrafts === 1 ? '' : 's'} waiting for your review` : 'Everything is reviewed — nothing waiting.'}
+        figures={[
+          { label: 'Students', value: totalStudents },
+          { label: 'Lessons', value: totalLessons },
+          { label: 'To review', value: pendingDrafts },
+          { label: 'Published', value: publishedCount },
+        ]}
+        actions={
+          <>
+            <CheckDriveButton />
+            <Link href="/teacher/students" className="btn btn-primary">Students →</Link>
+          </>
+        }
+      />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="stat-card">
-          <span className="stat-label">Students</span>
-          <span className="stat-value">{totalStudents}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Total Lessons</span>
-          <span className="stat-value">{totalLessons}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Pending Review</span>
-          <div className="flex items-center gap-2">
-            <span className="stat-value text-orange-500">{pendingDrafts}</span>
-            {pendingDrafts > 0 && <span className="badge-draft">drafts</span>}
-          </div>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Published</span>
-          <span className="stat-value">{recentLessons?.length ?? 0}</span>
-        </div>
-      </div>
-
-      {/* Unassigned lessons — need a student assigned before publishing */}
-      {unassignedDrafts.length > 0 && (
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-amber-500 text-base">⚠</span>
-            <h2 className="section-title text-amber-700">Unassigned Lessons</h2>
-            <span className="text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2.5 py-0.5">{unassignedDrafts.length}</span>
-          </div>
-          <p className="text-xs text-amber-700 mb-3 -mt-2">These recaps arrived but no matching student was found. Open each one and assign a student before publishing.</p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {unassignedDrafts.map((lesson: any) => {
-              const parsedName = (lesson.title ?? '').replace(/^⚠\s*Unassigned\s*—\s*/i, '').replace(/^.*Unassigned.*?—\s*/i, '') || 'Unknown student'
-              return (
-                <div key={lesson.id} className="card p-5 flex flex-col gap-3 border-amber-200 bg-amber-50/30">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">unassigned</span>
-                      </div>
-                      <p className="font-semibold text-ink text-sm">{parsedName}</p>
-                      <p className="text-xs text-muted">{formatDateShort(lesson.lesson_date)}</p>
-                    </div>
-                    <DeleteLessonButton
-                      lessonId={lesson.id}
-                      lessonLabel={`Unassigned lesson — ${parsedName}`}
-                      variant="icon"
-                    />
-                  </div>
-                  {lesson.lesson_summaries?.recap && (
-                    <p className="text-xs text-muted line-clamp-2">{lesson.lesson_summaries.recap}</p>
-                  )}
-                  <Link
-                    href={`/teacher/lessons/${lesson.id}/edit`}
-                    className="btn-secondary w-full justify-center mt-auto border-amber-300 text-amber-700 hover:bg-amber-100"
-                  >
-                    <PenLine className="w-3.5 h-3.5" /> Assign &amp; Edit
-                  </Link>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Drafts needing review */}
-      {assignedDrafts.length > 0 && (
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-4 h-4 text-orange-500" />
-            <h2 className="section-title">Pending Review</h2>
-            <span className="badge-draft">{assignedDrafts.length}</span>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {assignedDrafts.map((lesson: any) => (
-              <div key={lesson.id} className="card p-5 flex flex-col gap-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="badge-brand text-xs">
-                        Lesson {lesson.lesson_number}
-                      </span>
-                      <span className="badge-draft">draft</span>
-                    </div>
-                    <p className="font-semibold text-ink text-sm">
-                      {(lesson.students as any)?.full_name}
-                    </p>
-                    <p className="text-xs text-muted">{formatDateShort(lesson.lesson_date)}</p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {lesson.lesson_summaries?.score && (
-                      <span className="text-sm font-bold text-brand-600 mr-1">
-                        {lesson.lesson_summaries.score}/10
-                      </span>
-                    )}
-                    <DeleteLessonButton
-                      lessonId={lesson.id}
-                      lessonLabel={`Lesson ${lesson.lesson_number} — ${(lesson.students as any)?.full_name}`}
-                      variant="icon"
-                    />
-                  </div>
-                </div>
-                {lesson.lesson_summaries?.recap && (
-                  <p className="text-xs text-muted line-clamp-2">
-                    {lesson.lesson_summaries.recap}
-                  </p>
-                )}
-                <Link
-                  href={`/teacher/lessons/${lesson.id}/edit`}
-                  className="btn-primary w-full justify-center mt-auto"
-                >
-                  <PenLine className="w-3.5 h-3.5" /> Review & Edit
-                </Link>
+      <div className="k-overview">
+        <div className="k-overview-main">
+          {/* ── The queue ── */}
+          <section>
+            <div className="g-sec-head">
+              <h2>Recaps to review</h2>
+              <span className="k-link">{queue.length === 0 ? 'Queue is clear' : `${queue.length} waiting`}</span>
+            </div>
+            {queue.length === 0 ? (
+              <div className="empty">
+                <strong style={{ color: 'var(--ink)' }}>Nothing to review</strong>
+                <br />
+                New recaps arrive here after a lesson is transcribed. Use “Check for new recaps” to scan Drive now.
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+            ) : (
+              <div className="g-queue">
+                {queue.map((lesson: any) => {
+                  const unassigned = !lesson.student_id
+                  const parsedName = unassigned
+                    ? ((lesson.title ?? '').replace(/^⚠\s*Unassigned\s*—\s*/i, '').replace(/^.*Unassigned.*?—\s*/i, '') || 'Unknown student')
+                    : (lesson.students as any)?.full_name
+                  return (
+                    <div key={lesson.id} className={`g-draft${unassigned ? ' unassigned' : ''}`}>
+                      <div className="g-draft-num">{unassigned ? '?' : `L${lesson.lesson_number}`}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="g-draft-title">{parsedName}</div>
+                        <div className="g-draft-meta">
+                          {unassigned ? 'No matching student — assign one before publishing' : `Lesson ${lesson.lesson_number}`}
+                          {' · '}{formatDateShort(lesson.lesson_date)}
+                          {lesson.lesson_summaries?.score != null && ` · ${lesson.lesson_summaries.score}/10`}
+                        </div>
+                        {lesson.lesson_summaries?.recap && <p className="g-draft-blurb">{lesson.lesson_summaries.recap}</p>}
+                      </div>
+                      <div className="g-draft-actions">
+                        <Link href={`/teacher/lessons/${lesson.id}/edit`} className="btn btn-primary btn-sm">
+                          {unassigned ? 'Assign & review' : 'Review & publish'}
+                        </Link>
+                        <DeleteLessonButton
+                          lessonId={lesson.id}
+                          lessonLabel={unassigned ? `Unassigned lesson — ${parsedName}` : `Lesson ${lesson.lesson_number} — ${parsedName}`}
+                          variant="icon"
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
 
-      {/* Students overview */}
-      <section>
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="w-4 h-4 text-brand-600" />
-          <h2 className="section-title">Your Students</h2>
+          {/* ── Handed in ── */}
+          {studentsWithUpdates.size > 0 && (
+            <section>
+              <div className="g-sec-head">
+                <h2>Handed in</h2>
+                <span className="k-link">{studentsWithUpdates.size} student{studentsWithUpdates.size === 1 ? '' : 's'}</span>
+              </div>
+              <div className="k-card">
+                <div className="k-hw">
+                  {Array.from(studentsWithUpdates.entries()).map(([sid, u]) => (
+                    <div key={sid} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div className="avatar">{initials(studentName.get(sid) ?? '?')}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="k-hw-title">{studentName.get(sid) ?? 'Student'}</div>
+                        <div className="k-hw-due">
+                          {[u.hw > 0 && `${u.hw} homework`, u.audio > 0 && `${u.audio} recording${u.audio === 1 ? '' : 's'}`].filter(Boolean).join(' · ')} waiting for feedback
+                        </div>
+                      </div>
+                      <Link href={`/teacher/lessons/${u.lessonId}/edit`} className="k-btn-pill">Open</Link>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ── Students ── */}
+          <section>
+            <div className="g-sec-head">
+              <h2>Your students</h2>
+              <Link href="/teacher/students" className="k-link">Manage →</Link>
+            </div>
+            {totalStudents === 0 ? (
+              <div className="empty">
+                <strong style={{ color: 'var(--ink)' }}>No students yet</strong>
+                <br />
+                <Link href="/teacher/students" className="btn btn-primary btn-sm" style={{ marginTop: 12 }}>Add your first student</Link>
+              </div>
+            ) : (
+              <div className="student-grid">
+                {students?.map((student: any) => {
+                  const update = studentsWithUpdates.get(student.id)
+                  const count = (recentLessons ?? []).filter((l: any) => l.student_id === student.id).length
+                  return (
+                    <Link key={student.id} href={`/teacher/students/${student.id}`} className="student-card" style={{ gridTemplateColumns: 'minmax(180px,1.4fr) 90px minmax(120px,1fr) 24px' }}>
+                      <div className="student-identity">
+                        <div className="avatar">{initials(student.full_name)}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div className="sc-name" style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                            {student.full_name}
+                            {update && <span className="g-dot" title="New submission" />}
+                          </div>
+                          <div className="sc-email">{student.email}</div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="analytics-label">Lessons</div>
+                        <strong>{count}</strong>
+                      </div>
+                      <div>
+                        <div className="analytics-label">Level</div>
+                        <strong style={{ fontSize: 12 }}>{student.level}</strong>
+                      </div>
+                      <svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </section>
         </div>
 
-        {totalStudents === 0 ? (
-          <div className="card p-12 text-center">
-            <p className="text-4xl mb-3">👋</p>
-            <p className="font-semibold text-ink mb-1">No students yet</p>
-            <p className="text-sm text-muted mb-4">Add your first student to get started</p>
-            <Link href="/teacher/students" className="btn-primary">
-              Add Student
-            </Link>
+        {/* ── The rail ── */}
+        <aside className="k-overview-rail">
+          <div className="k-tstats">
+            <div className="k-stat yellow">
+              <div className="k-stat-head">
+                <svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                <span>Students</span>
+              </div>
+              <div className="k-stat-val"><b>{totalStudents}</b></div>
+              <p className="k-stat-sub">active this term</p>
+            </div>
+            <div className="k-stat blue">
+              <div className="k-stat-head">
+                <svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5h16v14H4zM4 9h16M9 9v10"/></svg>
+                <span>Lessons</span>
+              </div>
+              <div className="k-stat-val">
+                <b>{publishedCount}</b>
+                {recentCount > 0 && <span className="k-chip">+{recentCount}</span>}
+              </div>
+              <p className="k-stat-sub">{recentCount > 0 ? `${recentCount} in the last 30 days` : 'published so far'}</p>
+            </div>
+            <div className="k-stat purple">
+              <div className="k-stat-head">
+                <svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                <span>To review</span>
+              </div>
+              <div className="k-stat-val"><b>{pendingDrafts}</b></div>
+              <p className="k-stat-sub">{pendingDrafts === 0 ? 'the queue is clear' : 'drafts waiting for you'}</p>
+            </div>
           </div>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {students?.map((student: any) => {
-              const hasUpdate = studentsWithUpdates.has(student.id)
-              return (
-                <Link
-                  key={student.id}
-                  href={`/teacher/students/${student.id}`}
-                  className="card p-5 flex flex-col gap-2 hover:border-brand-200 hover:shadow-md transition-all relative"
-                >
-                  {hasUpdate && (
-                    <span className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white" title="New submission" />
-                  )}
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                      style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
-                      {student.full_name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-ink text-sm">{student.full_name}</p>
-                      <p className="text-xs text-muted">{student.level}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="badge-brand text-xs">{student.language}</span>
-                    <span className="text-xs text-muted">{student.email}</span>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
-        )}
-      </section>
 
-      {/* Recent published lessons */}
-      {(recentLessons?.length ?? 0) > 0 && (
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <BookOpen className="w-4 h-4 text-brand-600" />
-            <h2 className="section-title">Published Lessons</h2>
-          </div>
-          <div className="card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Student</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Lesson</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Date</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Score</th>
-                  <th className="w-8"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentLessons?.map((lesson: any) => (
-                  <tr key={lesson.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3 font-medium text-ink">
-                      {(lesson.students as any)?.full_name}
-                    </td>
-                    <td className="px-5 py-3 text-muted">#{lesson.lesson_number}</td>
-                    <td className="px-5 py-3 text-muted">{formatDateShort(lesson.lesson_date)}</td>
-                    <td className="px-5 py-3 text-right">
-                      <span className="font-semibold text-brand-600">
-                        {lesson.lesson_summaries?.score ?? '—'}/10
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      <DeleteLessonButton
-                        lessonId={lesson.id}
-                        lessonLabel={`Lesson ${lesson.lesson_number} — ${(lesson.students as any)?.full_name}`}
-                        variant="row"
-                      />
-                    </td>
-                  </tr>
+          {latest.length > 0 && (
+            <div className="k-card k-rail-card">
+              <div className="analytics-label">Latest published</div>
+              <div className="k-hw" style={{ gap: 10 }}>
+                {latest.map((lesson: any) => (
+                  <Link key={lesson.id} href={`/teacher/lessons/${lesson.id}/edit`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span className="lc-num" style={{ width: 36, height: 30, fontSize: 9.5 }}>L{lesson.lesson_number}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span className="k-hw-title" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(lesson.students as any)?.full_name}</span>
+                      <span className="k-hw-due">{formatDateShort(lesson.lesson_date)}</span>
+                    </span>
+                    <b style={{ fontSize: 12.5, color: 'var(--forest)' }}>{lesson.lesson_summaries?.score ?? '—'}<span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>/10</span></b>
+                  </Link>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+              </div>
+            </div>
+          )}
+        </aside>
+      </div>
     </div>
   )
 }

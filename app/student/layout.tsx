@@ -1,9 +1,13 @@
 import { createClient, getUser, getProfile } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import StudentNav from '@/components/student/StudentNav'
-import KanaBackground from '@/components/student/KanaBackground'
+import StudentTopBar from '@/components/student/StudentTopBar'
 import { readEmailPrefs } from '@/lib/notificationPrefs'
 
+/**
+ * The student portal: Lesson Studio's `.k-shell.solo` — one centred column
+ * with a slim top bar, no sidebar, on the same white ground as the teacher
+ * side.
+ */
 export default async function StudentLayout({
   children,
 }: {
@@ -25,11 +29,9 @@ export default async function StudentLayout({
   const emailPrefs = readEmailPrefs(studentRow)
 
   return (
-    <div className="min-h-screen" style={{ background: 'transparent' }}>
-      <style>{`body { background: #f3f4f6; }`}</style>
-      <KanaBackground />
-      <StudentNav studentName={profile.full_name || user.email || 'Student'} emailPrefs={emailPrefs} />
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8" style={{ position: 'relative', zIndex: 1 }}>
+    <div className="k-shell solo k-bg-wash">
+      <main className="k-main page-fade">
+        <StudentTopBar studentName={profile.full_name || user.email || 'Student'} emailPrefs={emailPrefs} />
         {children}
       </main>
     </div>

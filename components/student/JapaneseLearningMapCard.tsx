@@ -18,7 +18,7 @@ export default function JapaneseLearningMapCard({ categories }: Props) {
 
   return (
     <>
-      <section className="card overflow-hidden" data-tour="learning-map" style={{ border: '1px solid rgba(79,70,229,0.10)' }}>
+      <section className="card overflow-hidden" data-tour="learning-map" style={{ border: '1px solid rgba(10,97,201,0.10)' }}>
         <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-3 py-2">
           <div>
             <p className="text-[10px] font-medium text-muted uppercase tracking-widest">
@@ -54,7 +54,7 @@ export default function JapaneseLearningMapCard({ categories }: Props) {
                 <span className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
-                    style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#4f46e5,#7c3aed)' }}
+                    style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#0a61c9,#a24ee0)' }}
                   />
                 </span>
                 <span className="text-right text-xs font-medium text-brand-700">{category.items.length}</span>

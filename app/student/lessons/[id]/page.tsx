@@ -87,7 +87,7 @@ export default async function StudentLessonPage({
   const progressPanel = (
     <>
       {summary && (
-        <div className="card p-5" style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f8f7ff 100%)', border: '1px solid rgba(79,70,229,0.16)' }}>
+        <div className="card p-5" style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f8f7ff 100%)', border: '1px solid rgba(10,97,201,0.16)' }}>
           <h2 className="font-bold text-brand-800 text-base mb-4">📊 Lesson Dashboard</h2>
 
           <div className="grid sm:grid-cols-3 gap-3 mb-3">
@@ -110,8 +110,8 @@ export default async function StudentLessonPage({
                         style={{
                           width: `${pct}%`,
                           background: isStu
-                            ? 'linear-gradient(135deg,#7c3aed,#facc15)'
-                            : 'linear-gradient(135deg,#4f46e5,#7c3aed)',
+                            ? 'linear-gradient(135deg,#a24ee0,#facc15)'
+                            : 'linear-gradient(135deg,#0a61c9,#a24ee0)',
                         }}
                       />
                     </div>
@@ -155,7 +155,7 @@ export default async function StudentLessonPage({
 
       {/* Teacher's Audio Review */}
       {voiceUrl && (
-        <div className="card p-6" style={{ border: '1px solid rgba(79,70,229,0.12)' }}>
+        <div className="card p-6" style={{ border: '1px solid rgba(10,97,201,0.12)' }}>
           <h2 className="section-title mb-1">🎙️ Noa's Audio Review</h2>
           <audio controls className="w-full" src={voiceUrl} />
         </div>
@@ -163,7 +163,7 @@ export default async function StudentLessonPage({
 
       {/* Teacher's Note */}
       {summary?.teacher_note && (
-        <div className="card p-6" style={{ background: 'linear-gradient(180deg,#ffffff,#f7f4ff)', border: '1px solid rgba(79,70,229,0.12)' }}>
+        <div className="card p-6" style={{ background: 'linear-gradient(180deg,#ffffff,#f7f4ff)', border: '1px solid rgba(10,97,201,0.12)' }}>
           <h2 className="section-title mb-3">🌟 Noa's Note</h2>
           <p className="text-sm text-ink/85 leading-relaxed">{summary.teacher_note}</p>
         </div>
@@ -276,9 +276,9 @@ export default async function StudentLessonPage({
                 <span
                   className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
                   style={{
-                    background: (JLPT_COLORS[v.jlpt_level] ?? '#818cf8') + '22',
-                    color: JLPT_COLORS[v.jlpt_level] ?? '#818cf8',
-                    border: `1px solid ${(JLPT_COLORS[v.jlpt_level] ?? '#818cf8')}40`,
+                    background: (JLPT_COLORS[v.jlpt_level] ?? '#4da3ff') + '22',
+                    color: JLPT_COLORS[v.jlpt_level] ?? '#4da3ff',
+                    border: `1px solid ${(JLPT_COLORS[v.jlpt_level] ?? '#4da3ff')}40`,
                   }}
                 >
                   {JLPT_LABELS[v.jlpt_level] ?? v.jlpt_level}
@@ -378,37 +378,31 @@ export default async function StudentLessonPage({
   ]
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5 pb-12">
-      {/* ── Header panel ──────────────────────────────────────────────── */}
-      <div className="card p-7" style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f7f4ff 100%)' }}>
-
-        {/* Eyebrow */}
-        <div className="inline-flex items-center gap-2 mb-4 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-brand-600 text-sm font-bold">
-          <span className="w-2 h-2 rounded-full bg-brand-600 inline-block" />
-          Lesson Recap
+    <div style={{ maxWidth: 1180, margin: '0 auto', paddingBottom: 48 }} className="space-y-5">
+      {/* ── The brand band — Lesson Studio's lesson header, score medallion and all ── */}
+      <header className="k-phead">
+        <div>
+          <div className="k-phead-eyebrow">Lesson {lesson.lesson_number} · Recap</div>
+          <h1>{lesson.title || `Lesson ${lesson.lesson_number}`}</h1>
+          <div className="k-pmeta">
+            <span>{formatDateShort(lesson.lesson_date)}</span>
+            <span>{student.full_name.split(' ')[0]} &amp; {teacherFirstName}</span>
+            {summary?.confidence_label && <span>{summary.confidence_label}</span>}
+          </div>
         </div>
-
-        <h1 className="text-2xl sm:text-3xl font-bold text-ink leading-tight mb-1">
-          {lesson.title || `Lesson ${lesson.lesson_number}`}
-        </h1>
-        <p className="text-sm text-muted mb-5">
-          🇯🇵 Japanese Lesson Recap: {student.full_name} &amp; {teacherFirstName}
-        </p>
-
-        {/* Meta boxes */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Student',       value: student.full_name },
-            { label: 'Lesson Number', value: `Lesson ${lesson.lesson_number}` },
-            { label: 'Date',          value: formatDateShort(lesson.lesson_date) },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">{label}</p>
-              <p className="font-bold text-ink text-sm">{value}</p>
+        {summary?.score != null && (
+          <div className="k-pscore">
+            <div>
+              <b>{summary.score}</b>
+              <small>OUT OF 10</small>
             </div>
-          ))}
+          </div>
+        )}
+        <div className="k-hero-art" style={{ right: 150, opacity: .4 }} aria-hidden>
+          <span className="k-orb" style={{ width: 70, height: 70, right: 0, top: 10 }} />
+          <span className="k-tube" style={{ width: 56, height: 56, right: 60, top: 74, transform: 'rotate(40deg)' }} />
         </div>
-      </div>
+      </header>
 
       {/* ── The recap, as one scroll ──────────────────────────────────── */}
       <RecapFlow movements={movements} back={{ href: '/student/dashboard', label: 'Dashboard' }} />
