@@ -6,6 +6,8 @@ import HomeworkSubmitSection from '@/components/student/HomeworkSubmitSection'
 import StudentAudioSubmit from '@/components/student/StudentAudioSubmit'
 import LessonExercises from '@/components/student/LessonExercises'
 import LessonPageTabs from '@/components/koku/LessonPageTabs'
+import LegacyRecap from '@/components/student/LegacyRecap'
+import { usesNewRecap } from '@/lib/recapEra'
 import { buildRecap } from '@/lib/recapShape'
 import { resolveBrand } from '@/lib/brand'
 
@@ -78,6 +80,30 @@ export default async function StudentLessonPage({
    * renders it in the "what to fix" movement, so it stays in `sections`.
    */
   const sections = (lesson.lesson_sections || []).sort(bySort)
+
+  // Lessons already taught keep the recap their student knows; everything
+  // from the cutoff on gets the new one. See lib/recapEra.
+  if (!usesNewRecap(lesson)) {
+    const mainTakeaways = sections.find((s: any) => /main takeaway|takeaways|corrections|refinement/i.test(s.title)) ?? null
+    return (
+      <LegacyRecap
+        lesson={lesson}
+        student={student}
+        teacherFirstName={teacherFirst}
+        summary={summary}
+        sections={sections.filter((s: any) => !/main takeaway|takeaways|corrections|refinement/i.test(s.title))}
+        mainTakeaways={mainTakeaways}
+        vocab={vocab}
+        homework={homework}
+        exercises={exercises}
+        attachments={attachments}
+        hwSubmissions={hwSubmissions ?? []}
+        exSubmissions={exSubmissions ?? []}
+        exerciseAudio={exerciseAudio}
+        generalAudio={generalAudio}
+      />
+    )
+  }
 
   const recap = buildRecap({ lesson, summary, sections, vocabulary: vocab, homework })
   // The count in the rail should say what the practice movement actually holds.
