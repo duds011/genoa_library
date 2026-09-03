@@ -36,13 +36,14 @@ export const BLOCK_LABELS: Record<BlockId, string> = {
 }
 
 /** The student dashboard is tabbed; each block belongs to one tab. */
-export const DASH_TABS = ['Overview', 'Lessons', 'Progress', 'Files', 'Tests'] as const
+export const DASH_TABS = ['Overview', 'Lessons', 'Progress', 'Vocabulary', 'Files', 'Tests'] as const
 export type DashTab = (typeof DASH_TABS)[number]
 
 export const DASH_BLOCK_TAB: Record<BlockId, DashTab> = {
   stats: 'Overview', scores: 'Overview', milestone: 'Overview', vocabTotals: 'Overview',
   lessons: 'Lessons',
-  progress: 'Progress', vocab: 'Progress', speaking: 'Progress', flashcards: 'Progress',
+  progress: 'Progress', speaking: 'Progress', flashcards: 'Progress',
+  vocab: 'Vocabulary',
   files: 'Files',
   tests: 'Tests',
 }
@@ -96,6 +97,7 @@ export const TEXT_SLOTS = {
   tabOverview: 'Overview',
   tabLessons: 'Lessons',
   tabProgress: 'Progress',
+  tabVocabulary: 'Vocabulary',
   tabFiles: 'Files',
   tabTests: 'Tests',
   statLessons: 'Lessons',

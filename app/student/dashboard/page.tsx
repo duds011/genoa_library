@@ -277,10 +277,13 @@ export default async function StudentDashboard() {
   const tabs = DASH_TABS
     .map((tab) => ({
       id: tab as DashTab,
-      label: L[`tab${tab}` as 'tabOverview' | 'tabLessons' | 'tabProgress' | 'tabFiles' | 'tabTests'],
+      label: L[`tab${tab}` as 'tabOverview' | 'tabLessons' | 'tabProgress' | 'tabVocabulary' | 'tabFiles' | 'tabTests'],
       blocks: placed.filter(({ id }) => DASH_BLOCK_TAB[id] === tab),
     }))
-    .filter((t) => t.blocks.length > 0)
+    // The learning map is injected rather than placed, so Vocabulary has to
+    // survive on it alone — otherwise a student with grammar but no stored
+    // words loses the tab the map lives on.
+    .filter((t) => t.blocks.length > 0 || (t.id === 'Vocabulary' && learningMap.length > 0))
 
   return (
     <>
@@ -305,8 +308,9 @@ export default async function StudentDashboard() {
                 </div>
               ))}
               {/* Japanese-only, and this portal's own: the grammar a student
-                  has met, by category. It belongs with the other trends. */}
-              {id === 'Progress' && learningMap.length > 0 && (
+                  has met, by category. It sits with the words, since both are
+                  the same question — what have I actually been taught. */}
+              {id === 'Vocabulary' && learningMap.length > 0 && (
                 <div style={{ ['--w' as any]: 12 }}>
                   <JapaneseLearningMapCard categories={learningMap} />
                 </div>
