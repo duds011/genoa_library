@@ -53,5 +53,5 @@ export function overLessonLimit(seconds: unknown): boolean {
 
 /** One wording, so the teacher reads the same sentence wherever it is refused. */
 export const TOO_LONG_MESSAGE =
-  'This recording is too long to process. Update the Koku Recorder extension — ' +
+  'This recording is too long to process. Update the GENOA Library Recorder — ' +
   'the current version wraps up long lessons and sends them for you.'
