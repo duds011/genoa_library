@@ -2,7 +2,7 @@ import { createClient, getUser } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { formatDateShort, getLevelLabel, ordinal } from '@/lib/utils'
-import ProgressCharts from '@/components/student/ProgressCharts'
+import ProgressSwipe from '@/components/student/ProgressSwipe'
 import VocabLevelBreakdown from '@/components/student/VocabLevelBreakdown'
 import StudentTour from '@/components/student/StudentTour'
 import JapaneseLearningMapCard from '@/components/student/JapaneseLearningMapCard'
@@ -56,7 +56,7 @@ export default async function StudentDashboard() {
       .from('lessons')
       .select(`
         id, lesson_number, lesson_date, title,
-        lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution, vocab_total_count ),
+        lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution, vocab_total_count, metrics ),
         vocabulary_items ( id, word, jlpt_level ),
         homework_items ( id, completed )
       `)
@@ -91,6 +91,16 @@ export default async function StudentDashboard() {
   const latestTalk = talks[0] ?? null
   const firstTalk = talks[talks.length - 1] ?? null
   const talkDelta = latestTalk != null && firstTalk != null ? latestTalk - firstTalk : null
+
+  // Measured from recordings: pace and thinking time, averaged over the
+  // lessons that have them. Lessons that came from a Meet transcript carry
+  // no metrics and simply do not count.
+  const metricAvg = (key: string) => {
+    const vals = rows.map((l) => l.lesson_summaries?.metrics?.[key]).filter((v) => typeof v === 'number') as number[]
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
+  }
+  const avgWpm = metricAvg('studentWpm')
+  const avgThinkSec = metricAvg('avgResponseSec')
 
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
   const recentCount = rows.filter((l) => l.lesson_date && new Date(l.lesson_date).getTime() >= cutoff).length
@@ -136,13 +146,44 @@ export default async function StudentDashboard() {
     const distSum = dist && typeof dist === 'object'
       ? Object.values(dist).reduce((a: number, b: any) => a + Number(b), 0)
       : 0
+    const m = summary?.metrics ?? {}
     return {
       lessonNumber: l.lesson_number,
       score: summary?.score ?? null,
       talkPct: summary?.talk_percentage ?? null,
       vocabCount: summary?.vocab_total_count ?? (distSum > 0 ? distSum : (l.vocabulary_items?.length ?? 0)),
+      wpm: m.studentWpm ?? null,
+      responseSec: m.avgResponseSec ?? null,
     }
   })
+
+  /* The speaking tiles — Lesson Studio's "how you sound" block. */
+  const speakingTiles = (
+    <div className="k-speak-grid">
+      {avgWpm != null && (
+        <div className="k-stat blue">
+          <div className="k-stat-head"><Icon d="M13 3 4 14h6l-1 7 9-11h-6z" /><span>Pace</span></div>
+          <div className="k-stat-val"><b>{Math.round(avgWpm)}<span style={{ fontSize: 17 }}> wpm</span></b></div>
+          <p className="k-stat-sub">words per minute when you speak</p>
+        </div>
+      )}
+      {avgThinkSec != null && (
+        <div className="k-stat purple">
+          <div className="k-stat-head"><Icon d="M12 8v4l3 3M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" /><span>Thinking time</span></div>
+          <div className="k-stat-val"><b>{avgThinkSec.toFixed(1)}<span style={{ fontSize: 17 }}> s</span></b></div>
+          <p className="k-stat-sub">average pause before you answer</p>
+        </div>
+      )}
+      {latestTalk != null && (
+        <div className="k-stat yellow">
+          <div className="k-stat-head"><Icon d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zM5 11a7 7 0 0 0 14 0M12 18v3" /><span>Your share</span></div>
+          <div className="k-stat-val"><b>{latestTalk}<span style={{ fontSize: 17 }}>%</span></b></div>
+          <p className="k-stat-sub">of the last lesson was you talking</p>
+        </div>
+      )}
+    </div>
+  )
+  const hasSpeaking = avgWpm != null || avgThinkSec != null
 
   const testList = (tests || []) as any[]
 
@@ -182,6 +223,13 @@ export default async function StudentDashboard() {
         </div>
       </div>
 
+      {hasSpeaking && (
+        <div style={{ width: '100%' }}>
+          <div className="k-sec-head" style={{ margin: '4px 0 12px' }}><h2>Your speaking, measured</h2><span className="k-link">from your recordings</span></div>
+          {speakingTiles}
+        </div>
+      )}
+
       <div className="k-card" style={{ width: '100%' }} data-tour="milestones">
         <div className="k-card-head"><h3>Your journey</h3><span className="k-link">{getLevelLabel(lessonCount)}</span></div>
         <MilestoneTrack lessonCount={lessonCount} />
@@ -220,13 +268,19 @@ export default async function StudentDashboard() {
   const progressTab = (
     <>
       <div style={{ width: '100%' }}>
-        <div className="k-sec-head" style={{ margin: '4px 0 12px' }}><h2>Lesson by lesson</h2></div>
-        {lessonCount >= 2 ? (
-          <ProgressCharts lessons={progressLessons} />
+        <div className="k-sec-head" style={{ margin: '4px 0 12px' }}><h2>Lesson by lesson</h2><span className="k-link">swipe for each metric</span></div>
+        {rows.length >= 2 ? (
+          <div className="k-card"><ProgressSwipe lessons={progressLessons} /></div>
         ) : (
           <div className="k-empty">Trends appear once you have two scored lessons.</div>
         )}
       </div>
+      {hasSpeaking && (
+        <div style={{ width: '100%' }}>
+          <div className="k-sec-head" style={{ margin: '4px 0 12px' }}><h2>Your speaking, measured</h2></div>
+          {speakingTiles}
+        </div>
+      )}
       {learningMap.length > 0 && (
         <div style={{ width: '100%' }}>
           <div className="k-sec-head" style={{ margin: '4px 0 12px' }}><h2>Japanese learning map</h2></div>

@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { formatDateShort, ordinal, testScore } from '@/lib/utils'
-import StudentProgressChart from '@/components/teacher/StudentProgressChart'
+import ProgressSwipe from '@/components/student/ProgressSwipe'
 import VocabLevelBreakdown from '@/components/student/VocabLevelBreakdown'
 import ResetPasswordButton from '@/components/teacher/ResetPasswordButton'
 import UpdateEmailButton from '@/components/teacher/UpdateEmailButton'
@@ -37,7 +37,7 @@ export default async function StudentDetailPage({
       .from('lessons')
       .select(`
         id, lesson_number, lesson_date, status, title,
-        lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution ),
+        lesson_summaries ( score, talk_percentage, recap, vocab_level_distribution, vocab_total_count, metrics ),
         vocabulary_items ( id, jlpt_level ),
         homework_items ( id, completed )
       `)
@@ -123,11 +123,19 @@ export default async function StudentDetailPage({
 
   const lessonCount = published.reduce((max: number, l: any) => Math.max(max, l.lesson_number ?? 0), 0)
 
-  const chartData = published.map((l: any) => ({
-    lesson: `L${l.lesson_number}`,
-    score: l.lesson_summaries?.score ?? null,
-    talk:  l.lesson_summaries?.talk_percentage ?? null,
-  }))
+  // Newest first — ProgressSwipe reverses into chronological order itself.
+  const chartData = [...published].reverse().map((l: any) => {
+    const s = l.lesson_summaries
+    const m = s?.metrics ?? {}
+    return {
+      lessonNumber: l.lesson_number,
+      score: s?.score ?? null,
+      talkPct: s?.talk_percentage ?? null,
+      vocabCount: s?.vocab_total_count ?? (l.vocabulary_items?.length ?? 0),
+      wpm: m.studentWpm ?? null,
+      responseSec: m.avgResponseSec ?? null,
+    }
+  })
 
   const initials = student.full_name.split(' ').map((p: string) => p[0]).slice(0, 2).join('').toUpperCase()
   // Newest first — the teacher opens this to reach the latest recap.
@@ -176,7 +184,7 @@ export default async function StudentDetailPage({
         <div className="k-card k-chart-card">
           <div className="k-card-head"><h3>Progress over time</h3><span className="k-link">{published.length} lesson{published.length === 1 ? '' : 's'}</span></div>
           {chartData.length > 1 ? (
-            <StudentProgressChart data={chartData} />
+            <ProgressSwipe lessons={chartData} />
           ) : (
             <div className="k-swipe-empty">A trend needs two scored lessons.</div>
           )}

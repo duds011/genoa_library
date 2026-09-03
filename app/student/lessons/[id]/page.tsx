@@ -87,70 +87,73 @@ export default async function StudentLessonPage({
   const progressPanel = (
     <>
       {summary && (
-        <div className="card p-5" style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f8f7ff 100%)', border: '1px solid rgba(79,70,229,0.16)' }}>
-          <h2 className="font-bold text-brand-800 text-base mb-4">📊 Lesson Dashboard</h2>
-
-          <div className="grid sm:grid-cols-3 gap-3 mb-3">
-            {/* Speaking Balance */}
-            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Speaking Balance</p>
-              <p className="text-2xl font-extrabold text-brand-600 leading-none mb-1">
-                {studentTalk}% / {teacherTalk}%
-              </p>
-              <div className="space-y-1.5 mt-3">
-                {[
-                  { label: student.full_name.split(' ')[0], pct: studentTalk, student: true },
-                  { label: teacherFirstName,                 pct: teacherTalk, student: false },
-                ].map(({ label, pct, student: isStu }) => (
-                  <div key={label} className="grid gap-2" style={{ gridTemplateColumns: '64px 1fr 36px', alignItems: 'center', fontSize: '0.82rem', fontWeight: 700 }}>
-                    <span className="text-muted truncate">{label}</span>
-                    <div className="h-2 rounded-full bg-indigo-50 overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${pct}%`,
-                          background: isStu
-                            ? 'linear-gradient(135deg,#7c3aed,#facc15)'
-                            : 'linear-gradient(135deg,#4f46e5,#7c3aed)',
-                        }}
-                      />
+        <>
+          {/* Lesson Studio's "how this lesson went" cards — the same three
+              the teacher sees, in this portal's recap tint. */}
+          <div className="gr-stats">
+            <div className="gr-stat" style={{ ['--accent' as any]: '#4f46e5' }}>
+              <div className="gr-stat-head">
+                <span className="gr-stat-icon">🗣️</span>
+                <span className="gr-stat-label">Speaking balance</span>
+              </div>
+              <div className="gr-stat-value">
+                {studentTalk}<span className="gr-stat-unit">%</span>
+                <span className="gr-stat-sep">/</span>
+                {teacherTalk}<span className="gr-stat-unit">%</span>
+              </div>
+              <div className="gr-bal">
+                {[{ l: student.full_name.split(' ')[0], p: studentTalk, s: true }, { l: teacherFirstName, p: teacherTalk, s: false }].map((b) => (
+                  <div className="gr-bal-row" key={b.l}>
+                    <span>{b.l}</span>
+                    <div className="gr-bal-track">
+                      <div className={`gr-bal-fill${b.s ? ' student' : ''}`} style={{ width: `${b.p}%` }} />
                     </div>
-                    <span className="text-right text-muted">{pct}%</span>
+                    <span style={{ textAlign: 'right' }}>{b.p}%</span>
                   </div>
                 ))}
               </div>
             </div>
-
-            {/* Confidence */}
-            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Confidence / Independence</p>
-              <p className="text-2xl font-extrabold text-brand-600 leading-none">
-                {summary.confidence_label || 'Building'}
-              </p>
-              {summary.score != null && (
-                <div className="inline-flex items-center gap-1 mt-3 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-brand-800 font-extrabold text-sm">
-                  {summary.score} / 10
+            {summary.score != null && (
+              <div className="gr-stat" style={{ ['--accent' as any]: '#16a34a' }}>
+                <div className="gr-stat-head">
+                  <span className="gr-stat-icon">⭐</span>
+                  <span className="gr-stat-label">Score</span>
                 </div>
-              )}
-            </div>
-
-            {/* Grammar Density */}
-            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Grammar Density</p>
-              <p className="text-2xl font-extrabold text-brand-600 leading-none">
-                {summary.grammar_density || '—'}
-              </p>
-            </div>
+                <div className="gr-stat-value" style={{ color: '#16a34a' }}>
+                  {summary.score}<span className="gr-stat-unit">/10</span>
+                </div>
+                {summary.confidence_label && <span className="gr-stat-chip">{summary.confidence_label}</span>}
+              </div>
+            )}
+            {summary.grammar_density && (
+              <div className="gr-stat" style={{ ['--accent' as any]: '#7c3aed' }}>
+                <div className="gr-stat-head">
+                  <span className="gr-stat-icon">📚</span>
+                  <span className="gr-stat-label">Grammar density</span>
+                </div>
+                <div className="gr-stat-value" style={{ color: '#7c3aed', fontSize: 22 }}>{summary.grammar_density}</div>
+                <p className="gr-stat-note">{vocab.length} vocabulary items practised</p>
+              </div>
+            )}
           </div>
 
-          {/* Main Takeaways — inside dashboard */}
+          {/* Pace, thinking time, hesitations, pauses — counted from the
+              recording, so only lessons that have them show the grid. */}
+          <LessonMetrics metrics={(summary as any)?.metrics ?? null} studentFirst={student.full_name.split(' ')[0]} />
+
+          {summary.recap && (
+            <div className="card p-5">
+              <p className="text-sm text-ink leading-relaxed">{summary.recap}</p>
+            </div>
+          )}
+
           {mainTakeaways && (
-            <div className="border-t border-indigo-50 pt-4 mt-1">
-              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-3">Main Corrections & Refinements</p>
+            <div className="card p-5">
+              <p className="gr-sublab">Main corrections &amp; refinements</p>
               <SectionContent content={mainTakeaways.content} />
             </div>
           )}
-        </div>
+        </>
       )}
 
       {/* Teacher's Audio Review */}
@@ -321,10 +324,7 @@ export default async function StudentLessonPage({
       id: 'spoke',
       label: 'How you spoke',
       node: hasProgress ? (
-        <>
-          {progressPanel}
-          <LessonMetrics metrics={metrics} studentFirst={studentFirst} />
-        </>
+        <>{progressPanel}</>
       ) : null,
     },
     {
