@@ -1,10 +1,9 @@
 import type { Config } from "tailwindcss";
 
 /**
- * KOKU 2.0 palette. The utility classes the older components still carry
- * (text-brand-600, bg-brand-50, text-ink…) now resolve to the same tokens the
- * KOKU stylesheets use, so a component written against Tailwind and one
- * written against koku2.css read as one system.
+ * GENOA's own palette — indigo into purple, Poppins — carried onto the KOKU
+ * structure. The KOKU stylesheets read the same values from their tokens, so
+ * a Tailwind utility and a `.k-*` class paint the same colour.
  */
 const config: Config = {
   content: [
@@ -15,42 +14,35 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Outfit", "Plus Jakarta Sans", "system-ui", "sans-serif"],
+        sans: ["Poppins", "system-ui", "sans-serif"],
       },
       colors: {
         brand: {
-          DEFAULT: "#0a61c9",
-          light: "#2d7ff9",
-          50: "#e8f2fd",
-          100: "#d6e7fb",
-          200: "#b3d1f7",
-          300: "#86b4f1",
-          400: "#4da3ff",
-          500: "#1571e0",
-          600: "#0a61c9",
-          700: "#0a55b0",
-          800: "#073f8f",
-          900: "#06336d",
+          DEFAULT: "#4f46e5",
+          light: "#6366f1",
+          50: "#eef2ff",
+          100: "#e0e7ff",
+          200: "#c7d2fe",
+          300: "#a5b4fc",
+          400: "#818cf8",
+          500: "#6366f1",
+          600: "#4f46e5",
+          700: "#4338ca",
+          800: "#3730a3",
+          900: "#312e81",
         },
         purple: {
-          DEFAULT: "#a24ee0",
-          light: "#b975ea",
-          50: "#f4ecfd",
-          100: "#f3e3ff",
-          200: "#e4c6fb",
-          500: "#a24ee0",
-          600: "#a24ee0",
-          700: "#7a37b3",
-          800: "#5a1f85",
+          DEFAULT: "#7c3aed",
+          light: "#8b5cf6",
+          50: "#f5f3ff",
+          100: "#ede9fe",
+          200: "#ddd6fe",
+          500: "#8b5cf6",
+          600: "#7c3aed",
+          700: "#6d28d9",
+          800: "#5b21b6",
         },
-        indigo: {
-          50: "#e8f2fd",
-          100: "#d6e7fb",
-          200: "#b3d1f7",
-          500: "#1571e0",
-          600: "#0a61c9",
-        },
-        ink: "#1f2937",
+        ink: "#1e1b4b",
         surface: "#ffffff",
         muted: "#6b7280",
       },

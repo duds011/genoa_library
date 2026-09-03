@@ -55,7 +55,7 @@ export default async function Page({ params }: { params: { lessonId: string } })
   // errors, so it would have shipped silently.
   const levels = Array.from(spread.entries()).sort((a, b) => b[0].localeCompare(a[0]))
   const LEVEL_COLOUR: Record<string, string> = {
-    N5: '#0a61c9', N4: '#a24ee0', N3: '#a855f7', N2: '#c084fc', N1: '#d8b4fe',
+    N5: '#4f46e5', N4: '#7c3aed', N3: '#a855f7', N2: '#c084fc', N1: '#d8b4fe',
   }
 
   const movements: Movement[] = [
@@ -66,7 +66,7 @@ export default async function Page({ params }: { params: { lessonId: string } })
         <>
           <div className="gr-stats">
             {studentTalk != null && (
-              <div className="gr-stat" style={{ ['--accent' as any]: '#0a61c9' }}>
+              <div className="gr-stat" style={{ ['--accent' as any]: '#4f46e5' }}>
                 <div className="gr-stat-head">
                   <span className="gr-stat-icon">🗣️</span>
                   <span className="gr-stat-label">Speaking balance</span>
@@ -102,12 +102,12 @@ export default async function Page({ params }: { params: { lessonId: string } })
               </div>
             )}
             {summary.grammar_density && (
-              <div className="gr-stat" style={{ ['--accent' as any]: '#a24ee0' }}>
+              <div className="gr-stat" style={{ ['--accent' as any]: '#7c3aed' }}>
                 <div className="gr-stat-head">
                   <span className="gr-stat-icon">📚</span>
                   <span className="gr-stat-label">Grammar density</span>
                 </div>
-                <div className="gr-stat-value" style={{ color: '#a24ee0', fontSize: 22 }}>{summary.grammar_density}</div>
+                <div className="gr-stat-value" style={{ color: '#7c3aed', fontSize: 22 }}>{summary.grammar_density}</div>
                 <p className="gr-stat-note">{vocab.length} vocabulary items practised</p>
               </div>
             )}
@@ -234,22 +234,35 @@ export default async function Page({ params }: { params: { lessonId: string } })
   ]
 
   return (
-    <div className="max-w-5xl mx-auto space-y-5 pb-12 px-3 pt-6">
-      <div className="card p-4" style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}>
-        <p className="text-xs font-bold" style={{ color: '#9a3412' }}>
-          Local preview · real data · not reachable in production
-        </p>
+    <div className="k-shell solo" style={{ maxWidth: 1180, margin: '0 auto', paddingBottom: 48 }}>
+      <div className="system-banner" style={{ marginBottom: 14 }}>
+        <span>Local preview · real data · {l.status === 'draft' ? 'this is a DRAFT the student cannot see yet' : 'not reachable in production'}</span>
       </div>
-      <div className="card p-7" style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f7f4ff 100%)' }}>
-        <div className="inline-flex items-center gap-2 mb-4 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-brand-600 text-sm font-bold">
-          <span className="w-2 h-2 rounded-full bg-brand-600 inline-block" />
-          Lesson {l.lesson_number} · Recap
+      {/* The same brand band the student's page opens with — see
+          app/student/lessons/[id]/page.tsx. */}
+      <header className="k-phead" style={{ marginBottom: 20 }}>
+        <div>
+          <div className="k-phead-eyebrow">Lesson {l.lesson_number} · Recap</div>
+          <h1>{l.title || `Lesson ${l.lesson_number}`}</h1>
+          <div className="k-pmeta">
+            <span>{l.lesson_date}</span>
+            <span>{studentName.split(' ')[0]} &amp; Noa</span>
+            {summary?.confidence_label && <span>{summary.confidence_label}</span>}
+          </div>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-ink leading-tight mb-1">
-          {l.title || `Lesson ${l.lesson_number}`}
-        </h1>
-        <p className="text-sm text-muted">{l.lesson_date} · {studentName} &amp; Noa</p>
-      </div>
+        {summary?.score != null && (
+          <div className="k-pscore">
+            <div>
+              <b>{summary.score}</b>
+              <small>OUT OF 10</small>
+            </div>
+          </div>
+        )}
+        <div className="k-hero-art" style={{ right: 150, opacity: .4 }} aria-hidden>
+          <span className="k-orb" style={{ width: 70, height: 70, right: 0, top: 10 }} />
+          <span className="k-tube" style={{ width: 56, height: 56, right: 60, top: 74, transform: 'rotate(40deg)' }} />
+        </div>
+      </header>
       <RecapFlow movements={movements} back={{ href: '/student/dashboard', label: 'Dashboard' }} />
     </div>
   )

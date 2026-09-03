@@ -48,7 +48,7 @@ export default function TestRunner({
     return (
       <div className="card p-8 text-center max-w-lg mx-auto">
         <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-white mb-4"
-          style={{ background: 'linear-gradient(135deg, #0a61c9, #a24ee0)' }}>
+          style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
           <Sparkles className="w-6 h-6" />
         </div>
         <h1 className="text-xl font-bold text-ink">{test.title}</h1>

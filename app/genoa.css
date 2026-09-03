@@ -5,7 +5,7 @@
    verbatim, so the two apps stay one design system.
    ═══════════════════════════════════════════════════════════════════ */
 
-:root{--bg-tint:rgba(10,97,201,.07);--bg-ink:rgba(31,41,55,.08)}
+:root{--bg-tint:rgba(79,70,229,.07);--bg-ink:rgba(30,27,75,.08)}
 html{background:var(--bg)}
 
 /* — student top bar: brand · links · tools — */
@@ -95,5 +95,33 @@ html{background:var(--bg)}
 /* The page wash sits behind the student column too. */
 .k-shell.solo{position:relative;padding:18px 18px 40px}
 .k-shell.solo::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
-  background:radial-gradient(ellipse 55% 40% at 50% 0%,rgba(10,97,201,.10) 0%,transparent 70%),
-    radial-gradient(ellipse 40% 34% at 88% 34%,rgba(162,78,224,.07) 0%,transparent 70%)}
+  background:radial-gradient(ellipse 55% 40% at 50% 0%,rgba(79,70,229,.10) 0%,transparent 70%),
+    radial-gradient(ellipse 40% 34% at 88% 34%,rgba(124,58,237,.07) 0%,transparent 70%)}
+
+/* ═══ GENOA's own skin on the KOKU structure ═══
+   The shapes are Lesson Studio's; the colour is this portal's indigo into
+   purple, on Poppins. Filled surfaces carry the gradient, not a flat blue. */
+:root{--brand-grad:linear-gradient(135deg,#4f46e5,#7c3aed);--brand-grad-hover:linear-gradient(135deg,#4338ca,#6d28d9);
+  --brand-grad-panel:linear-gradient(150deg,#5b54e8 0%,#4f46e5 40%,#6d28d9 100%)}
+.k-thead,.k-phead,.k-onb-side{background:var(--brand-grad-panel);box-shadow:0 1px 2px rgba(79,70,229,.18),0 18px 40px -18px rgba(79,70,229,.55)}
+.k-rail-mark,.k-bar-mark,.mark,.k-btn-pill,.k-dtabs button.on,.k-bar-nav a.on,.k-seg button.on,.tab.sel,.k-tab.sel,.k-deck-all,.k-audio-play{background:var(--brand-grad)}
+.k-btn-pill:hover,.k-deck-all:hover{background:var(--brand-grad-hover)}
+.avatar,.account-avatar,.lc-num,.k-file-ic{background:linear-gradient(135deg,#eef2ff,#ede9fe);color:#4f46e5}
+.side-link.active{background:linear-gradient(135deg,#eef2ff,#f3e8ff);color:#4f46e5}
+.k-stat.yellow{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff}
+.k-stat.yellow .k-chip{background:rgba(255,255,255,.24)}
+.k-stat.blue{background:linear-gradient(135deg,#4f46e5,#6366f1)}
+.k-stat.purple{background:linear-gradient(135deg,#312e81,#4f46e5)}
+.k-stat{box-shadow:0 14px 34px -16px rgba(79,70,229,.5)}
+.k-pscore b{background:var(--brand-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.g-draft{border-left-color:#7c3aed}
+.g-draft-num{background:#ede9fe;color:#6d28d9}
+.k-hw-fill,.k-pillar-foot .k-hw-track i,.k-track-seg i,.milestone-fill{background:var(--brand-grad)!important}
+.k-pillar-num,.k-phead-eyebrow-ink{color:#7c3aed}
+.k-link:hover,.g-rung.on b{color:#7c3aed}
+.k-thead-figures b,.k-name,.title{font-weight:800}
+.wrap .btn-primary,.k-shell .btn-primary,.k-scope .btn-primary,.k-join-btn{background:var(--brand-grad);color:#fff;box-shadow:0 2px 12px rgba(79,70,229,.28)}
+.wrap .btn-primary:hover,.k-shell .btn-primary:hover,.k-join-btn:hover:not(:disabled){background:var(--brand-grad-hover)}
+.k-thead .btn-primary,.wrap .k-thead .btn-primary{background:#fff;color:#4f46e5;box-shadow:none}
+.k-thead .btn-primary:hover,.wrap .k-thead .btn-primary:hover{background:#eef2ff}
+.status-pill.published{background:#ede9fe;color:#6d28d9}

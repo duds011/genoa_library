@@ -184,7 +184,7 @@ export default function NotesManager({
             </>
           ) : (
             <>
-              <span className="stat-value" style={{ color: '#0a61c9' }}>{formatMoney(earnings.perHour, currency)}</span>
+              <span className="stat-value" style={{ color: '#4f46e5' }}>{formatMoney(earnings.perHour, currency)}</span>
               <span className="text-[10px] text-muted mt-0.5">
                 {formatMoney(earnings.revenue, currency)} ÷ {formatHours(earnings.hours)}
               </span>

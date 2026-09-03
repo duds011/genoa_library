@@ -11,9 +11,10 @@
 @layer components {
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-bold text-white text-[12.5px] transition-all duration-150 cursor-pointer;
-    background: var(--forest);
+    background: var(--brand-grad);
+    box-shadow: 0 2px 12px rgba(79,70,229,0.28);
   }
-  .btn-primary:hover { background: var(--forest-deep); transform: translateY(-1px); }
+  .btn-primary:hover { background: var(--brand-grad-hover); transform: translateY(-1px); }
   .btn-primary:active { transform: translateY(0); }
   .btn-primary:disabled { @apply opacity-50 cursor-not-allowed; transform: none; }
 

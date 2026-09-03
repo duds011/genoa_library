@@ -54,7 +54,7 @@ export default function RevenueChart({ data, currency }: { data: MonthlyRevenue[
           />
           <Bar dataKey="revenue" radius={[6, 6, 0, 0]} maxBarSize={48}>
             {data.map((_, i) => (
-              <Cell key={i} fill={i === lastIdx ? '#0a61c9' : '#86b4f1'} />
+              <Cell key={i} fill={i === lastIdx ? '#4f46e5' : '#a5b4fc'} />
             ))}
           </Bar>
         </BarChart>

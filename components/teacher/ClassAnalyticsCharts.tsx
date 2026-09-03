@@ -213,7 +213,7 @@ export default function ClassAnalyticsCharts({ summaryData, progressionData, cla
         </div>
         <div className="stat-card">
           <span className="stat-label">Class Avg Score</span>
-          <span className="stat-value" style={{ color: '#0a61c9' }}>
+          <span className="stat-value" style={{ color: '#4f46e5' }}>
             {classStats.avgScore}<span className="text-sm font-medium text-muted">/10</span>
           </span>
         </div>
@@ -245,8 +245,8 @@ export default function ClassAnalyticsCharts({ summaryData, progressionData, cla
             <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: '#f9fafb' }} formatter={(v: unknown) => [`${v}/10`, 'Avg Score']} />
             <ReferenceLine
               y={classStats.avgScore}
-              stroke="#0a61c9" strokeDasharray="5 3" strokeOpacity={0.45}
-              label={{ value: `class avg ${classStats.avgScore}`, position: 'insideTopRight', fontSize: 10, fill: '#0a61c9', dy: 4, dx: -4 }}
+              stroke="#4f46e5" strokeDasharray="5 3" strokeOpacity={0.45}
+              label={{ value: `class avg ${classStats.avgScore}`, position: 'insideTopRight', fontSize: 10, fill: '#4f46e5', dy: 4, dx: -4 }}
             />
             <Bar dataKey="avgScore" radius={[6, 6, 0, 0]} maxBarSize={54}>
               {summaryData.map((s, i) => <Cell key={i} fill={colorOf.get(s.name)} />)}

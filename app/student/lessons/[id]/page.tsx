@@ -87,7 +87,7 @@ export default async function StudentLessonPage({
   const progressPanel = (
     <>
       {summary && (
-        <div className="card p-5" style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f8f7ff 100%)', border: '1px solid rgba(10,97,201,0.16)' }}>
+        <div className="card p-5" style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f8f7ff 100%)', border: '1px solid rgba(79,70,229,0.16)' }}>
           <h2 className="font-bold text-brand-800 text-base mb-4">📊 Lesson Dashboard</h2>
 
           <div className="grid sm:grid-cols-3 gap-3 mb-3">
@@ -110,8 +110,8 @@ export default async function StudentLessonPage({
                         style={{
                           width: `${pct}%`,
                           background: isStu
-                            ? 'linear-gradient(135deg,#a24ee0,#facc15)'
-                            : 'linear-gradient(135deg,#0a61c9,#a24ee0)',
+                            ? 'linear-gradient(135deg,#7c3aed,#facc15)'
+                            : 'linear-gradient(135deg,#4f46e5,#7c3aed)',
                         }}
                       />
                     </div>
@@ -155,7 +155,7 @@ export default async function StudentLessonPage({
 
       {/* Teacher's Audio Review */}
       {voiceUrl && (
-        <div className="card p-6" style={{ border: '1px solid rgba(10,97,201,0.12)' }}>
+        <div className="card p-6" style={{ border: '1px solid rgba(79,70,229,0.12)' }}>
           <h2 className="section-title mb-1">🎙️ Noa's Audio Review</h2>
           <audio controls className="w-full" src={voiceUrl} />
         </div>
@@ -163,7 +163,7 @@ export default async function StudentLessonPage({
 
       {/* Teacher's Note */}
       {summary?.teacher_note && (
-        <div className="card p-6" style={{ background: 'linear-gradient(180deg,#ffffff,#f7f4ff)', border: '1px solid rgba(10,97,201,0.12)' }}>
+        <div className="card p-6" style={{ background: 'linear-gradient(180deg,#ffffff,#f7f4ff)', border: '1px solid rgba(79,70,229,0.12)' }}>
           <h2 className="section-title mb-3">🌟 Noa's Note</h2>
           <p className="text-sm text-ink/85 leading-relaxed">{summary.teacher_note}</p>
         </div>
@@ -276,9 +276,9 @@ export default async function StudentLessonPage({
                 <span
                   className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
                   style={{
-                    background: (JLPT_COLORS[v.jlpt_level] ?? '#4da3ff') + '22',
-                    color: JLPT_COLORS[v.jlpt_level] ?? '#4da3ff',
-                    border: `1px solid ${(JLPT_COLORS[v.jlpt_level] ?? '#4da3ff')}40`,
+                    background: (JLPT_COLORS[v.jlpt_level] ?? '#818cf8') + '22',
+                    color: JLPT_COLORS[v.jlpt_level] ?? '#818cf8',
+                    border: `1px solid ${(JLPT_COLORS[v.jlpt_level] ?? '#818cf8')}40`,
                   }}
                 >
                   {JLPT_LABELS[v.jlpt_level] ?? v.jlpt_level}
