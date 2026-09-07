@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "C:\\Users\\854se\\Desktop\\teacher-portal-noa",
+      "port": 3000
+    },
+    {
+      "name": "genoa-library-3400",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "-p", "3400"],
+      "cwd": "C:\\Users\\854se\\Desktop\\teacher-portal-noa",
+      "port": 3400
+    }
+  ]
+}
