@@ -43,3 +43,6 @@ next-env.d.ts
 .idtest.mjs
 .match-test.mjs
 .roster.json
+
+# Local dev-server config with machine paths — not shared.
+.claude/
