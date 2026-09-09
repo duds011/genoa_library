@@ -63,6 +63,40 @@ it (v1.3.0), replaced by a line saying what it will use.
 
 ---
 
+## Audio: recording, playback and storage
+
+**Never name an audio format in code.** `lib/audioRecording.ts` is the only place
+that decides one. Safari — iPhone and Mac — cannot record WebM and hands back
+MP4/AAC; every recorder here used to wrap that in a blob typed `audio/webm` and
+name it `.webm`, so the bytes and the label disagreed and the clip would not play
+back. Take the type off the recorder, let the extension follow the type, and pass
+`contentType` on the upload.
+
+**The extension is what actually matters.** Supabase serves `Content-Type` from
+the *file extension* on a GET (a HEAD returns the stored mimetype — do not verify
+with HEAD, it lies about what a browser will get). Fixing the stored mimetype
+alone changes nothing; the file has to be renamed. 25 mislabelled clips were
+renamed to `.m4a` on 2026-09-09 with their rows updated. 17 unreferenced ones
+were left as they are.
+
+**Recorded clips need `components/RecordedAudio.tsx`, not a bare `<audio>`.**
+Chrome's WebM carries no duration, so a plain player reports Infinity and sits
+dead at 0:00 while it plays; the component primes the real length by seeking past
+the end. It also says so in a sentence when a clip genuinely will not decode.
+`LegacyRecap.tsx` keeps its bare player — that file stays frozen.
+
+**Nothing she records leaves the browser unheard.** TeacherFeedbackRecorder holds
+the clip locally and uploads only on "Use this one".
+
+**Storage, measured 2026-09-09:** 1.81 GB over 1,084 files — attachments 797 MB,
+homework 500 MB, lesson-audio 328 MB, student-audio 172 MB, recordings 10 MB.
+Growing about 500 MB a month. Only `lesson-recordings` is ever purged (30 days,
+`app/api/cron/purge-recordings`); the other five buckets grow forever, and about
+491 MB is already exact duplicates — the same PDFs re-uploaded to several
+lessons. Free tier is 1 GB, so this project is past it and on a paid plan.
+
+---
+
 ## Open items
 
 1. **Google Calendar** — half-configured, blocked. There is a Cloud project on
