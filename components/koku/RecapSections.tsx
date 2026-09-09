@@ -167,9 +167,17 @@ export default function RecapSections({ sections }: { sections: Section[] }) {
           <div
             className={`kr-sec-body${open === i ? ' open' : ''}`}
             ref={(el) => { bodies.current[i] = el }}
-            // The narrow layout animates height, so it needs a real number;
-            // the wide one ignores it entirely (max-height:none).
-            style={{ maxHeight: open === i ? (bodies.current[i]?.scrollHeight ?? 2000) : 0 }}
+            style={{
+              // The narrow layout animates height, so it needs a real number;
+              // the wide one ignores it entirely (max-height:none).
+              maxHeight: open === i ? (bodies.current[i]?.scrollHeight ?? 2000) : 0,
+              // Start the panel on its own button's row, so it opens BESIDE the
+              // part you clicked. The stylesheet pinned every panel to row 1,
+              // which put the writing up beside part 01 however far down the
+              // list you were — opening part 04 answered you at the top of the
+              // page. Ignored on the narrow layout, which is not a grid.
+              gridRow: `${i + 1} / span ${Math.max(1, sections.length - i)}`,
+            }}
           >
             <Body section={s} />
           </div>
