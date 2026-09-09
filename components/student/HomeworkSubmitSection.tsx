@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Paperclip, Upload, X } from 'lucide-react'
 import { notifyTeacherOfSubmission } from '@/app/actions/notifications'
+import RecordedAudio from '@/components/RecordedAudio'
 
 interface Submission {
   id: string
@@ -79,7 +80,7 @@ export default function HomeworkSubmitSection({ lessonId, studentId, initialSubm
         <div className="p-4 rounded-xl border border-brand-200 bg-brand-50">
           <p className="text-[10px] font-bold text-brand-600 uppercase tracking-widest mb-1.5">Noa Feedback</p>
           {feedback.teacher_feedback && <p className="text-sm text-ink leading-relaxed whitespace-pre-line">{feedback.teacher_feedback}</p>}
-          {feedback.feedback_audio_url && <audio controls src={feedback.feedback_audio_url} className="w-full h-9 mt-2" />}
+          {feedback.feedback_audio_url && <RecordedAudio src={feedback.feedback_audio_url} className="w-full h-9 mt-2" />}
         </div>
       )}
 

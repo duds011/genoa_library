@@ -11,6 +11,8 @@ import TeacherFeedbackRecorder from '@/components/teacher/TeacherFeedbackRecorde
 import { deleteLesson } from '@/app/actions/lessons'
 import { setHomeworkFeedbackAudio } from '@/app/actions/audioFeedback'
 import { translateLessonExplanations, writeLessonNote } from '@/app/actions/recapTools'
+import RecordedAudio from '@/components/RecordedAudio'
+import { newRecorder, fileFromChunks, contentTypeFor } from '@/lib/audioRecording'
 
 interface LessonSection {
   id: string
@@ -168,18 +170,22 @@ export default function LessonEditor({
     setRecordingSeconds(0)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
+      const recorder = newRecorder(stream)
       mediaRecorderRef.current = recorder
       recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop())
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        await uploadAudio(new File([blob], `lesson-${lessonId}.webm`, { type: 'audio/webm' }))
+        // Never name the format ourselves — Safari records MP4, not WebM, and a
+        // clip stored under the wrong label will not play back anywhere.
+        const file = fileFromChunks(chunksRef.current, recorder, `lesson-${lessonId}`)
+        if (!file) { setAudioError('That recording came out empty — try again, and give it a second before stopping.'); return }
+        await uploadAudio(file)
       }
       recorder.start(1000) // flush data every second — prevents 15s cap on some browsers
       setIsRecording(true)
       timerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
-    } catch {
+    } catch (e) {
+      console.error('Could not start recording', e)
       setAudioError('Microphone access denied. Please allow it in your browser and try again.')
     }
   }
@@ -225,8 +231,12 @@ export default function LessonEditor({
       const path = `${lessonId}.${ext}`
       const { error: upErr } = await supabase.storage
         .from('lesson-audio')
-        .upload(path, file, { upsert: true })
-      if (upErr) { setAudioError(upErr.message); return }
+        .upload(path, file, { upsert: true, contentType: contentTypeFor(file) })
+      if (upErr) {
+        console.error('Voice memo upload failed', upErr)
+        setAudioError('That recording did not save. Check your connection and try again.')
+        return
+      }
       const { data: { publicUrl } } = supabase.storage.from('lesson-audio').getPublicUrl(path)
       const urlWithBust = `${publicUrl}?t=${Date.now()}` // bust browser cache on re-upload
       await supabase.from('lessons').update({ voice_file_url: publicUrl }).eq('id', lessonId)
@@ -646,7 +656,7 @@ export default function LessonEditor({
         {voiceFileUrl && !uploadingAudio && (
           <div>
             <label className="form-label mb-2">Current Recording</label>
-            <audio controls className="w-full mb-2" src={voiceFileUrl} />
+            <RecordedAudio src={voiceFileUrl} className="w-full mb-2" />
             <div className="flex items-center gap-4">
               <span className="text-xs text-green-600 font-medium">✓ Saved</span>
               <button type="button" onClick={removeAudio} className="text-xs text-red-400 hover:text-red-600 transition-colors">
@@ -1125,7 +1135,7 @@ export default function LessonEditor({
                         <span className="text-[10px] font-bold text-brand-600 bg-white border border-indigo-100 rounded-full px-2 py-0.5">🎯 exercise</span>
                       )}
                     </p>
-                    <audio controls src={s.audio_url} className="w-full h-8" style={{ minWidth: 0 }} />
+                    <RecordedAudio src={s.audio_url} className="w-full h-8" style={{ minWidth: 0 }} />
                   </div>
                 </div>
                 <AudioFeedback submissionId={s.id} initialFeedback={s.teacher_feedback} initialFeedbackAudioUrl={s.feedback_audio_url} />

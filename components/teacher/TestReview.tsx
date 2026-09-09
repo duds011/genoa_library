@@ -10,6 +10,7 @@ import { groupBySection, testScore } from '@/lib/utils'
 import { sameAnswer } from '@/lib/furigana'
 import Furigana from '@/components/Furigana'
 import QuestionEditor from './QuestionEditor'
+import RecordedAudio from '@/components/RecordedAudio'
 
 const TYPE_LABEL: Record<string, string> = {
   written: '✍️ Written',
@@ -490,7 +491,7 @@ function AnswerGrader({ q, submission, points }: { q: TestQuestion; submission?:
       ) : (
         <>
           {submission.answer_text && <p className="text-sm text-ink whitespace-pre-line">{submission.answer_text}</p>}
-          {submission.audio_url && <audio controls src={submission.audio_url} className="w-full h-9" />}
+          {submission.audio_url && <RecordedAudio src={submission.audio_url} className="w-full h-9" />}
           {!submission.answer_text && !submission.audio_url && <p className="text-xs text-muted italic">Empty answer.</p>}
         </>
       )}

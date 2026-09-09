@@ -10,6 +10,7 @@ import LegacyRecap from '@/components/student/LegacyRecap'
 import { usesNewRecap } from '@/lib/recapEra'
 import { buildRecap } from '@/lib/recapShape'
 import { resolveBrand } from '@/lib/brand'
+import RecordedAudio from '@/components/RecordedAudio'
 
 /**
  * A published lesson, as the student reads it.
@@ -191,7 +192,7 @@ export default async function StudentLessonPage({
       {(voiceUrl || summary?.teacher_note) && (
         <div className="k-card" style={{ marginBottom: 14 }}>
           <div className="k-card-head"><h3>A message from {teacherFirst}</h3></div>
-          {voiceUrl && <audio controls style={{ width: '100%', marginBottom: summary?.teacher_note ? 12 : 0 }} src={voiceUrl} />}
+          {voiceUrl && <RecordedAudio style={{ width: '100%', marginBottom: summary?.teacher_note ? 12 : 0 }} src={voiceUrl} />}
           {summary?.teacher_note && (
             <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.65 }}>{summary.teacher_note}</p>
           )}

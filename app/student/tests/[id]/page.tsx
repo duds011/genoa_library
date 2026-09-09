@@ -7,6 +7,7 @@ import Furigana from '@/components/Furigana'
 import { sameAnswer } from '@/lib/furigana'
 import { groupBySection, testScore } from '@/lib/utils'
 import type { TestQuestion, TestSubmission } from '@/lib/types'
+import RecordedAudio from '@/components/RecordedAudio'
 
 const TYPE_LABEL: Record<string, string> = {
   written: '✍️ Written',
@@ -155,7 +156,7 @@ export default async function StudentTestPage({
                         ) : (
                           <>
                             {s?.answer_text && <p className="text-sm text-ink bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-line">{s.answer_text}</p>}
-                            {s?.audio_url && <audio controls src={s.audio_url} className="w-full h-9 mt-1" />}
+                            {s?.audio_url && <RecordedAudio src={s.audio_url} className="w-full h-9 mt-1" />}
                             {!s?.answer_text && !s?.audio_url && <p className="text-xs text-muted italic">No answer submitted.</p>}
                           </>
                         )}

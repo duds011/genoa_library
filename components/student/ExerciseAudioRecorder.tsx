@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Mic, Square, Play, Pause, RotateCcw, Loader2, Send, Trash2 } from 'lucide-react'
+import RecordedAudio from '@/components/RecordedAudio'
+import { newRecorder, fileFromChunks, contentTypeFor } from '@/lib/audioRecording'
 
 export interface AudioSub {
   id: string
@@ -10,21 +12,6 @@ export interface AudioSub {
   file_name: string
   teacher_feedback?: string | null
   feedback_audio_url?: string | null
-}
-
-// iOS Safari can't record audio/webm — pick a format the browser supports.
-function pickRecordingType(): string {
-  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return ''
-  for (const t of ['audio/webm', 'audio/mp4', 'audio/ogg']) {
-    if (MediaRecorder.isTypeSupported(t)) return t
-  }
-  return ''
-}
-
-function extForType(type: string): string {
-  if (type.includes('mp4')) return 'm4a'
-  if (type.includes('ogg')) return 'ogg'
-  return 'webm'
 }
 
 export default function ExerciseAudioRecorder({
@@ -67,7 +54,7 @@ export default function ExerciseAudioRecorder({
     try {
       const ext = pending.file.name.split('.').pop() ?? 'webm'
       const path = `${lessonId}/ex-${exerciseId}-${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage.from('student-audio').upload(path, pending.file)
+      const { error: upErr } = await supabase.storage.from('student-audio').upload(path, pending.file, { contentType: contentTypeFor(pending.file) })
       if (upErr) { setError(`Upload failed: ${upErr.message}`); return }
       const { data: { publicUrl } } = supabase.storage.from('student-audio').getPublicUrl(path)
       const { data, error: insErr } = await supabase
@@ -92,15 +79,13 @@ export default function ExerciseAudioRecorder({
     setError('')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mime = pickRecordingType()
-      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+      const rec = newRecorder(stream)
       chunksRef.current = []
       rec.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       rec.onstop = () => {
         stream.getTracks().forEach(t => t.stop())
-        const type = rec.mimeType || mime || 'audio/webm'
-        const blob = new Blob(chunksRef.current, { type })
-        const file = new File([blob], `recording-${Date.now()}.${extForType(type)}`, { type })
+        const file = fileFromChunks(chunksRef.current, rec, `recording-${Date.now()}`)
+        if (!file) { setError('That recording came out empty — try again, and give it a second before stopping.'); return }
         setPending({ url: URL.createObjectURL(file), file })
       }
       rec.start(1000)
@@ -129,7 +114,11 @@ export default function ExerciseAudioRecorder({
       audioRef.current = new Audio(submission.audio_url)
       audioRef.current.onended = () => setPlaying(false)
     }
-    audioRef.current.play(); setPlaying(true)
+    audioRef.current.play().then(() => setPlaying(true)).catch(err => {
+      console.error('Could not play recording', err)
+      setPlaying(false)
+      setError('That recording will not play in this browser. Try Chrome, or record it again.')
+    })
   }
 
   async function reRecord() {
@@ -150,7 +139,7 @@ export default function ExerciseAudioRecorder({
       {pending ? (
         <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 space-y-2.5">
           <p className="text-xs font-semibold text-amber-700">🎧 Listen back, then send it.</p>
-          <audio controls src={pending.url} className="w-full h-9" />
+          <RecordedAudio src={pending.url} className="w-full h-9" />
           <div className="flex items-center gap-2">
             <button
               onClick={sendPending}
@@ -200,7 +189,7 @@ export default function ExerciseAudioRecorder({
         <div className="mt-2.5 p-3 rounded-lg border border-brand-200 bg-brand-50">
           <p className="text-[10px] font-bold text-brand-600 uppercase tracking-widest mb-1">Noa Feedback</p>
           {submission?.teacher_feedback && <p className="text-sm text-ink whitespace-pre-line">{submission.teacher_feedback}</p>}
-          {submission?.feedback_audio_url && <audio controls src={submission.feedback_audio_url} className="w-full h-9 mt-2" />}
+          {submission?.feedback_audio_url && <RecordedAudio src={submission.feedback_audio_url} className="w-full h-9 mt-2" />}
         </div>
       )}
     </div>

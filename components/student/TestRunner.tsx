@@ -8,6 +8,8 @@ import { startTestAttempt, saveWrittenAnswer, saveChoiceAnswer, submitTest } fro
 import type { TestQuestion, TestSubmission } from '@/lib/types'
 import { groupBySection } from '@/lib/utils'
 import Furigana from '@/components/Furigana'
+import { newRecorder, fileFromChunks, contentTypeFor } from '@/lib/audioRecording'
+import RecordedAudio from '@/components/RecordedAudio'
 
 const TYPE_LABEL: Record<string, string> = {
   written: '✍️ Written',
@@ -403,18 +405,6 @@ function FillBlankAnswer({
   )
 }
 
-// iOS Safari can't record audio/webm — pick a format the browser supports.
-function pickRecordingType(): string {
-  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return ''
-  for (const t of ['audio/webm', 'audio/mp4', 'audio/ogg']) if (MediaRecorder.isTypeSupported(t)) return t
-  return ''
-}
-function extForType(type: string): string {
-  if (type.includes('mp4')) return 'm4a'
-  if (type.includes('ogg')) return 'ogg'
-  return 'webm'
-}
-
 // Recording saves itself the moment the student stops. There is no per-answer
 // "send": they record, listen back, re-record if they want, and submit the whole
 // test once at the end.
@@ -449,7 +439,7 @@ function TestAudioAnswer({
     try {
       const ext = file.name.split('.').pop() ?? 'webm'
       const path = `tests/${testId}/q-${questionId}-${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage.from('student-audio').upload(path, file)
+      const { error: upErr } = await supabase.storage.from('student-audio').upload(path, file, { contentType: contentTypeFor(file) })
       if (upErr) { setError('Could not save that recording.'); return }
       const { data: { publicUrl } } = supabase.storage.from('student-audio').getPublicUrl(path)
       const { error: insErr } = await supabase
@@ -471,15 +461,13 @@ function TestAudioAnswer({
     setError('')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mime = pickRecordingType()
-      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+      const rec = newRecorder(stream)
       chunksRef.current = []
       rec.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       rec.onstop = () => {
         stream.getTracks().forEach(t => t.stop())
-        const type = rec.mimeType || mime || 'audio/webm'
-        const blob = new Blob(chunksRef.current, { type })
-        const file = new File([blob], `recording-${Date.now()}.${extForType(type)}`, { type })
+        const file = fileFromChunks(chunksRef.current, rec, `recording-${Date.now()}`)
+        if (!file) { setError('That recording came out empty — try again, and give it a second before stopping.'); return }
         lastFileRef.current = file
         setLocalUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file) })
         save(file)
@@ -489,6 +477,7 @@ function TestAudioAnswer({
       setRecording(true); setSeconds(0)
       timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000)
     } catch (e: any) {
+      console.error('Could not start recording', e)
       if (e?.name === 'NotAllowedError' || e?.name === 'SecurityError') setError('Microphone access denied.')
       else setError('Recording is not supported on this browser.')
     }
@@ -520,7 +509,7 @@ function TestAudioAnswer({
     <div>
       {playable ? (
         <div className="space-y-2">
-          <audio controls src={playable} className="w-full h-9" />
+          <RecordedAudio src={playable} className="w-full h-9" />
           <div className="flex items-center gap-3 flex-wrap">
             {saving ? (
               <span className="text-xs text-muted inline-flex items-center gap-1.5">

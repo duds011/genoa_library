@@ -4,6 +4,8 @@ import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Mic, Upload, X, Play, Pause, Square, Send, Trash2 } from 'lucide-react'
 import { notifyTeacherOfSubmission } from '@/app/actions/notifications'
+import RecordedAudio from '@/components/RecordedAudio'
+import { newRecorder, fileFromChunks, contentTypeFor } from '@/lib/audioRecording'
 
 interface Submission {
   id: string
@@ -18,23 +20,6 @@ interface Props {
   lessonId: string
   studentId: string
   initialSubmissions: Submission[]
-}
-
-// Pick a recording format the current browser actually supports.
-// iOS Safari does NOT support audio/webm — it needs mp4/mp4a — so hardcoding
-// webm made recording throw there (surfacing as a false "mic denied" error).
-function pickRecordingType(): string {
-  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return ''
-  for (const t of ['audio/webm', 'audio/mp4', 'audio/ogg']) {
-    if (MediaRecorder.isTypeSupported(t)) return t
-  }
-  return ''
-}
-
-function extForType(type: string): string {
-  if (type.includes('mp4')) return 'm4a'
-  if (type.includes('ogg')) return 'ogg'
-  return 'webm'
 }
 
 export default function StudentAudioSubmit({ lessonId, studentId, initialSubmissions }: Props) {
@@ -84,7 +69,7 @@ export default function StudentAudioSubmit({ lessonId, studentId, initialSubmiss
 
       const { error: upErr } = await supabase.storage
         .from('student-audio')
-        .upload(path, pending.file)
+        .upload(path, pending.file, { contentType: contentTypeFor(pending.file) })
       if (upErr) { setError(`Upload failed: ${upErr.message}`); return }
 
       const { data: { publicUrl } } = supabase.storage
@@ -115,15 +100,13 @@ export default function StudentAudioSubmit({ lessonId, studentId, initialSubmiss
     setError('')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mime = pickRecordingType()
-      const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+      const recorder = newRecorder(stream)
       chunksRef.current = []
       recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop())
-        const type = recorder.mimeType || mime || 'audio/webm'
-        const blob = new Blob(chunksRef.current, { type })
-        const file = new File([blob], `recording-${Date.now()}.${extForType(type)}`, { type })
+        const file = fileFromChunks(chunksRef.current, recorder, `recording-${Date.now()}`)
+        if (!file) { setError('That recording came out empty — try again, and give it a second before stopping.'); return }
         stagePending(file)
       }
       recorder.start(1000) // flush data every second — prevents 15s cap on some browsers
@@ -169,8 +152,11 @@ export default function StudentAudioSubmit({ lessonId, studentId, initialSubmiss
         audio.onended = () => setPlayingId(null)
         audioRefs.current[id] = audio
       }
-      audioRefs.current[id].play()
-      setPlayingId(id)
+      audioRefs.current[id].play().then(() => setPlayingId(id)).catch(err => {
+        console.error('Could not play recording', err)
+        setPlayingId(null)
+        setError('That recording will not play in this browser. Try Chrome, or record it again.')
+      })
     }
   }
 
@@ -212,7 +198,7 @@ export default function StudentAudioSubmit({ lessonId, studentId, initialSubmiss
                 <div className="mt-2.5 p-3 rounded-lg border border-brand-200 bg-white">
                   <p className="text-[10px] font-bold text-brand-600 uppercase tracking-widest mb-1">Noa Feedback</p>
                   {s.teacher_feedback && <p className="text-sm text-ink whitespace-pre-line">{s.teacher_feedback}</p>}
-                  {s.feedback_audio_url && <audio controls src={s.feedback_audio_url} className="w-full h-9 mt-2" />}
+                  {s.feedback_audio_url && <RecordedAudio src={s.feedback_audio_url} className="w-full h-9 mt-2" />}
                 </div>
               )}
             </div>
@@ -226,7 +212,7 @@ export default function StudentAudioSubmit({ lessonId, studentId, initialSubmiss
           <p className="text-xs font-semibold text-amber-700">
             🎧 Have a listen. Send it to your teacher when you&apos;re happy with it.
           </p>
-          <audio controls src={pending.url} className="w-full h-9" />
+          <RecordedAudio src={pending.url} className="w-full h-9" />
           <div className="flex gap-2">
             <button
               onClick={sendPending}
