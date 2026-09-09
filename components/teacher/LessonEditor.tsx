@@ -10,6 +10,7 @@ import AudioFeedback from '@/components/teacher/AudioFeedback'
 import TeacherFeedbackRecorder from '@/components/teacher/TeacherFeedbackRecorder'
 import { deleteLesson } from '@/app/actions/lessons'
 import { setHomeworkFeedbackAudio } from '@/app/actions/audioFeedback'
+import { deleteAttachment as removeAttachment } from '@/app/actions/attachments'
 import { translateLessonExplanations, writeLessonNote } from '@/app/actions/recapTools'
 import RecordedAudio from '@/components/RecordedAudio'
 import { newRecorder, fileFromChunks, contentTypeFor } from '@/lib/audioRecording'
@@ -275,10 +276,16 @@ export default function LessonEditor({
     }
   }
 
-  async function deleteAttachment(id: string, fileUrl: string) {
-    const path = fileUrl.split('/lesson-attachments/')[1]
-    if (path) await supabase.storage.from('lesson-attachments').remove([path])
-    await supabase.from('lesson_attachments').delete().eq('id', id)
+  async function deleteAttachment(id: string, _fileUrl: string) {
+    // Server-side, because the same file can now be attached to several
+    // lessons: the object is only removed when this was the last one using it.
+    const res = await removeAttachment(id)
+    if (!res.success) {
+      console.error('Could not remove attachment', res.error)
+      setFileError('That file could not be removed. Try again.')
+      return
+    }
+    setFileError('')
     setAttachments(prev => prev.filter(a => a.id !== id))
   }
 

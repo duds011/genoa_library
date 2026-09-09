@@ -161,3 +161,19 @@ a.k-vocab-level:hover{background:#e0e7ff}
   background:linear-gradient(180deg,transparent,var(--bg) 26%)}
 /* The editor's tab strip is the student's, one level up. */
 .wrap .tabs{position:sticky;top:0;z-index:15;margin-bottom:18px}
+
+/* — a recap section's body — */
+/* An example arrives as three lines: the Japanese, its romaji, then the English.
+   One italic style for all three turned the block into a stack of matching
+   quotes; each line should read as the thing it is. */
+.kr-eg.jp{font-style:normal;font-size:13.5px;font-weight:600;color:#16233a;margin-bottom:2px}
+.kr-eg.rom{font-size:11.5px;color:#7b88a1;margin-bottom:2px}
+/* The reading belongs beside the gloss, not folded into the bold term. */
+.kr-term-read{font-style:italic;color:#8b96ad;margin-right:7px}
+
+/* — the milestone ladder — */
+/* A rung's number marks where its segment ENDS — you reach "5" at the right
+   edge of the second bar, not at its middle. Centring the label under the
+   segment made two lessons out of five look like it was nearly there. */
+.k-track-rung{text-align:right}
+.k-track-rung small{max-width:100%}

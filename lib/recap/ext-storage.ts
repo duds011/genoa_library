@@ -30,10 +30,12 @@ export type CachedTranscript = {
 
 /**
  * How long uploaded lesson audio is kept before the daily purge removes it.
+ * **0 means keep it — the purge does nothing and no audio is ever deleted.**
  *
- * Stated as a promise in the privacy policy and in the extension's first-run
- * disclosure, so it is not a number to change casually — both say 30 days.
- * Long enough that /api/recap/build can still rebuild a recap from the
- * original audio, short enough to be a real limit rather than "indefinitely".
+ * It was 30. Noa asked for the recordings to be kept (2026-09-09): a lesson is
+ * worth going back to long after a month, and rebuilding a recap needs the
+ * original audio. Whatever this says has to match what the privacy policy and
+ * the extension's first-run disclosure tell students, so change all three
+ * together or the portal is misrepresenting what it does.
  */
-export const RETENTION_DAYS = 30
+export const RETENTION_DAYS = 0

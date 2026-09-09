@@ -46,9 +46,10 @@ export default function PrivacyPage() {
           <section>
             <h2 className="section-heading" style={{ margin: '0 0 6px' }}>How long audio is kept</h2>
             <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7, color: 'var(--muted)' }}>
-              Lesson audio is deleted after 30 days by a job that runs daily. It is kept that long
-              only so a recap can be rebuilt if something goes wrong the first time. The written
-              recap, your vocabulary and your scores stay, because they are the point of the portal.
+              Lesson audio is kept for as long as your lessons are in the portal. It is kept so a
+              recap can be rebuilt later and so a lesson can be listened to again, not for any other
+              purpose. Only your teacher and you can reach it, and you can ask your teacher to delete
+              any recording at any time.
             </p>
           </section>
 

@@ -408,12 +408,34 @@ export default function LessonPageTabs({
     const span = Math.max(box.height - vh, 1)
     const pct = Math.min(1, Math.max(-box.top, 0) / span)
     if (barRef.current) barRef.current.style.width = `${pct * 100}%`
-    if (fillRef.current) fillRef.current.style.height = `${pct * 100}%`
     // Whichever movement has crossed the top of the viewport is the one being
     // read; the last such wins.
+    const LINE = 90
     let best = 0
-    mvRefs.current.forEach((el, i) => { if (el && el.getBoundingClientRect().top <= 90) best = i })
+    mvRefs.current.forEach((el, i) => { if (el && el.getBoundingClientRect().top <= LINE) best = i })
     setActive(best)
+
+    /**
+     * The rail's line runs pip to pip, so it has to be measured in pips — not
+     * in scroll percentage. It used to take `pct`, which counts the height of
+     * every movement, so a tall movement dragged the line well past the dot
+     * that was lit and a short one left it trailing behind: the line and the
+     * highlighted section openly disagreed. It now fills to the active pip,
+     * plus however far through that movement the reader has got.
+     */
+    if (fillRef.current) {
+      const gaps = Math.max(mvRefs.current.length - 1, 1)
+      const here = mvRefs.current[best]
+      const next = mvRefs.current[best + 1]
+      let within = 0
+      if (here) {
+        const top = here.getBoundingClientRect().top
+        const end = next ? next.getBoundingClientRect().top : here.getBoundingClientRect().bottom
+        const height = end - top
+        if (height > 0) within = Math.min(1, Math.max(0, (LINE - top) / height))
+      }
+      fillRef.current.style.height = `${Math.min(1, (best + within) / gaps) * 100}%`
+    }
     setPicking(false)
   }, [])
 

@@ -97,6 +97,45 @@ lessons. Free tier is 1 GB, so this project is past it and on a paid plan.
 
 ---
 
+## Attachments are shared, and audio is no longer deleted
+
+**The same file can be attached to several lessons.** 72 identical copies were
+folded into 36 on 2026-09-09 — the same workbook re-uploaded lesson after lesson
+was 433MB of the 797MB bucket. So **never delete a storage object just because
+its row is going**: `app/actions/attachments.ts` deletes the row first and
+removes the file only when no other row still points at it. Any new code that
+detaches a file has to do the same.
+
+**Lesson audio is kept.** `RETENTION_DAYS` is 0, the purge route returns without
+deleting, and the cron entry is gone from `vercel.json`. The privacy page and the
+GENOA recorder's first-run disclosure (v1.4.4) were changed to match — they used
+to promise deletion after 30 days. Those three move together or the portal is
+misrepresenting what it does.
+
+---
+
+## The recap write-up
+
+`components/koku/RecapSections.tsx` parses each section body itself rather than
+handing it to `FormattedContent`, and its patterns had fallen behind the
+generator: it wanted the dash straight after the bold term and a bare `Pattern:`
+with no asterisks, while the generator writes `- **とおもう** *to omou* — to
+think` and `**Pattern:**`. Neither matched, so both fell through to "examples"
+and rendered with their markdown showing — in 582 of 1000 stored sections. The
+term pattern now takes whatever sits between the term and the separator as the
+reading (`*to omou*`, `/ ichiban` and `(Noa no mae)` have all been used) and
+notes are tested first. Every line goes through `inline()`, so anything still
+unmatched at least renders its bold.
+
+**The rail's line is measured in pips, not scroll percentage.** It used to take
+progress through the whole flow, so a tall movement dragged the line past the lit
+dot and a short one left it behind.
+
+**A milestone number marks where its segment ENDS.** The label used to be centred
+under its segment, which made 2 lessons out of 5 look nearly there.
+
+---
+
 ## Open items
 
 1. **Google Calendar** — half-configured, blocked. There is a Cloud project on

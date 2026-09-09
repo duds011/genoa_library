@@ -8,18 +8,18 @@ import { levelScale } from './VocabLevelBreakdown'
    so we classify line-by-line: vocab bullets, 3-line JP/romaji/EN examples,
    **Pattern:** lines, Natural note:/Important: callouts, and plain paragraphs. */
 function hasJapanese(t: string) { return /[　-ヿ㐀-鿿＀-￯]/.test(t) }
-function isRomajiLine(t: string) {
+export function isRomajiLine(t: string) {
   const s = t.replace(/\*\*?.+?\*\*?/g, '').trim()
   return /^[a-z][a-z\s.,\-'!?()ā-žāīūēōãñ]*$/i.test(s) && s.length > 0 && !hasJapanese(t)
 }
-function isPureJapanese(t: string) {
+export function isPureJapanese(t: string) {
   if (!hasJapanese(t)) return false
   // Strip bold AND italic wrappers — the old \*[^*]+\* mangled "**word**",
   // leaving stray asterisks that then rendered literally.
   return !/[a-zA-Z]/.test(t.replace(/\*\*?[^*]+\*\*?/g, ''))
 }
 /** Render **bold** and *italic* (romaji) inline. */
-function inline(text: string): React.ReactNode {
+export function inline(text: string): React.ReactNode {
   const tokens = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean)
   return tokens.map((tok, i) => {
     if (/^\*\*[^*]+\*\*$/.test(tok)) return <strong key={i}>{tok.slice(2, -2)}</strong>

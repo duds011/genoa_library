@@ -19,9 +19,10 @@ const PAGE = 1000
  *
  * Daily purge of lesson audio older than the retention window.
  *
- * The privacy policy and the extension's first-run disclosure both promise the
- * audio is deleted after 30 days, which makes this route the thing that keeps
- * the promise true. If it stops running, we are misrepresenting what we do.
+ * DORMANT since 2026-09-09: RETENTION_DAYS is 0, so this returns without
+ * deleting anything and the cron entry has been removed. The privacy policy and
+ * the extension disclosure were changed to match — they now say audio is kept.
+ * If retention is ever turned back on, change those two back at the same time.
  *
  * Recordings are laid out as `{recordingId}/{track}.webm`, so the bucket root
  * lists as folders and the timestamps live one level down — hence the two-level
@@ -41,6 +42,12 @@ export async function GET(req: NextRequest) {
     if (auth !== `Bearer ${secret}`) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
     }
+  }
+
+  // Retention off: keep everything. The route stays so turning RETENTION_DAYS
+  // back on is a one-line change, but while it is 0 nothing here may delete.
+  if (!RETENTION_DAYS || RETENTION_DAYS <= 0) {
+    return NextResponse.json({ ok: true, retentionDays: 0, deleted: 0, note: 'Retention is off — lesson audio is kept.' })
   }
 
   const admin = createAdminClient()
