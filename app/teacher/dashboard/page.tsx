@@ -2,7 +2,6 @@ import { createClient, getUser } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { formatDateShort } from '@/lib/utils'
 import DeleteLessonButton from '@/components/teacher/DeleteLessonButton'
-import CheckDriveButton from '@/components/teacher/CheckDriveButton'
 import PageHeader from '@/components/PageHeader'
 
 /**
@@ -119,7 +118,7 @@ export default async function TeacherDashboard() {
         ]}
         actions={
           <>
-            <CheckDriveButton />
+            <Link href="/teacher/import" className="btn btn-ghost">Import a transcript</Link>
             <Link href="/teacher/students" className="btn btn-primary">Students →</Link>
           </>
         }
@@ -137,7 +136,7 @@ export default async function TeacherDashboard() {
               <div className="empty">
                 <strong style={{ color: 'var(--ink)' }}>Nothing to review</strong>
                 <br />
-                New recaps arrive here after a lesson is transcribed. Use “Check for new recaps” to scan Drive now.
+                Recaps land here when you finish a recording. For a lesson the recorder missed, paste its transcript into Import.
               </div>
             ) : (
               <div className="g-queue">

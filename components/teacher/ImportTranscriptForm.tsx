@@ -26,6 +26,7 @@ export default function ImportTranscriptForm({ students }: Props) {
   const [geminiNotes, setGeminiNotes] = useState('')
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [message, setMessage] = useState('')
+  const [lessonId, setLessonId] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -41,7 +42,8 @@ export default function ImportTranscriptForm({ students }: Props) {
       return
     }
 
-    setMessage(result.message ?? 'Processing…')
+    setMessage(result.message ?? 'The draft is ready to review.')
+    setLessonId(result.lessonId ?? null)
     setState('done')
   }
 
@@ -52,7 +54,7 @@ export default function ImportTranscriptForm({ students }: Props) {
           <CheckCircle2 className="w-7 h-7 text-green-500" />
         </div>
         <div>
-          <p className="font-semibold text-ink text-lg">Sent to processing!</p>
+          <p className="font-semibold text-ink text-lg">Draft ready!</p>
           <p className="text-sm text-muted mt-1 max-w-sm">{message}</p>
         </div>
         <div className="flex gap-3 mt-2">
@@ -62,6 +64,7 @@ export default function ImportTranscriptForm({ students }: Props) {
               setTranscript('')
               setGeminiNotes('')
               setMessage('')
+              setLessonId(null)
               setState('idle')
             }}
           >
@@ -69,9 +72,11 @@ export default function ImportTranscriptForm({ students }: Props) {
           </button>
           <button
             className="btn-primary text-sm"
-            onClick={() => router.push('/teacher/dashboard')}
+            onClick={() =>
+              router.push(lessonId ? `/teacher/lessons/${lessonId}/edit` : '/teacher/dashboard')
+            }
           >
-            <ArrowRight className="w-4 h-4" /> Go to dashboard
+            <ArrowRight className="w-4 h-4" /> {lessonId ? 'Review the draft' : 'Go to dashboard'}
           </button>
         </div>
       </div>
@@ -119,7 +124,7 @@ export default function ImportTranscriptForm({ students }: Props) {
           Lesson transcript
         </label>
         <p className="text-xs text-muted mb-2">
-          Paste the full Google Meet transcript here. GPT-4o will extract the recap, vocabulary, and homework.
+          Paste the full Google Meet transcript here. The recap, vocabulary, homework and exercises are built from it.
         </p>
         <textarea
           value={transcript}
@@ -174,7 +179,7 @@ export default function ImportTranscriptForm({ students }: Props) {
         {state === 'loading' ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Sending to AI…
+            Building the recap — a minute or two…
           </>
         ) : (
           <>
